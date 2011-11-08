@@ -178,7 +178,7 @@ div.quoteblock, div.verseblock {
   margin-left: 1.0em;
   margin-right: 10%;
   border-left: 5px solid #f0f0f0;
-  color: #777777;
+  color: #888;
 }
 
 div.quoteblock > div.attribution {
@@ -536,72 +536,6 @@ body.manpage div.sectionbody {
 @media print {
   body.manpage div#toc { display: none; }
 }
-
-
-/*
- * Theme specific overrides of the preceding (asciidoc.css) CSS.
- *
- */
-body {
-  font-family: Garamond, Georgia, serif;
-  font-size: 17px;
-  color: #3E4349;
-  line-height: 1.3em;
-}
-h1, h2, h3, h4, h5, h6,
-div.title, caption.title,
-thead, p.table.header,
-#toctitle,
-#author, #revnumber, #revdate, #revremark,
-#footer {
-  font-family: Garmond, Georgia, serif;
-  font-weight: normal;
-  border-bottom-width: 0;
-  color: #3E4349;
-}
-div.title, caption.title { color: #596673; font-weight: bold; }
-h1 { font-size: 240%; }
-h2 { font-size: 180%; }
-h3 { font-size: 150%; }
-h4 { font-size: 130%; }
-h5 { font-size: 115%; }
-h6 { font-size: 100%; }
-#header h1 { margin-top: 0; }
-#toc {
-  color: #444444;
-  line-height: 1.5;
-  padding-top: 1.5em;
-}
-#toctitle {
-  font-size: 20px;
-}
-#toc a {
-    border-bottom: 1px dotted #999999;
-    color: #444444 !important;
-    text-decoration: none !important;
-}
-#toc a:hover {
-    border-bottom: 1px solid #6D4100;
-    color: #6D4100 !important;
-    text-decoration: none !important;
-}
-div.toclevel1 { margin-top: 0.2em; font-size: 16px; }
-div.toclevel2 { margin-top: 0.15em; font-size: 14px; }
-em, dt, td.hdlist1 { color: black; }
-strong { color: #3E4349; }
-a { color: #004B6B; text-decoration: none; border-bottom: 1px dotted #004B6B; }
-a:visited { color: #615FA0; border-bottom: 1px dotted #615FA0; }
-a:hover { color: #6D4100; border-bottom: 1px solid #6D4100; }
-div.tableblock > table, table.tableblock { border: 3px solid #E8E8E8; }
-th.tableblock, td.tableblock { border: 1px solid #E8E8E8; }
-ul > li > * { color: #3E4349; }
-pre, tt, .monospaced { font-family: Consolas,Menlo,'Deja Vu Sans Mono','Bitstream Vera Sans Mono',monospace; }
-tt, .monospaced { font-size: 0.9em; color: black;
-}
-div.exampleblock > div.content, div.sidebarblock > div.content, div.listingblock > div.content { border-width: 0 0 0 3px; border-color: #E8E8E8; }
-div.verseblock { border-left-width: 0; margin-left: 3em; }
-div.quoteblock { border-left-width: 3px; margin-left: 0; margin-right: 0;}
-div.admonitionblock td.content { border-left: 3px solid #E8E8E8; }
 </style>
 <script type="text/javascript">
 /*<![CDATA[*/
@@ -1247,7 +1181,7 @@ Contact
 <div id="footer">
 <div id="footer-text">
 Version 1.0.0<br>
-Last updated 2011-11-07 23:59:44 EST
+Last updated 2011-11-08 00:24:40 EST
 </div>
 </div>
 </body>
