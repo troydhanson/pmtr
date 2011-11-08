@@ -21,5 +21,5 @@ clean:
 
 install: pmtr
 	cp $^ /usr/local/bin
-	cp upstart/pmtr.conf /etc/init/pmtr.conf
+	#cp upstart/pmtr.conf /etc/init/pmtr.conf
 	touch /etc/pmtr.conf

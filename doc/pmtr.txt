@@ -5,178 +5,270 @@ v1.0.0, November 2011
 
 Quick primer
 ------------
-Daemons on Linux can be started using system facilities (sysvinit, upstart,
-etc). Despite this, I wrote my own basic process supervisor to start, stop
-and configure the runtime environment of my processes. Jobs are specified
-like this:
+The `pmtr` utility is a process monitor: it starts your Linux daemons at
+boot, restarts them if they exit, and lets you configure their environment.
+Jobs are specified in a configuration, like this:
 
+.Example /etc/pmtr.conf
+--------------------------------------------------------------------------
   job {
-    name antigravity-generator
-    cmd /bin/antigrav
+    name weather-server
+    cmd /usr/local/bin/weather -v 
   }
 
-Or with more parameters to allow control over additional parameters:
-
   job {
-    name xray-strobe
-    cmd /usr/bin/xrays
-    dir /xray
-    err xray.err
-    out xray.out
+    name doppler-update
+    cmd /usr/bin/dop-up
+    dir /var/log
+    err dop.err
+    out dop.out
   }
+--------------------------------------------------------------------------
 
-The <<options,full options>> are documented below. 
+This fictional example defines two jobs. One of them has only a name and a
+command to execute. The other job includes further options to set the stdout
+and stderr destinations.  The <<options,full options>> are documented below. 
 
 What does pmtr do?
 ~~~~~~~~~~~~~~~~~~
-When `pmtr` is started at system boot, it reads its configuration file --
+When `pmtr` is started at system boot, it reads the configuration file --
 by default `/etc/pmtr.conf` -- starts up the jobs defined there, and then
-monitors the jobs so it can restart them if they exit. It also monitors
-the configuration file for changes, and will start/stop jobs accordingly.
+monitors the jobs, in order to restart them if they exit. It also detects
+changes to the configuration file, and will start/stop jobs accordingly.
 
-Why did I write it?
-^^^^^^^^^^^^^^^^^^^
+.Why did I write it?
+**************************************************************************
 I had a few reasons for writing my own process monitor instead of sysvinit
 scripts to manage my daemon processes. I wanted:
 
- * to keep the 'system' services separate from my 'application' jobs
  * to have one configuration file for all my application daemons
+ * to have as few features as possible, to keep things simple
 
-I also wrote `pmtr` as a a small core that I could build on, for whatever custom
-control features I might need down the road. On the process management spectrum,
-`pmtr` is a tiny, unsophisticated utility -- which is exactly what I wanted.
+On the process management spectrum, `pmtr` is a tiny, unsophisticated 
+utility -- which is exactly what I wanted.
+**************************************************************************
+
+Installation
+------------
+Download the `pmtr` source:
+
+  git clone git://github.com/troydhanson/pmtr.git
+
+Then build and install:
+
+  cd pmtr
+  make
+  sudo make install
 
 Boot-up: who starts pmtr?
 ~~~~~~~~~~~~~~~~~~~~~~~~~
-The `pmtr` daemon itself must be started somehow. For Ubuntu Linux, there is an
-"upstart" script (included in the `upstart/` directory) that, when installed
-in the `/etc/init` directory, will start `pmtr` on boot. The root user can then
-use the `service` command to control `pmtr`, e.g., 
+There is still a need for `pmtr` itself to be started at system boot.  
 
-  service pmtr start|restart|stop|status
+Ubuntu Linux
+^^^^^^^^^^^^ 
+There is an "upstart" script included for this purpose.
 
-Startup scripts for other Linux distributions are not included at this time.
+  cp upstart/pmtr.conf /etc/init
 
-Startup options
-^^^^^^^^^^^^^^^
-Normally `pmtr` runs in the background but it can be started in the foreground.
-This is useful when testing a configuration file for syntax.
+The root user can then use the `service` command to start it up initially:
+`service pmtr start`.
+
+Other distributions
+^^^^^^^^^^^^^^^^^^^
+There is no sysvinit script included for other Linux distributions currently.
+I hope to add one (if you want to send one to me for inclusion, please do).
+
+Manual startup
+^^^^^^^^^^^^^^
+You can start pmtr by hand. This is useful to test the configuration file for 
+syntax errors using the `-t` option. The supported `pmtr` startup options are:
 
   -v verbose
   -F foreground
-  -c <cfg> specify configuration file
+  -c <file> specify configuration file
   -t test only; parse config file only (implies -F)
+
+Configuring jobs
+----------------
+
+Create a file called `/etc/pmtr.conf` and place your job definitions inside.
+
+.Another example /etc/pmtr.conf
+--------------------------------------------------------------------------
+  job {
+    name stub
+    cmd /bin/sleep 30
+  }
+--------------------------------------------------------------------------
+
+If necessary, start up pmtr (`service pmtr start`) and it should start 
+running this job.  We'll use this simple job to point out a few things.
 
 Logging
 ~~~~~~~
-All interesting events are logged via syslog (using facility `LOCAL0`) --
-typically appearing in `/var/log/messages` depending on syslogd configuration.
+Events are logged via syslog, typically to `/var/log/messages`.
 
-  Nov  6 23:25:17 ubuntu pmtr[755]: started job xray-strobe [20607]
+./var/log/messages
+--------------------------------------------------------------------------
+Nov  7 21:38:10 ubuntu pmtr[18477]: pmtr: managing 1 jobs
+Nov  7 21:38:10 ubuntu pmtr[18477]: started job stub [18478]
+--------------------------------------------------------------------------
 
-The `pmtr.conf` config file
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-The configuration file defaults to `/etc/pmtr.conf`. It consists of any
-number of `job` definitions. Each job is defined in a curly-brace block.
-Comments can appear on their own line, prefaced with `#`. Indentation
-is optional. Blank lines are ok.
+Restarting
+~~~~~~~~~~
+If you keep watching for more than 30 seconds, you'll notice that the
+`sleep` process exits, and then `pmtr` restarts it.
 
-  ########################
-  # the neutron zapper job
-  #######################
+./var/log/messages
+--------------------------------------------------------------------------
+Nov  7 21:38:40 ubuntu pmtr[18477]: job stub 18478 exited after 30 sec: exit status 0
+Nov  7 21:38:40 ubuntu pmtr[18477]: started job stub [18481]
+--------------------------------------------------------------------------
+
+Configuration file changes
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+Now go ahead and edit the `/etc/pmtr.conf` file and change the job definition
+so that the sleep lasts only 3 seconds, instead of 30:
+
+    cmd /bin/sleep 3
+
+As soon as you write the file, `pmtr` will detect the change. In the logs,
+
+./var/log/messages
+--------------------------------------------------------------------------
+Nov  7 22:01:09 ubuntu pmtr[18477]: rescanning job configuration
+Nov  7 22:01:10 ubuntu pmtr[18477]: job stub [18549]: exited on signal 15
+Nov  7 22:01:10 ubuntu pmtr[18477]: started job stub [18552]
+--------------------------------------------------------------------------
+
+What happened?- `pmtr` saw the command changed, killed the running job,
+and started a new one having the updated configuration.
+
+Fast-restart handling
+~~~~~~~~~~~~~~~~~~~~~
+If you keep watching the logs, you'll notice that this job (which exits after
+only 3 seconds), induces `pmtr` to delay its next restart:
+
+./var/log/messages
+--------------------------------------------------------------------------
+Nov  7 22:01:13 ubuntu pmtr[18477]: job stub 18552 exited after 3 sec: exit status 0
+Nov  7 22:01:13 ubuntu pmtr[18477]: job restarting too fast, delaying restart
+--------------------------------------------------------------------------
+
+Any job that exits within 10 seconds of starting causes `pmtr` to delay its
+next restart (for 10 seconds). This avoids fork-bombing the system when a job
+is misconfigured.
+
+Shutdown
+~~~~~~~~
+Go ahead and delete the `stub` job from the configuration file. You'll see that `pmtr`
+kills it. In general `pmtr` terminates jobs in these circumstances:
+ 
+ * If you stop `pmtr` (for example using `service pmtr stop`), 
+ * If you delete the job definition  
+ * If you mark it `disabled` (see below)
+
+Job termination is handled by first sending SIGTERM, then SIGKILL shortly afterward.
+
+NOTE: It is not recommended to have jobs that spawn background processes (unless they
+are designed to exit when their parent job is terminated).
+
+Configuration options
+---------------------
+The configuration file can contain any number of job definitions. Each one is
+in a curly-brace delimited block.  Comments can appear on their own line,
+prefaced with `#`. Indentation in the block is optional. Blank lines anywhere
+are ok. Only one option may appear on each line.
+
+  #################
+  # the zapper job
+  #################
   job {
-    name neutron-zapper
+    name zapper
     cmd /usr/bin/zapper
     err zapper.err
     disabled
   }
 
-Within the job definition each option must appear on a separate line.
+Only the 'name' and 'cmd' are required. The full list of options are:
 
 [[options]]
 .Job configuration options
 [width="90%",cols="10m,30m",grid="none",options="header"]
 |===============================================================================
-|option         | arguments
-|name           | job name (alphanumeric/hyphen)                
-|cmd            | absolute path to executable, optionally followed by arguments
-|dir            | absolute path for the job's working directory 
-|out            | filename (may be relative) to receive standard output 
-|err            | filename (may be relative) to receive standard error 
-|user           | name of user under whose uid the job should run
-|env            | VAR=VALUE specification of an environment variable (repeatable)
-|disabled       | 
-|once           | 
+|option         | argument
+|name           | job name 
+|cmd            | path to executable with optional arguments
+|dir            | path to the working directory 
+|out            | file to receive standard output 
+|err            | file to receive standard error 
+|user           | user under whose uid the job should run
+|env            | VAR=VALUE specification of an environment variable 
+|disabled       | (none)
+|once*          | (none)
+|wait*          | (none)
+|order*         | integer
 |===============================================================================
 
-Only the `name` and `cmd` are required.
+name::
+  The 'name' must be unique. It is only used as a label to make log messages more
+  readable.
 
-The `name' must be unique. Other than that it is only used as a label to make
-log messages more readable.
+cmd::
+  The 'cmd' is the *absolute pathname* to an executable, with optional arguments.
+  Basic quoting, using double-quotes only, is supported in the arguments. 
 
-The 'command' can be a simple pathname to an executable, or it can have
-options. Basic quoting (using double-quotes only) is supported in the arguments:
+dir::
+  Determines the 'current working directory' that the job will have upon startup
 
-  cmd /bin/bash -c "find /xray | xargs -IXYZ /bin/irradiate XYZ"
+out::
+  filename (may be relative to the working directory) to receive stdout. Default: `/dev/null`
 
-If 'out' and 'err' are omitted, the job's stdout and stderr are sent to `/dev/null`.
+err::
+  filename (may be relative to the working directory) to receive stderr. Default: `/dev/null`
 
-If `user` is omitted, the job runs with the uid of `pmtr` itself (that is, as root).
+user::
+  If specified, the job is run under the user's uid rather than root's uid
 
-Each appearance of `env` option sets an environment variables for the job, e.g.
+env::
+  sets an environment variables for the job, e.g., `env XLIB=/usr/lib/xlib.so` (repeatable)
 
-  env XRAY_LIB=/usr/lib/xray.so
+disabled::
+  causes the job definition to be inactive 
 
-The `disabled` option causes the job to be skipped during startup.
+Special options for precursor jobs
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The `once` option inhibits the normal restart behavior when a job exits.
+NOTE: These options are not used for most jobs.
 
-Precursor jobs
-^^^^^^^^^^^^^^
-There are two commands that are not listed above -- `order` and `wait`.
-These form a basic mechanism to start one or more jobs before all the
-others. The `order` option takes an integer (which may be negative)
-and `wait` takes no argument but pauses execution of the remaining jobs
-until its command exits. This kind of ordered, synchronous job startup
-is not how `pmtr` usually works but it can be useful to set up initial
-conditions.
+Normally jobs are all started at the same time. There is no waiting and no dependency
+expected between jobs. However, in cases where you want one 'non-daemon' job to run to
+completion before running other jobs -- for example to set up an initial resource --
+you can use the 'wait' option. This causes the `pmtr` to delay starting up the rest
+of the jobs (those which appear later in the configuration file) until the job
+completes. This is used with 'once' since it is meant for jobs that should
+complete, and not be restarted.
 
-job {
-  name ramdisk-creator
-  cmd /bin/ramdisk -c 10g /ramdisk
-  order -1
-  wait
-}
+  job {
+    name setup
+    cmd /bin/ramdisk -c 10g /ram
+    wait
+    once
+  }
 
-With the exception of the `wait` option, jobs are started at the same time
-(they are forked and started without waiting).
+once::
+  do not restart when the job exits (also induced if the job exits with code 33)
 
-Job termination/restart
-^^^^^^^^^^^^^^^^^^^^^^^
-Jobs that are managed by `pmtr` are expected to run indefinitely. If they don't,
-`pmtr` will restart them. If they restart too fast (within 10 seconds of their
-startup) `pmtr` will insert a 10-second delay before the next restart attempt.
-
-No-restart exit status
-++++++++++++++++++++++
-If a job is not intended to be restarted after it exits, it can either be 
-configured with the `once` option, or it can return a special exit status (33)
-to inform `pmtr` that it does want to be restarted.
-
-Configuration file rescan
-^^^^^^^^^^^^^^^^^^^^^^^^^
-While `pmtr` runs, it monitors its configuration file for changes. (It does
-this using 'inotify' so it does not need to poll for changes). When a change
-is detected, it rescans the file. Jobs that have been deleted or disabled,
-but which are currently running, will be signalled to exit. (This is done
-using a SIGTERM, followed by a SIGKILL if the process does not terminate).
-Jobs whose definitions are changed will be signalled to exit and restarted
-using the new options. New jobs are started up. All these actions are logged.
+wait::
+  delay the startup of other jobs until this job completes (used with 'once')
 
 Resources
 ~~~~~~~~~
 News::
- The author has a news feed for http://troydhanson.wordpress.com/feed/[software updates] image:img/rss.png[(RSS)].
+ Updates are posted to the http://troydhanson.wordpress.com/feed/[author's blog] image:rss.png[(RSS)].
+
+Contact::
+ Send bug reports, suggestions, to tdh@tkhanson.net.
 
 // vim: set tw=80 wm=2 syntax=asciidoc: 
 
