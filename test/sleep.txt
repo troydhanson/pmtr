@@ -1,0 +1,31 @@
+job {
+  name sleepy2
+  cmd /bin/sleep 20
+  dir /tmp
+  out job1.out
+  err job1.err
+  order -1
+  disable
+}
+
+job {
+  name sleepy4
+  #cmd /bin/bash -c "/bin/sleep 20; exit 33"
+  cmd /bin/bash -c "/bin/sleep 20"
+  dir /tmp
+  out job1.out
+  err job1.err
+  order 0
+  #wait
+  #once
+}
+
+job {
+  name sleepy1
+  cmd /bin/sleep 20
+  dir /tmp
+  out job1.out
+  err job1.err
+  order 1
+}
+

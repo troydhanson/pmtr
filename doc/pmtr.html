@@ -1,0 +1,779 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN"
+    "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<meta name="generator" content="AsciiDoc 8.5.2" />
+<title>pmtr process monitor</title>
+<style type="text/css">
+/* Debug borders */
+p, li, dt, dd, div, pre, h1, h2, h3, h4, h5, h6 {
+/*
+  border: 1px solid red;
+*/
+}
+
+body {
+  margin: 1em 5% 1em 5%;
+}
+
+a {
+  color: blue;
+  text-decoration: underline;
+}
+a:visited {
+  color: fuchsia;
+}
+
+em {
+  font-style: italic;
+  color: navy;
+}
+
+strong {
+  font-weight: bold;
+  color: #083194;
+}
+
+tt {
+  color: navy;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: #527bbd;
+  font-family: sans-serif;
+  margin-top: 1.2em;
+  margin-bottom: 0.5em;
+  line-height: 1.3;
+}
+
+h1, h2, h3 {
+  border-bottom: 2px solid silver;
+}
+h2 {
+  padding-top: 0.5em;
+}
+h3 {
+  float: left;
+}
+h3 + * {
+  clear: left;
+}
+
+div.sectionbody {
+  font-family: serif;
+  margin-left: 0;
+}
+
+hr {
+  border: 1px solid silver;
+}
+
+p {
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+}
+
+ul, ol, li > p {
+  margin-top: 0;
+}
+
+pre {
+  padding: 0;
+  margin: 0;
+}
+
+span#author {
+  color: #527bbd;
+  font-family: sans-serif;
+  font-weight: bold;
+  font-size: 1.1em;
+}
+span#email {
+}
+span#revnumber, span#revdate, span#revremark {
+  font-family: sans-serif;
+}
+
+div#footer {
+  font-family: sans-serif;
+  font-size: small;
+  border-top: 2px solid silver;
+  padding-top: 0.5em;
+  margin-top: 4.0em;
+}
+div#footer-text {
+  float: left;
+  padding-bottom: 0.5em;
+}
+div#footer-badges {
+  float: right;
+  padding-bottom: 0.5em;
+}
+
+div#preamble {
+  margin-top: 1.5em;
+  margin-bottom: 1.5em;
+}
+div.tableblock, div.imageblock, div.exampleblock, div.verseblock,
+div.quoteblock, div.literalblock, div.listingblock, div.sidebarblock,
+div.admonitionblock {
+  margin-top: 1.0em;
+  margin-bottom: 1.5em;
+}
+div.admonitionblock {
+  margin-top: 2.0em;
+  margin-bottom: 2.0em;
+  margin-right: 10%;
+  color: #606060;
+}
+
+div.content { /* Block element content. */
+  padding: 0;
+}
+
+/* Block element titles. */
+div.title, caption.title {
+  color: #527bbd;
+  font-family: sans-serif;
+  font-weight: bold;
+  text-align: left;
+  margin-top: 1.0em;
+  margin-bottom: 0.5em;
+}
+div.title + * {
+  margin-top: 0;
+}
+
+td div.title:first-child {
+  margin-top: 0.0em;
+}
+div.content div.title:first-child {
+  margin-top: 0.0em;
+}
+div.content + div.title {
+  margin-top: 0.0em;
+}
+
+div.sidebarblock > div.content {
+  background: #ffffee;
+  border: 1px solid silver;
+  padding: 0.5em;
+}
+
+div.listingblock > div.content {
+  border: 1px solid silver;
+  background: #f4f4f4;
+  padding: 0.5em;
+}
+
+div.quoteblock, div.verseblock {
+  padding-left: 1.0em;
+  margin-left: 1.0em;
+  margin-right: 10%;
+  border-left: 5px solid #dddddd;
+  color: #777777;
+}
+
+div.quoteblock > div.attribution {
+  padding-top: 0.5em;
+  text-align: right;
+}
+
+div.verseblock > div.content {
+  white-space: pre;
+}
+div.verseblock > div.attribution {
+  padding-top: 0.75em;
+  text-align: left;
+}
+/* DEPRECATED: Pre version 8.2.7 verse style literal block. */
+div.verseblock + div.attribution {
+  text-align: left;
+}
+
+div.admonitionblock .icon {
+  vertical-align: top;
+  font-size: 1.1em;
+  font-weight: bold;
+  text-decoration: underline;
+  color: #527bbd;
+  padding-right: 0.5em;
+}
+div.admonitionblock td.content {
+  padding-left: 0.5em;
+  border-left: 3px solid #dddddd;
+}
+
+div.exampleblock > div.content {
+  border-left: 3px solid #dddddd;
+  padding-left: 0.5em;
+}
+
+div.imageblock div.content { padding-left: 0; }
+span.image img { border-style: none; }
+a.image:visited { color: white; }
+
+dl {
+  margin-top: 0.8em;
+  margin-bottom: 0.8em;
+}
+dt {
+  margin-top: 0.5em;
+  margin-bottom: 0;
+  font-style: normal;
+  color: navy;
+}
+dd > *:first-child {
+  margin-top: 0.1em;
+}
+
+ul, ol {
+    list-style-position: outside;
+}
+ol.arabic {
+  list-style-type: decimal;
+}
+ol.loweralpha {
+  list-style-type: lower-alpha;
+}
+ol.upperalpha {
+  list-style-type: upper-alpha;
+}
+ol.lowerroman {
+  list-style-type: lower-roman;
+}
+ol.upperroman {
+  list-style-type: upper-roman;
+}
+
+div.compact ul, div.compact ol,
+div.compact p, div.compact p,
+div.compact div, div.compact div {
+  margin-top: 0.1em;
+  margin-bottom: 0.1em;
+}
+
+div.tableblock > table {
+  border: 3px solid #527bbd;
+}
+thead, p.table.header {
+  font-family: sans-serif;
+  font-weight: bold;
+}
+tfoot {
+  font-weight: bold;
+}
+td > div.verse {
+  white-space: pre;
+}
+p.table {
+  margin-top: 0;
+}
+/* Because the table frame attribute is overriden by CSS in most browsers. */
+div.tableblock > table[frame="void"] {
+  border-style: none;
+}
+div.tableblock > table[frame="hsides"] {
+  border-left-style: none;
+  border-right-style: none;
+}
+div.tableblock > table[frame="vsides"] {
+  border-top-style: none;
+  border-bottom-style: none;
+}
+
+
+div.hdlist {
+  margin-top: 0.8em;
+  margin-bottom: 0.8em;
+}
+div.hdlist tr {
+  padding-bottom: 15px;
+}
+dt.hdlist1.strong, td.hdlist1.strong {
+  font-weight: bold;
+}
+td.hdlist1 {
+  vertical-align: top;
+  font-style: normal;
+  padding-right: 0.8em;
+  color: navy;
+}
+td.hdlist2 {
+  vertical-align: top;
+}
+div.hdlist.compact tr {
+  margin: 0;
+  padding-bottom: 0;
+}
+
+.comment {
+  background: yellow;
+}
+
+.footnote, .footnoteref {
+  font-size: 0.8em;
+}
+
+span.footnote, span.footnoteref {
+  vertical-align: super;
+}
+
+#footnotes {
+  margin: 20px 0 20px 0;
+  padding: 7px 0 0 0;
+}
+
+#footnotes div.footnote {
+  margin: 0 0 5px 0;
+}
+
+#footnotes hr {
+  border: none;
+  border-top: 1px solid silver;
+  height: 1px;
+  text-align: left;
+  margin-left: 0;
+  width: 20%;
+  min-width: 100px;
+}
+
+
+@media print {
+  div#footer-badges { display: none; }
+}
+
+div#toc {
+  margin-bottom: 2.5em;
+}
+
+div#toctitle {
+  color: #527bbd;
+  font-family: sans-serif;
+  font-size: 1.1em;
+  font-weight: bold;
+  margin-top: 1.0em;
+  margin-bottom: 0.1em;
+}
+
+div.toclevel1, div.toclevel2, div.toclevel3, div.toclevel4 {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+div.toclevel2 {
+  margin-left: 2em;
+  font-size: 0.9em;
+}
+div.toclevel3 {
+  margin-left: 4em;
+  font-size: 0.9em;
+}
+div.toclevel4 {
+  margin-left: 6em;
+  font-size: 0.9em;
+}
+/* Workarounds for IE6's broken and incomplete CSS2. */
+
+div.sidebar-content {
+  background: #ffffee;
+  border: 1px solid silver;
+  padding: 0.5em;
+}
+div.sidebar-title, div.image-title {
+  color: #527bbd;
+  font-family: sans-serif;
+  font-weight: bold;
+  margin-top: 0.0em;
+  margin-bottom: 0.5em;
+}
+
+div.listingblock div.content {
+  border: 1px solid silver;
+  background: #f4f4f4;
+  padding: 0.5em;
+}
+
+div.quoteblock-attribution {
+  padding-top: 0.5em;
+  text-align: right;
+}
+
+div.verseblock-content {
+  white-space: pre;
+}
+div.verseblock-attribution {
+  padding-top: 0.75em;
+  text-align: left;
+}
+
+div.exampleblock-content {
+  border-left: 3px solid #dddddd;
+  padding-left: 0.5em;
+}
+
+/* IE6 sets dynamically generated links as visited. */
+div#toc a:visited { color: blue; }
+</style>
+<script type="text/javascript">
+/*<![CDATA[*/
+window.onload = function(){asciidoc.footnotes();}
+var asciidoc = {  // Namespace.
+
+/////////////////////////////////////////////////////////////////////
+// Table Of Contents generator
+/////////////////////////////////////////////////////////////////////
+
+/* Author: Mihai Bazon, September 2002
+ * http://students.infoiasi.ro/~mishoo
+ *
+ * Table Of Content generator
+ * Version: 0.4
+ *
+ * Feel free to use this script under the terms of the GNU General Public
+ * License, as long as you do not remove or alter this notice.
+ */
+
+ /* modified by Troy D. Hanson, September 2006. License: GPL */
+ /* modified by Stuart Rackham, 2006, 2009. License: GPL */
+
+// toclevels = 1..4.
+toc: function (toclevels) {
+
+  function getText(el) {
+    var text = "";
+    for (var i = el.firstChild; i != null; i = i.nextSibling) {
+      if (i.nodeType == 3 /* Node.TEXT_NODE */) // IE doesn't speak constants.
+        text += i.data;
+      else if (i.firstChild != null)
+        text += getText(i);
+    }
+    return text;
+  }
+
+  function TocEntry(el, text, toclevel) {
+    this.element = el;
+    this.text = text;
+    this.toclevel = toclevel;
+  }
+
+  function tocEntries(el, toclevels) {
+    var result = new Array;
+    var re = new RegExp('[hH]([2-'+(toclevels+1)+'])');
+    // Function that scans the DOM tree for header elements (the DOM2
+    // nodeIterator API would be a better technique but not supported by all
+    // browsers).
+    var iterate = function (el) {
+      for (var i = el.firstChild; i != null; i = i.nextSibling) {
+        if (i.nodeType == 1 /* Node.ELEMENT_NODE */) {
+          var mo = re.exec(i.tagName);
+          if (mo && (i.getAttribute("class") || i.getAttribute("className")) != "float") {
+            result[result.length] = new TocEntry(i, getText(i), mo[1]-1);
+          }
+          iterate(i);
+        }
+      }
+    }
+    iterate(el);
+    return result;
+  }
+
+  var toc = document.getElementById("toc");
+  var entries = tocEntries(document.getElementById("content"), toclevels);
+  for (var i = 0; i < entries.length; ++i) {
+    var entry = entries[i];
+    if (entry.element.id == "")
+      entry.element.id = "_toc_" + i;
+    var a = document.createElement("a");
+    a.href = "#" + entry.element.id;
+    a.appendChild(document.createTextNode(entry.text));
+    var div = document.createElement("div");
+    div.appendChild(a);
+    div.className = "toclevel" + entry.toclevel;
+    toc.appendChild(div);
+  }
+  if (entries.length == 0)
+    toc.parentNode.removeChild(toc);
+},
+
+
+/////////////////////////////////////////////////////////////////////
+// Footnotes generator
+/////////////////////////////////////////////////////////////////////
+
+/* Based on footnote generation code from:
+ * http://www.brandspankingnew.net/archive/2005/07/format_footnote.html
+ */
+
+footnotes: function () {
+  var cont = document.getElementById("content");
+  var noteholder = document.getElementById("footnotes");
+  var spans = cont.getElementsByTagName("span");
+  var refs = {};
+  var n = 0;
+  for (i=0; i<spans.length; i++) {
+    if (spans[i].className == "footnote") {
+      n++;
+      // Use [\s\S] in place of . so multi-line matches work.
+      // Because JavaScript has no s (dotall) regex flag.
+      note = spans[i].innerHTML.match(/\s*\[([\s\S]*)]\s*/)[1];
+      noteholder.innerHTML +=
+        "<div class='footnote' id='_footnote_" + n + "'>" +
+        "<a href='#_footnoteref_" + n + "' title='Return to text'>" +
+        n + "</a>. " + note + "</div>";
+      spans[i].innerHTML =
+        "[<a id='_footnoteref_" + n + "' href='#_footnote_" + n +
+        "' title='View footnote' class='footnote'>" + n + "</a>]";
+      var id =spans[i].getAttribute("id");
+      if (id != null) refs["#"+id] = n;
+    }
+  }
+  if (n == 0)
+    noteholder.parentNode.removeChild(noteholder);
+  else {
+    // Process footnoterefs.
+    for (i=0; i<spans.length; i++) {
+      if (spans[i].className == "footnoteref") {
+        var href = spans[i].getElementsByTagName("a")[0].getAttribute("href");
+        href = href.match(/#.*/)[0];  // Because IE return full URL.
+        n = refs[href];
+        spans[i].innerHTML =
+          "[<a href='#_footnote_" + n +
+          "' title='View footnote' class='footnote'>" + n + "</a>]";
+      }
+    }
+  }
+}
+
+}
+/*]]>*/
+</script>
+</head>
+<body>
+<div id="header">
+<h1>pmtr process monitor</h1>
+<span id="author">Troy D. Hanson</span><br />
+<span id="email"><tt>&lt;<a href="mailto:tdh@tkhanson.net">tdh@tkhanson.net</a>&gt;</tt></span><br />
+<span id="revnumber">version 1.0.0,</span>
+<span id="revdate">November 2011</span>
+</div>
+<div id="content">
+<h2 id="_quick_primer">Quick primer</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Daemons on Linux can be started using system facilities (sysvinit, upstart,
+etc). Despite this, I wrote my own basic process supervisor to start, stop
+and configure the runtime environment of my processes. Jobs are specified
+like this:</p></div>
+<div class="literalblock">
+<div class="content">
+<pre><tt>job {
+  name antigravity-generator
+  cmd /bin/antigrav
+}</tt></pre>
+</div></div>
+<div class="paragraph"><p>Or with more parameters to allow control over additional parameters:</p></div>
+<div class="literalblock">
+<div class="content">
+<pre><tt>job {
+  name xray-strobe
+  cmd /usr/bin/xrays
+  dir /xray
+  err xray.err
+  out xray.out
+}</tt></pre>
+</div></div>
+<div class="paragraph"><p>The <a href="#options">full options</a> are documented below.</p></div>
+<h3 id="_what_does_pmtr_do">What does pmtr do?</h3><div style="clear:left"></div>
+<div class="paragraph"><p>When <tt>pmtr</tt> is started at system boot, it reads its configuration file&#8201;&#8212;&#8201;by default <tt>/etc/pmtr.conf</tt>&#8201;&#8212;&#8201;starts up the jobs defined there, and then
+monitors the jobs so it can restart them if they exit. It also monitors
+the configuration file for changes, and will start/stop jobs accordingly.</p></div>
+<h4 id="_why_did_i_write_it">Why did I write it?</h4>
+<div class="paragraph"><p>I had a few reasons for writing my own process monitor instead of sysvinit
+scripts to manage my daemon processes. I wanted:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+to keep the <em>system</em> services separate from my <em>application</em> jobs
+</p>
+</li>
+<li>
+<p>
+to have one configuration file for all my application daemons
+</p>
+</li>
+</ul></div>
+<div class="paragraph"><p>I also wrote <tt>pmtr</tt> as a a small core that I could build on, for whatever custom
+control features I might need down the road. On the process management spectrum,
+<tt>pmtr</tt> is a tiny, unsophisticated utility&#8201;&#8212;&#8201;which is exactly what I wanted.</p></div>
+<h3 id="_boot_up_who_starts_pmtr">Boot-up: who starts pmtr?</h3><div style="clear:left"></div>
+<div class="paragraph"><p>The <tt>pmtr</tt> daemon itself must be started somehow. For Ubuntu Linux, there is an
+"upstart" script (included in the <tt>upstart/</tt> directory) that, when installed
+in the <tt>/etc/init</tt> directory, will start <tt>pmtr</tt> on boot. The root user can then
+use the <tt>service</tt> command to control <tt>pmtr</tt>, e.g.,</p></div>
+<div class="literalblock">
+<div class="content">
+<pre><tt>service pmtr start|restart|stop|status</tt></pre>
+</div></div>
+<div class="paragraph"><p>Startup scripts for other Linux distributions are not included at this time.</p></div>
+<h4 id="_startup_options">Startup options</h4>
+<div class="paragraph"><p>Normally <tt>pmtr</tt> runs in the background but it can be started in the foreground.
+This is useful when testing a configuration file for syntax.</p></div>
+<div class="literalblock">
+<div class="content">
+<pre><tt>-v verbose
+-F foreground
+-c &lt;cfg&gt; specify configuration file
+-t test only; parse config file only (implies -F)</tt></pre>
+</div></div>
+<h3 id="_logging">Logging</h3><div style="clear:left"></div>
+<div class="paragraph"><p>All interesting events are logged via syslog (using facility <tt>LOCAL0</tt>)&#8201;&#8212;&#8201;typically appearing in <tt>/var/log/messages</tt> depending on syslogd configuration.</p></div>
+<div class="literalblock">
+<div class="content">
+<pre><tt>Nov  6 23:25:17 ubuntu pmtr[755]: started job xray-strobe [20607]</tt></pre>
+</div></div>
+<h3 id="_the_tt_pmtr_conf_tt_config_file">The <tt>pmtr.conf</tt> config file</h3><div style="clear:left"></div>
+<div class="paragraph"><p>The configuration file defaults to <tt>/etc/pmtr.conf</tt>. It consists of any
+number of <tt>job</tt> definitions. Each job is defined in a curly-brace block.
+Comments can appear on their own line, prefaced with <tt>#</tt>. Indentation
+is optional. Blank lines are ok.</p></div>
+<div class="literalblock">
+<div class="content">
+<pre><tt>########################
+# the neutron zapper job
+#######################
+job {
+  name neutron-zapper
+  cmd /usr/bin/zapper
+  err zapper.err
+  disabled
+}</tt></pre>
+</div></div>
+<div class="paragraph"><p>Within the job definition each option must appear on a separate line.</p></div>
+<div class="tableblock" id="options">
+<table rules="none"
+width="90%"
+frame="border"
+cellspacing="0" cellpadding="4">
+<caption class="title">Table 1. Job configuration options</caption>
+<col width="25%" />
+<col width="75%" />
+<thead>
+<tr>
+<th align="left" valign="top">option         </th>
+<th align="left" valign="top"> arguments</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="left" valign="top"><p class="table"><tt>name</tt></p></td>
+<td align="left" valign="top"><p class="table"><tt>job name (alphanumeric/hyphen)</tt></p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><tt>cmd</tt></p></td>
+<td align="left" valign="top"><p class="table"><tt>absolute path to executable, optionally followed by arguments</tt></p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><tt>dir</tt></p></td>
+<td align="left" valign="top"><p class="table"><tt>absolute path for the job&#8217;s working directory</tt></p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><tt>out</tt></p></td>
+<td align="left" valign="top"><p class="table"><tt>filename (may be relative) to receive standard output</tt></p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><tt>err</tt></p></td>
+<td align="left" valign="top"><p class="table"><tt>filename (may be relative) to receive standard error</tt></p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><tt>user</tt></p></td>
+<td align="left" valign="top"><p class="table"><tt>name of user under whose uid the job should run</tt></p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><tt>env</tt></p></td>
+<td align="left" valign="top"><p class="table"><tt>VAR=VALUE specification of an environment variable (repeatable)</tt></p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><tt>disabled</tt></p></td>
+<td align="left" valign="top"><p class="table"><tt></tt></p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><tt>once</tt></p></td>
+<td align="left" valign="top"><p class="table"><tt></tt></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="paragraph"><p>Only the <tt>name</tt> and <tt>cmd</tt> are required.</p></div>
+<div class="paragraph"><p>The &#8216;name&#8217; must be unique. Other than that it is only used as a label to make
+log messages more readable.</p></div>
+<div class="paragraph"><p>The <em>command</em> can be a simple pathname to an executable, or it can have
+options. Basic quoting (using double-quotes only) is supported in the arguments:</p></div>
+<div class="literalblock">
+<div class="content">
+<pre><tt>cmd /bin/bash -c "find /xray | xargs -IXYZ /bin/irradiate XYZ"</tt></pre>
+</div></div>
+<div class="paragraph"><p>If <em>out</em> and <em>err</em> are omitted, the job&#8217;s stdout and stderr are sent to <tt>/dev/null</tt>.</p></div>
+<div class="paragraph"><p>If <tt>user</tt> is omitted, the job runs with the uid of <tt>pmtr</tt> itself (that is, as root).</p></div>
+<div class="paragraph"><p>Each appearance of <tt>env</tt> option sets an environment variables for the job, e.g.</p></div>
+<div class="literalblock">
+<div class="content">
+<pre><tt>env XRAY_LIB=/usr/lib/xray.so</tt></pre>
+</div></div>
+<div class="paragraph"><p>The <tt>disabled</tt> option causes the job to be skipped during startup.</p></div>
+<div class="paragraph"><p>The <tt>once</tt> option inhibits the normal restart behavior when a job exits.</p></div>
+<h4 id="_precursor_jobs">Precursor jobs</h4>
+<div class="paragraph"><p>There are two commands that are not listed above&#8201;&#8212;&#8201;<tt>order</tt> and <tt>wait</tt>.
+These form a basic mechanism to start one or more jobs before all the
+others. The <tt>order</tt> option takes an integer (which may be negative)
+and <tt>wait</tt> takes no argument but pauses execution of the remaining jobs
+until its command exits. This kind of ordered, synchronous job startup
+is not how <tt>pmtr</tt> usually works but it can be useful to set up initial
+conditions.</p></div>
+<div class="paragraph"><p>job {
+  name ramdisk-creator
+  cmd /bin/ramdisk -c 10g /ramdisk
+  order -1
+  wait
+}</p></div>
+<div class="paragraph"><p>With the exception of the <tt>wait</tt> option, jobs are started at the same time
+(they are forked and started without waiting).</p></div>
+<h4 id="_job_termination_restart">Job termination/restart</h4>
+<div class="paragraph"><p>Jobs that are managed by <tt>pmtr</tt> are expected to run indefinitely. If they don&#8217;t,
+<tt>pmtr</tt> will restart them. If they restart too fast (within 10 seconds of their
+startup) <tt>pmtr</tt> will insert a 10-second delay before the next restart attempt.</p></div>
+<h5 id="_no_restart_exit_status">No-restart exit status</h5>
+<div class="paragraph"><p>If a job is not intended to be restarted after it exits, it can either be
+configured with the <tt>once</tt> option, or it can return a special exit status (33)
+to inform <tt>pmtr</tt> that it does want to be restarted.</p></div>
+<h4 id="_configuration_file_rescan">Configuration file rescan</h4>
+<div class="paragraph"><p>While <tt>pmtr</tt> runs, it monitors its configuration file for changes. (It does
+this using <em>inotify</em> so it does not need to poll for changes). When a change
+is detected, it rescans the file. Jobs that have been deleted or disabled,
+but which are currently running, will be signalled to exit. (This is done
+using a SIGTERM, followed by a SIGKILL if the process does not terminate).
+Jobs whose definitions are changed will be signalled to exit and restarted
+using the new options. New jobs are started up. All these actions are logged.</p></div>
+<h3 id="_resources">Resources</h3><div style="clear:left"></div>
+<div class="dlist"><dl>
+<dt class="hdlist1">
+News
+</dt>
+<dd>
+<p>
+ The author has a news feed for <a href="http://troydhanson.wordpress.com/feed/">software updates</a> <span class="image">
+<img src="img/rss.png" alt="(RSS)" />
+</span>.
+</p>
+</dd>
+</dl></div>
+</div>
+</div>
+<div id="footnotes"><hr /></div>
+<div id="footer">
+<div id="footer-text">
+Version 1.0.0<br />
+Last updated 2011-11-07 19:52:21 EDT
+</div>
+</div>
+</body>
+</html>

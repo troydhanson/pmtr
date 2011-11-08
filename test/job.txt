@@ -1,0 +1,7 @@
+job {
+  name job1
+  cmd /usr/local/bin/job
+  dir /var/log/
+  out out.txt
+  err err.txt
+}

@@ -1,0 +1,7 @@
+This directory contains pmtr.conf, which is an upstart job. It gets
+installed in /etc/init/pmtr.conf. It's purpose is to start pmtr itself.
+
+Note: despite the name pmtr.conf this is a not a pmtr (process manager)
+configuration file. The latter gets installed in /etc/pmtr.conf and
+contains the jobs being managed within pmtr.
+

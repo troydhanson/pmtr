@@ -1,0 +1,19 @@
+job {
+  name job1
+  cmd /bin/date
+  dir /tmp
+  out job1.out
+  err job1.err
+  order 1
+}
+
+job {
+  name job2
+  cmd /usr/bin/find . -type f -exec ls -l {} ;
+  # comment
+  dir /tmp
+  out job2.out
+  err job2.err
+}
+
+

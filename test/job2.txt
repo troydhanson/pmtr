@@ -1,0 +1,10 @@
+job {
+  name job2
+  cmd /usr/local/bin/job -id 2 -exec "ls -l"
+  # comment
+  dir /var/log/
+  out out.txt
+  err err.txt
+}
+
+
