@@ -88,8 +88,8 @@ syntax errors using the `-t` option. The supported `pmtr` startup options are:
   -c <file> specify configuration file
   -t test only; parse config file only (implies -F)
 
-Configuring jobs
-----------------
+Running jobs
+------------
 
 Create a file called `/etc/pmtr.conf` and place your job definitions inside.
 
@@ -124,6 +124,12 @@ If you keep watching for more than 30 seconds, you'll notice that the
 Nov  7 21:38:40 ubuntu pmtr[18477]: job stub 18478 exited after 30 sec: exit status 0
 Nov  7 21:38:40 ubuntu pmtr[18477]: started job stub [18481]
 --------------------------------------------------------------------------
+
+Normally `pmtr` is used to manage daemons, that are expected to run
+indefinitely. But since real programs do exit now and then, `pmtr` reports
+the exit status or the signal that the job exited on, and then restarts it.
+
+NOTE: a job can indicate "do not restart me" by exiting with status 33.
 
 Configuration file changes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
