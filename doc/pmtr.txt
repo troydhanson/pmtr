@@ -271,7 +271,8 @@ wait::
 Resources
 ~~~~~~~~~
 News::
- Updates are posted to the http://troydhanson.wordpress.com/feed/[author's blog] image:rss.png[(RSS)].
+ Updates are posted to the http://troydhanson.wordpress.com/[author's blog] image:rss.png[(RSS)].
+ The author has a news feed for http://troydhanson.wordpress.com/feed/[software updates] image:img/rss.png[(RSS)].
 
 Contact::
  Send bug reports, suggestions, to tdh@tkhanson.net.
