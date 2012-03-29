@@ -1,24 +1,23 @@
-pmtr process monitor
-====================
+pmtr 
+====
 Troy D. Hanson <tdh@tkhanson.net>
 v1.0.0, November 2011
 
-pmtr process monitor
+pmtr daemon manager
 --------------------
-The pmtr utility is a process monitor. It's free, open-source and for Linux.
-It starts your programs at boot, and keeps them running. It restarts them if
-they exit. It also lets you control their working directory, standard error and
-output, and environment.  All the jobs are in one configuration file. A minimal
-example defining one job:
+The pmtr utility is for starting your daemons (not the system daemons) at system
+boot, and letting you control them at runtime. It's free, open-source and for
+Linux.  What makes pmtr different from sysvinit and similar is that all your
+jobs are defined in one configuration file, and the syntax is friendly.
 
   job {
     name doppler
     cmd /usr/bin/doppler
   }
 
-This would start up the `doppler` job, with default settings (discard stdout
-and stderr, and set the working directory to the `/` root before execution).
-If we wanted to set those explicitly, we can do that using extra options:
+This would start up the `doppler` job, with default settings- discard stdout
+and stderr, and set the working directory to `/`.  If we wanted to set those
+explicitly, we can do that using extra options:
 
   job {
     name demux
@@ -213,11 +212,11 @@ Resources
 
 News
 ~~~~
- Updates are posted to the http://tkhanson.net/blog[author's blog] image:rss.png[(RSS)].
+Updates are posted to the http://tkhanson.net/blog[author's blog]. image:rss.png[(RSS)]
 
 Contact
 ~~~~~~~
- Send bug reports, suggestions, to tdh@tkhanson.net.
+Please send bug reports or suggestions to tdh@tkhanson.net.
 
 License
 ~~~~~~~

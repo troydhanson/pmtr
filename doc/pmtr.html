@@ -4,7 +4,7 @@
 <head>
 <meta http-equiv="Content-Type" content="application/xhtml+xml; charset=UTF-8" />
 <meta name="generator" content="AsciiDoc 8.6.6" />
-<title>pmtr process monitor</title>
+<title>pmtr</title>
 <style type="text/css">
 /* Shared CSS for AsciiDoc xhtml11 and html5 backends */
 
@@ -769,7 +769,7 @@ asciidoc.install(2);
 </head>
 <body class="article">
 <div id="header">
-<h1>pmtr process monitor</h1>
+<h1>pmtr</h1>
 <span id="author">Troy D. Hanson</span><br />
 <span id="email"><tt>&lt;<a href="mailto:tdh@tkhanson.net">tdh@tkhanson.net</a>&gt;</tt></span><br />
 <span id="revnumber">version 1.0.0,</span>
@@ -781,13 +781,12 @@ asciidoc.install(2);
 </div>
 <div id="content">
 <div class="sect1">
-<h2 id="_pmtr_process_monitor">pmtr process monitor</h2>
+<h2 id="_pmtr_daemon_manager">pmtr daemon manager</h2>
 <div class="sectionbody">
-<div class="paragraph"><p>The pmtr utility is a process monitor. It&#8217;s free, open-source and for Linux.
-It starts your programs at boot, and keeps them running. It restarts them if
-they exit. It also lets you control their working directory, standard error and
-output, and environment.  All the jobs are in one configuration file. A minimal
-example defining one job:</p></div>
+<div class="paragraph"><p>The pmtr utility is for starting your daemons (not the system daemons) at system
+boot, and letting you control them at runtime. It&#8217;s free, open-source and for
+Linux.  What makes pmtr different from sysvinit and similar is that all your
+jobs are defined in one configuration file, and the syntax is friendly.</p></div>
 <div class="literalblock">
 <div class="content">
 <pre><tt>job {
@@ -795,9 +794,9 @@ example defining one job:</p></div>
   cmd /usr/bin/doppler
 }</tt></pre>
 </div></div>
-<div class="paragraph"><p>This would start up the <tt>doppler</tt> job, with default settings (discard stdout
-and stderr, and set the working directory to the <tt>/</tt> root before execution).
-If we wanted to set those explicitly, we can do that using extra options:</p></div>
+<div class="paragraph"><p>This would start up the <tt>doppler</tt> job, with default settings- discard stdout
+and stderr, and set the working directory to <tt>/</tt>.  If we wanted to set those
+explicitly, we can do that using extra options:</p></div>
 <div class="literalblock">
 <div class="content">
 <pre><tt>job {
@@ -1089,17 +1088,13 @@ prevent the job from restarting. (You can also use <tt>once</tt> without <tt>wai
 <div class="sectionbody">
 <div class="sect2">
 <h3 id="_news">News</h3>
-<div class="literalblock">
-<div class="content">
-<pre><tt>Updates are posted to the http://tkhanson.net/blog[author's blog] image:rss.png[(RSS)].</tt></pre>
-</div></div>
+<div class="paragraph"><p>Updates are posted to the <a href="http://tkhanson.net/blog">author&#8217;s blog</a>. <span class="image">
+<img src="rss.png" alt="(RSS)" />
+</span></p></div>
 </div>
 <div class="sect2">
 <h3 id="_contact">Contact</h3>
-<div class="literalblock">
-<div class="content">
-<pre><tt>Send bug reports, suggestions, to tdh@tkhanson.net.</tt></pre>
-</div></div>
+<div class="paragraph"><p>Please send bug reports or suggestions to <a href="mailto:tdh@tkhanson.net">tdh@tkhanson.net</a>.</p></div>
 </div>
 <div class="sect2">
 <h3 id="_license">License</h3>
@@ -1112,7 +1107,7 @@ prevent the job from restarting. (You can also use <tt>once</tt> without <tt>wai
 <div id="footer">
 <div id="footer-text">
 Version 1.0.0<br />
-Last updated 2012-03-28 23:57:37 EDT
+Last updated 2012-03-29 00:11:06 EDT
 </div>
 </div>
 </body>
