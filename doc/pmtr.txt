@@ -209,15 +209,18 @@ prevent the job from restarting. (You can also use `once` without `wait`).
   }
 
 Resources
-~~~~~~~~~
-News::
- Updates are posted to the http://troydhanson.wordpress.com/feed/[author's blog] image:rss.png[(RSS)].
+---------
 
-Contact::
+News
+~~~~
+ Updates are posted to the http://tkhanson.net/blog[author's blog] image:rss.png[(RSS)].
+
+Contact
+~~~~~~~
  Send bug reports, suggestions, to tdh@tkhanson.net.
 
 License
--------
+~~~~~~~
 See the link:LICENSE.txt[LICENSE] file.
 
 // vim: set tw=80 wm=2 syntax=asciidoc: 
