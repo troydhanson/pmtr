@@ -63,12 +63,6 @@ This message is shown in the logs, with whatever further actions pmtr takes.
 
   Nov  7 22:01:09 ubuntu pmtr[18477]: rescanning job configuration
 
-Who starts pmtr?
-~~~~~~~~~~~~~~~~
-There is still a need to start pmtr itself at system boot.  There is an
-upstart job (for Ubuntu Linux) included, described below. (On the to-do list:
-add a sysvinit `init.d` script for RedHat/CentOS compatibility).
-
 When a job exits
 ~~~~~~~~~~~~~~~~
 When a job exits (after it's been running at least ten seconds), pmtr restarts

@@ -845,12 +845,6 @@ This message is shown in the logs, with whatever further actions pmtr takes.</p>
 </div></div>
 </div>
 <div class="sect2">
-<h3 id="_who_starts_pmtr">Who starts pmtr?</h3>
-<div class="paragraph"><p>There is still a need to start pmtr itself at system boot.  There is an
-upstart job (for Ubuntu Linux) included, described below. (On the to-do list:
-add a sysvinit <tt>init.d</tt> script for RedHat/CentOS compatibility).</p></div>
-</div>
-<div class="sect2">
 <h3 id="_when_a_job_exits">When a job exits</h3>
 <div class="paragraph"><p>When a job exits (after it&#8217;s been running at least ten seconds), pmtr restarts
 it. But note, a job can say "do not restart me" by exiting with status 33.</p></div>
@@ -1096,7 +1090,7 @@ prevent the job from restarting. (You can also use <tt>once</tt> without <tt>wai
 <div id="footer">
 <div id="footer-text">
 Version 1.0.0<br />
-Last updated 2012-06-07 08:31:54 EDT
+Last updated 2012-06-07 08:35:50 EDT
 </div>
 </div>
 </body>
