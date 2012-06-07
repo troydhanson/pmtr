@@ -105,18 +105,9 @@ Then build and install:
 
 Running pmtr at boot
 --------------------
-
-Ubuntu 
-~~~~~~
-There is an "upstart" script included. You'll need to manually copy it into
-place. Then it can be started initially.
-
-  cp upstart/pmtr.conf /etc/init
-  service pmtr start
-
-RedHat/CentOS
-~~~~~~~~~~~~~
-TO-DO: include a sysvinit script.
+When you do `make install` on Ubuntu (10+) or RHEL/Ubuntu it automatically
+installs an upstart job (on Ubuntu) or sysvinit script (on RHEL/Ubuntu) to
+start pmtr at boot time. It also starts pmtr immediately.
 
 Startup options
 ~~~~~~~~~~~~~~~

@@ -1,0 +1,51 @@
+#!/bin/sh
+#
+# pmtr: process monitor
+#
+# chkconfig:   2345 26 89
+# description: process monitor daemon
+
+. /etc/rc.d/init.d/functions
+
+start()
+{
+    echo -n $"Starting pmtr: "
+    daemon /usr/local/bin/pmtr &
+    touch /var/lock/subsys/pmtr
+    echo
+}
+
+stop()
+{
+    echo -n $"Shutting down pmtr: "
+    killproc pmtr
+    rm -f /var/lock/subsys/pmtr
+    echo
+}
+
+[ -f /usr/local/bin/pmtr ] || exit 0
+
+# see how we were called
+case "$1" in
+  start)
+        start
+        ;;
+  stop)
+        stop
+        ;;
+  restart|reload)
+        stop
+        start
+        ;;
+  condrestart)
+        [ -e /var/lock/subsys/pmtr ] && (stop; start)
+        ;;
+  status)
+        status pmtr
+        ;;
+  *)
+        echo $"Usage: $0 {start|stop|restart|reload|condrestart}"
+        exit 1
+esac
+
+exit 0
