@@ -1,141 +1,193 @@
-pmtr 
-====
+pmtr job manager
+================
 Troy D. Hanson <tdh@tkhanson.net>
 v1.0.0, November 2011
 
-pmtr daemon manager
---------------------
-The pmtr utility is for starting your daemons (not the system daemons) at system
-boot, and letting you control them at runtime. It's free, open-source and for
-Linux.  What makes pmtr different from sysvinit and similar is that all your
+What does pmtr do?
+------------------
+The pmtr utility is for starting your application jobs at system boot. It also
+lets you add, remove or modify jobs at runtime.  It's free, open-source and for
+Linux only.  What makes pmtr different from sysvinit and similar is that all your
 jobs are defined in one configuration file, and the syntax is friendly.
 
+.Example `/etc/pmtr.conf`
+--------------------------------------------------------
   job {
     name doppler
     cmd /usr/bin/doppler
   }
 
-This would start up the `doppler` job, with default settings- discard stdout
-and stderr, and set the working directory to `/`.  If we wanted to set those
-explicitly, we can do that using extra options:
-
   job {
-    name demux
-    cmd /usr/bin/demux -v
+    name radar
+    cmd /usr/bin/radar -v
     dir /data
-    err demux.err
-    out demux.out
+    err radar.err
+    out radar.out
   }
+--------------------------------------------------------
 
-
-You can also set environment variables and control the user under which the
-job runs. The <<options,full options>> are documented below. 
+In this example the first job, `doppler`, uses default settings; it discards
+standard output and standard error, and runs with its working directory to `/`.
+The second example, `radar`, uses a few extra options to customize the working
+directory, and designates files to receive standard output and error.  
+The <<options,full options>> are documented below. 
 
 .Why did I write it?
 **************************************************************************
-I wrote pmtr because I wanted to have all my application daemons in one
-configuration file, separate from the "system-oriented" daemons that run
-from sysvinit (and similar) mechanisms. 
+I wrote pmtr because I wanted to have all my application jobs listed in one
+easily-edited configuration file. I also wanted them kept separate from the 
+system daemons managed by sysvinit and similar mechanisms. 
 **************************************************************************
 
-Configuration file `/etc/pmtr.conf`
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-When pmtr is started at system boot, it reads the configuration file --
-by default `/etc/pmtr.conf` -- and starts up the jobs defined there. You can
-define as many jobs as you want. 
+Download & Install
+------------------
 
-Status messages
-~~~~~~~~~~~~~~~
-Status messages are sent to syslog. Typically these go to `/var/log/messages`:
-
-  Nov  7 21:38:10 ubuntu pmtr[18477]: pmtr: managing 1 jobs
-  Nov  7 21:38:10 ubuntu pmtr[18477]: started job doppler [18478]
-
-Runtime job control
-~~~~~~~~~~~~~~~~~~~
-When you edit and save `pmtr.conf`, the changes you made get applied immediately.
-That's because pmtr watches for changes to the configuration file. If you add
-a job, it gets started; if you delete a job (or give it the `disable` option, or
-comment it out) it gets terminated. When you change a job, it gets restarted
-with the new settings. Other running jobs are left alone- they're not needlessly
-restarted. All this happens instantly whenever the configuration file is saved.
-This message is shown in the logs, with whatever further actions pmtr takes.
-
-  Nov  7 22:01:09 ubuntu pmtr[18477]: rescanning job configuration
-
-When a job exits
+Download options
 ~~~~~~~~~~~~~~~~
-When a job exits (after it's been running at least ten seconds), pmtr restarts
-it. But note, a job can say "do not restart me" by exiting with status 33.
+You have these download options for pmtr.
 
-Jobs that exit too quickly
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-If you define a job that exits within 10 seconds of when it started, pmtr
-delays its restart (by 10 seconds). This avoids rapid-cycle restart loops.
-Since pmtr is oriented toward running daemons, a quick exit usually means
-the job has some kind of problem (bad arguments, etc) that you need to fix.
-
-  Nov  7 22:01:13 ubuntu pmtr[18477]: job stub 18552 exited after 3 sec: exit status 0
-  Nov  7 22:01:13 ubuntu pmtr[18477]: job restarting too fast, delaying restart
-
-Shutting down
-~~~~~~~~~~~~~
-If you stop pmtr (for example, by running `service pmtr stop` on Ubuntu), it
-gracefully terminates its jobs before exiting.  Job termination is handled by
-first sending SIGTERM, then SIGKILL shortly afterward.
-
-
-Installation
-------------
-Download the pmtr source:
+Clone the git repository::
 
   git clone git://github.com/troydhanson/pmtr.git
 
-Then build and install:
+Download a tarball::
+
+  A tarball is available at: https://github.com/troydhanson/pmtr/tarball/master
+
+Build and install
+~~~~~~~~~~~~~~~~~
+To build and install:
 
   cd pmtr
   make
   sudo make install
 
-Running pmtr at boot
---------------------
-When you do `make install` on Ubuntu (10+) or RHEL/Ubuntu it automatically
-installs an upstart job (on Ubuntu) or sysvinit script (on RHEL/Ubuntu) to
-start pmtr at boot time. It also starts pmtr immediately.
+The result of installation is the binary itself `/usr/local/bin/pmtr`, the
+configuration file (initially empty) `/etc/pmtr.conf`, and a system startup
+script that runs pmtr at boot as described next.
 
-Startup options
-~~~~~~~~~~~~~~~
-The supported options to pmtr are:
+How pmtr starts at boot
+^^^^^^^^^^^^^^^^^^^^^^^
+When you do `make install` on Ubuntu 10+, it installs an 'upstart' job; or, on
+RedHat/CentOS a 'sysvinit' script, to start pmtr at system boot. It also starts pmtr
+immediately.
 
-  -v verbose
-  -F foreground
-  -c <file> specify configuration file
-  -t test only; parse config file only (implies -F)
+Logging
+-------
+Status messages are sent to *syslog*. Typically these go to `/var/log/messages`:
 
-You can start pmtr by hand to test the configuration file for syntax errors
-using the `-t` option. 
+  Nov  7 22:01:09 ubuntu pmtr[18477]: rescanning job configuration
+  Nov  7 21:38:10 ubuntu pmtr[18477]: pmtr: managing 1 jobs
+  Nov  7 21:38:10 ubuntu pmtr[18477]: started job doppler [18478]
 
-Configuration file syntax
--------------------------
-The configuration file (normally `pmtr.conf`) contains any number of jobs. Each
-job is in a curly-brace delimited block.  Comments should be on their own line and
-prefaced with `#`. Indentation is optional. Blank lines are ok. 
+Jobs
+----
 
-  #################
-  # the weather job
-  #################
+Requirements
+~~~~~~~~~~~~
+Jobs that you intend to run under `pmtr` should:
+
+ * stay in the *foreground*
+ * *exit* on SIGTERM or SIGKILL 
+ * arrange so any *sub-processes exit* if the job itself exits
+
+Clean exits
+^^^^^^^^^^^
+Note the last bullet. Shell scripts are especially likely to leave sub-processes
+around if they exit.  (Shells don't always pass signals down to their children).
+For example, if you have a shell script like this,
+
+  #!/bin/bash
+  command | etc
+
+and if you run this shell script as a `pmtr` job, then later delete or disable
+the job while it's running, pmtr signals the shell process to exit-- but the
+sub-processes `command` and `etc` may continue to run. Avoid this-- instead,
+construct your jobs to exit cleanly, so sub-processes exit if the parent exits.
+(For example, C programs on Linux can use `prctl(PR_SET_PDEATHSIG, SIGHUP);`
+to get signalled if the parent exits).
+
+Job control
+~~~~~~~~~~~
+When you edit and save `pmtr.conf`, the changes you made get applied immediately.
+
+ * If you add a job, it gets started.
+ * If you delete a job, or give it the `disable` option, or comment it out, it
+   gets terminated.  
+ * If you change a job, it gets restarted with the new settings. 
+
+Other running jobs are left alone- they're not needlessly restarted. All this
+happens immediately whenever the configuration file is modified.
+
+Job restart
+~~~~~~~~~~~
+When a job exits-- assuming it's been running at least ten seconds-- pmtr restarts
+it. 
+
+Inhibiting restart
+^^^^^^^^^^^^^^^^^^
+There are two ways to inhibit automatic restart: the job itself can exit
+with status 33, which pmtr interprets as a "don't restart" indicator; or the
+the job can use the  'once' option in the configuration file, described below.
+
+Avoiding fast restarts
+^^^^^^^^^^^^^^^^^^^^^^
+When a job exits less than 10 seconds after it started, pmtr waits ten seconds
+before restarting it.  This avoids rapid restart loops.  
+
+  Nov  7 22:01:13 ubuntu pmtr[18477]: job xyz 18552 exited after 3 sec: exit status 0
+  Nov  7 22:01:13 ubuntu pmtr[18477]: job restarting too fast, delaying restart
+
+Since pmtr is oriented toward running daemons, a quick exit usually means the
+job has some kind of problem (bad arguments, etc) that need to be fixed.
+
+Job shutdown
+~~~~~~~~~~~~~
+You can stop a job running under `pmtr` by opening the configuration file and
+deleting (or commenting out) the job definition, or using the `disable` option:
+
   job {
-    name weather
-    cmd /usr/bin/weather
+    name tw-sender
+    cmd /usr/local/bin/tw-sender -a
+    disable
+  }
+
+When you save the configuration file, pmtr re-scans it, notices the change and
+terminates the job.  Job termination is handled by sending SIGTERM, then
+SIGKILL shortly afterward.
+
+If you stop pmtr (for example, by running `service pmtr stop`), it terminates
+all its jobs before exiting.  
+
+Configuration file 
+------------------
+When pmtr is started at system boot, it reads the configuration file --
+by default `/etc/pmtr.conf` -- and starts up the jobs defined there. 
+
+Syntax
+~~~~~~
+The configuration file contains any number of jobs. Each job is in a curly-brace
+delimited block.  Comments should be on their own line and prefaced with `#`.
+Indentation is optional. Blank lines are ok. 
+
+  #####################
+  # temperature sensor
+  #####################
+  job {
+    name temp-sensor
+    cmd /usr/bin/temp-sensor -a "st paul"
+    dir /usr/temp
+    out weather.out
     err weather.err
   }
 
-Only 'name' and 'cmd' are required. The full list of options are:
+Only 'name' and 'cmd' are required. The `cmd` is the *absolute path* to the
+executable (which must have its executable bit set). The command may contain
+options and simple double-quoted arguments. 
 
 Job options
 ~~~~~~~~~~~
 [[options]]
-.Job configuration options
 [width="90%",cols="10m,50",grid="none",options="header"]
 |===============================================================================
 |option         | argument
@@ -145,8 +197,8 @@ Job options
 |out            | file to receive standard output 
 |err            | file to receive standard error 
 |user           | user under whose uid the job should run
-|env            | VAR=VALUE specification of an environment variable (repeatable)
-|disable        | 
+|env            | `VAR=VALUE` environment variable settings (repeatable)
+|disable        | special shortcut to disable a job, usually temporarily
 |===============================================================================
 
 name::
@@ -192,12 +244,26 @@ prevent the job from restarting. (You can also use `once` without `wait`).
     once
   }
 
+Manaul startup options
+~~~~~~~~~~~~~~~~~~~~~~
+Normally the only reason to run `pmtr` manually is to test the validity of a
+configuration file. The supported options to pmtr are:
+
+  -t test; parse config file only (implies -F)
+  -c <file> specify configuration file
+  -F foreground
+  -v verbose
+
 Resources
 ---------
 
 News
 ~~~~
 Updates are posted to the http://tkhanson.net/blog[author's blog]. image:rss.png[(RSS)]
+
+Other software
+~~~~~~~~~~~~~~
+The author's other open-source software are listed at http://tkhanson.net.
 
 Contact
 ~~~~~~~
