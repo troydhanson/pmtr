@@ -24,7 +24,6 @@ typedef struct {
   char *err;
   pid_t pid;
   time_t start_ts;
-  char *usr;
   uid_t uid;
   int respawn;
   int order;

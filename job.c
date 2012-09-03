@@ -37,7 +37,6 @@ static void job_fin(job_t *job) {
   if (job->dir) free(job->dir);
   if (job->out) free(job->out);
   if (job->err) free(job->err);
-  if (job->usr) free(job->usr);
 }
 static void job_cpy(job_t *dst, const job_t *src) {
   dst->name = src->name ? strdup(src->name) : NULL;
@@ -46,7 +45,6 @@ static void job_cpy(job_t *dst, const job_t *src) {
   dst->dir = src->dir ? strdup(src->dir) : NULL;
   dst->out = src->out ? strdup(src->out) : NULL;
   dst->err = src->err ? strdup(src->err) : NULL;
-  dst->usr = src->usr ? strdup(src->usr) : NULL;
   dst->uid = src->uid;
   dst->pid = src->pid;
   dst->start_ts = src->start_ts;
@@ -76,7 +74,6 @@ mk_setter(name);
 mk_setter(dir);
 mk_setter(out);
 mk_setter(err);
-mk_setter(usr);
 void set_cmd(parse_t *ps, char *cmd) { 
   utarray_insert(&ps->job->cmdv,&cmd,0);
 }
@@ -97,28 +94,32 @@ void set_ord(parse_t *ps, char *ord) {
 void set_dis(parse_t *ps) { ps->job->disabled = 1; }
 void set_wait(parse_t *ps) { ps->job->wait = 1; }
 void set_once(parse_t *ps) { ps->job->once = 1; }
-void push_job(parse_t *ps) {
+void set_user(parse_t *ps, char *user) { 
   struct passwd *p;
-  utarray_extend_back(&ps->job->cmdv); /* put NULL on end of argv */
-  utarray_push_back(ps->jobs, ps->job);
-  /* convert user id to uid */
-  if (ps->job->usr) {
-    if ( (p = getpwnam(ps->job->usr)) == NULL) {
-      utstring_printf(ps->em, "cannot find uid for user %s", ps->job->usr);
-      ps->rc = -1;
-    } else {
-      ps->job->uid = p->pw_uid;
-    }
+  p = getpwnam(user);
+  if (p == NULL) {
+    utstring_printf(ps->em, "cannot find uid for user %s", user);
+    ps->rc = -1;
+    return;
   }
+  ps->job->uid = p->pw_uid;
+}
+void push_job(parse_t *ps) {
+
+  /* final validation */
   if (!ps->job->name) {
       utstring_printf(ps->em, "job has no name");
       ps->rc = -1;
   }
+
+  if (ps->rc == -1) return;
+
+  /* okay. polish it off and copy it into the jobs */
+  utarray_extend_back(&ps->job->cmdv); /* put NULL on end of argv */
+  utarray_push_back(ps->jobs, ps->job);
   /* reset job for another parse */
-  if (ps->rc != -1) {
-    job_fin(ps->job); 
-    job_ini(ps->job);
-  }
+  job_fin(ps->job); 
+  job_ini(ps->job);
 }
 char *unquote(char *str) {
   assert(*str == '"');
@@ -379,9 +380,6 @@ int job_cmp(job_t *a, job_t *b) {
   /* err */
   if ((!a->err && b->err) || (a->err && !b->err) ) return a->err-b->err;
   if ((a->err && b->err) && (rc = strcmp(a->err,b->err))) return rc;
-  /* usr (username) */
-  if ((!a->usr && b->usr) || (a->usr && !b->usr) ) return a->usr-b->usr;
-  if ((a->usr && b->usr) && (rc = strcmp(a->usr,b->usr))) return rc;
 
   if (a->uid != b->uid) return a->uid - b->uid;
   if (a->order != b->order) return a->order - b->order;
