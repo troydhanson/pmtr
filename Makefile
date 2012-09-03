@@ -1,4 +1,4 @@
-SUBDIRS=lemon doc
+SUBDIRS=lemon 
 all: $(SUBDIRS) pmtr 
 CFLAGS=-I /usr/local/include
 CFLAGS+=-g
@@ -6,7 +6,7 @@ CFLAGS+=-g
 
 .PHONY: clean $(SUBDIRS)
 
-$(SUBDIRS):
+$(SUBDIRS) doc:
 	$(MAKE) -C $@
 
 cfg.c: cfg.y
