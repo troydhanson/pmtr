@@ -60,6 +60,7 @@ case $ARCH in
   debian)
     cp initscripts/debian /etc/init.d/pmtr
     /usr/sbin/update-rc.d pmtr defaults
+    /usr/sbin/service pmtr start
     ;;
   *)
     echo "unknown platform"
