@@ -47,7 +47,7 @@ fi
 cp ./pmtr "$BINDIR"
 touch /etc/pmtr.conf
 
-case $ARCH in 
+case "$OS" in 
   rhel)
     cp initscripts/rhel /etc/rc.d/init.d/pmtr
     /sbin/chkconfig --add pmtr
