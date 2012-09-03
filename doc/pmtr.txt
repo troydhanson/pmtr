@@ -1,36 +1,36 @@
 pmtr job manager
 ================
 Troy D. Hanson <tdh@tkhanson.net>
-v1.0.0, November 2011
+v1.2, September 2012
 
 What does pmtr do?
 ------------------
-The pmtr utility is for starting your application jobs at system boot. It also
-lets you add, remove or modify jobs at runtime.  It's free, open-source and for
-Linux only.  What makes pmtr different from sysvinit and similar is that all your
-jobs are defined in one configuration file, and the syntax is friendly.
+Pmtr is a process monitor for starting your servers at system boot, and keeping
+them running. It's a small utility, written in C.  It's free, open-source and
+for Linux only.  With pmtr, all your jobs are defined in one configuration file:
 
 .Example `/etc/pmtr.conf`
 --------------------------------------------------------
   job {
-    name doppler
-    cmd /usr/bin/doppler
+    name minecraft-server
+    dir /home/mc
+    cmd /usr/bin/java -jar minecraft_server.jar nogui
+    err mc.err
+    out mc.out
+    user mc
   }
 
   job {
-    name radar
-    cmd /usr/bin/radar -v
-    dir /data
-    err radar.err
-    out radar.out
+    name cpu-monitor
+    cmd /bin/cpu-monitor -x 
   }
 --------------------------------------------------------
 
-In this example the first job, `doppler`, uses default settings; it discards
-standard output and standard error, and runs with its working directory to `/`.
-The second example, `radar`, uses a few extra options to customize the working
-directory, and designates files to receive standard output and error.  
-The <<options,full options>> are documented below. 
+Here, for the sake of illustration, we're running a Minecraft server and
+a CPU monitoring job. As you can see- only the name and command are required.
+If you want to, you can specify the working directory, a user other than root
+to run the process, and where to put the output and error.  The <<options,full
+options>> are documented below. 
 
 .Why did I write it?
 **************************************************************************
@@ -42,9 +42,20 @@ system daemons managed by sysvinit and similar mechanisms.
 Download & Install
 ------------------
 
+Platforms
+~~~~~~~~~
+Pmtr is *Linux only*, because it uses inotify. (It'd probably be an easy
+port to other Unix variants. If you do, feel free to send me a patch.)
+
+It's been tested on:
+
+* Ubuntu (10.04)
+* Debian (6.0.4)
+* RHEL (6.3)
+
 Download options
 ~~~~~~~~~~~~~~~~
-You have these download options for pmtr.
+You can download pmtr either of these ways:
 
 Clone the git repository::
 
@@ -62,15 +73,23 @@ To build and install:
   make
   sudo make install
 
-The result of installation is the binary itself `/usr/bin/pmtr`, the
-configuration file (initially empty) `/etc/pmtr.conf`, and a system startup
-script that runs pmtr at boot as described next.
+The result of installation is:
 
-How pmtr starts at boot
-^^^^^^^^^^^^^^^^^^^^^^^
-When you do `make install` on Ubuntu 10+, it installs an 'upstart' job; or, on
-RedHat/CentOS a 'sysvinit' script, to start pmtr at system boot. It also starts pmtr
-immediately.
+ * the binary itself `/usr/bin/pmtr`, 
+ * the configuration file `/etc/pmtr.conf` which is initially empty,
+ * a system startup script that runs pmtr at boot as described next.
+
+Upon completion of `sudo make install`, pmtr should be running. Verify using:
+
+  service pmtr status
+
+Who starts pmtr at boot?
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Pmtr starts up automatically during the boot process. An OS-specific initscript
+makes this happen. (They're in the `initscripts/` directory if you're curious). 
+Manual control is supported. You can use your system's `service` command to run
+the usual administrative commands, like `service pmtr start` or `stop`.
 
 Logging
 -------
@@ -174,11 +193,11 @@ Indentation is optional. Blank lines are ok.
   # temperature sensor
   #####################
   job {
-    name temp-sensor
+    name temp
     cmd /usr/bin/temp-sensor -a "st paul"
     dir /usr/temp
-    out weather.out
-    err weather.err
+    out temp.out
+    err temp.err
   }
 
 Only 'name' and 'cmd' are required. The `cmd` is the *absolute path* to the
