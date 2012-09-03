@@ -17,4 +17,4 @@ respawn
 
 #next line is commented out when using pmtr -F
 #expect fork
-exec /usr/local/bin/pmtr -F -c /etc/pmtr.conf
+exec /usr/bin/pmtr -F -c /etc/pmtr.conf

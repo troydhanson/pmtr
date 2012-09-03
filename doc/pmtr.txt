@@ -62,7 +62,7 @@ To build and install:
   make
   sudo make install
 
-The result of installation is the binary itself `/usr/local/bin/pmtr`, the
+The result of installation is the binary itself `/usr/bin/pmtr`, the
 configuration file (initially empty) `/etc/pmtr.conf`, and a system startup
 script that runs pmtr at boot as described next.
 
@@ -148,7 +148,7 @@ deleting (or commenting out) the job definition, or using the `disable` option:
 
   job {
     name tw-sender
-    cmd /usr/local/bin/tw-sender -a
+    cmd /usr/bin/tw-sender -a
     disable
   }
 

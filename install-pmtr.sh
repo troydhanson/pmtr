@@ -36,7 +36,7 @@ then
   exit -1
 fi
 
-BINDIR=/usr/local/bin
+BINDIR=/usr/bin
 if [ ! -d "$BINDIR" ]
 then
   echo "the install directory $BINDIR does not exist."

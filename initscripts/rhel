@@ -10,7 +10,7 @@
 start()
 {
     echo -n $"Starting pmtr: "
-    daemon /usr/local/bin/pmtr &
+    daemon /usr/bin/pmtr &
     touch /var/lock/subsys/pmtr
     echo
 }
@@ -23,7 +23,7 @@ stop()
     echo
 }
 
-[ -f /usr/local/bin/pmtr ] || exit 0
+[ -f /usr/bin/pmtr ] || exit 0
 
 # see how we were called
 case "$1" in
