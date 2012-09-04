@@ -83,21 +83,143 @@ Upon completion of `sudo make install`, pmtr should be running. Verify using:
 
   service pmtr status
 
-Who starts pmtr at boot?
-^^^^^^^^^^^^^^^^^^^^^^^^
-
+.Who starts pmtr?
+********************************************************************************
 Pmtr starts up automatically during the boot process. An OS-specific initscript
 makes this happen. (They're in the `initscripts/` directory if you're curious). 
 Manual control is supported. You can use your system's `service` command to run
 the usual administrative commands, like `service pmtr start` or `stop`.
+********************************************************************************
 
 Logging
--------
+~~~~~~~
 Status messages are sent to *syslog*. Typically these go to `/var/log/messages`:
 
   Nov  7 22:01:09 ubuntu pmtr[18477]: rescanning job configuration
   Nov  7 21:38:10 ubuntu pmtr[18477]: pmtr: managing 1 jobs
   Nov  7 21:38:10 ubuntu pmtr[18477]: started job doppler [18478]
+
+Resources
+---------
+
+News
+~~~~
+Updates are posted to the http://tkhanson.net/blog[author's blog]. image:rss.png[(RSS)]
+
+Other software
+~~~~~~~~~~~~~~
+The author's other open-source software are listed at http://tkhanson.net.
+
+Contact
+~~~~~~~
+Please send bug reports or suggestions to tdh@tkhanson.net.
+
+License
+~~~~~~~
+See the link:LICENSE.txt[LICENSE] file.
+
+Configuration file 
+------------------
+When pmtr is started at system boot, it reads the configuration file --
+by default `/etc/pmtr.conf` -- and starts up the jobs defined there. 
+
+Syntax
+~~~~~~
+The configuration file contains any number of jobs. Each job is in a curly-brace
+delimited block.  Indentation is optional. Blank lines are ok. 
+
+  job {
+    name mumble-server
+    cmd /usr/bin/mumble
+  }
+
+Only 'name' and 'cmd' are required. The `cmd` is the *absolute path* to the
+executable (which must have its executable bit set). The command may contain
+simple double-quoted arguments. 
+
+  job {
+    name temp-server
+    dir /home/temp
+    cmd /usr/bin/python temp.py -c "st paul" -c "st louis"
+  }
+
+Comments should be on their own line and prefaced with `#`.
+
+  # this is a comment
+
+
+Job options
+~~~~~~~~~~~
+[[options]]
+[width="90%",cols="10m,50",grid="none",options="header"]
+|===============================================================================
+|option         | argument
+|name           | job name 
+|cmd            | absolute path to executable with optional arguments
+|dir            | absolute path to the working directory 
+|out            | file to receive standard output 
+|err            | file to receive standard error 
+|user           | user under whose uid the job should run
+|env            | `VAR=VALUE` environment variable settings (repeatable)
+|disable        | if present, disables the job 
+|===============================================================================
+
+name::
+  The 'name' must be unique. It is used to make log messages more readable.
+
+cmd::
+  The 'cmd' is the absolute pathname to an executable, with optional arguments.
+  Quoting (using double-quotes only) is supported in the arguments. 
+
+dir::
+  Sets the 'working directory' that the job will have upon startup.
+
+out::
+  file (may be relative to the working directory) to receive stdout. Default: `/dev/null`
+
+err::
+  file (may be relative to the working directory) to receive stderr. Default: `/dev/null`
+
+user::
+  If specified, the job is run under the user's uid rather than root's uid
+
+env::
+  sets an environment variables for the job, e.g., `env XLIB=/usr/lib/xlib.so` (repeatable)
+
+disable::
+  causes the job definition to be inactive. This is sometimes more convenient
+  than commenting out the whole job definition.
+
+One-time jobs
+~~~~~~~~~~~~~
+
+Sometimes we want to run one or more "setup" jobs before our daemons. The setup
+job should run to completion, and not be restarted when it exits. For this, you
+can use the `wait` option and the `once` option.  When a job has the `wait`
+option, pmtr waits until it exits before starting up subsequent jobs (those
+which appear later in the configuration file).  This is used with 'once' to
+prevent the job from restarting. 
+
+  job {
+    name setup
+    cmd /bin/mkdir /dev/shm/ramdisk
+    wait
+    once
+  }
+
+Manual startup options
+~~~~~~~~~~~~~~~~~~~~~~
+Normally the only reason to run `pmtr` manually is to test the validity of a
+configuration file. The supported options to pmtr are:
+
+  -t test; parse config file only (implies -F)
+  -c <file> specify configuration file
+  -F foreground
+  -v verbose
+
+So, you can check the syntax of a configuration file using,
+
+  pmtr -tFcv /etc/pmtr.conf
 
 Jobs
 ----
@@ -149,8 +271,8 @@ There are two ways to inhibit automatic restart: the job itself can exit
 with status 33, which pmtr interprets as a "don't restart" indicator; or the
 the job can use the  'once' option in the configuration file, described below.
 
-Avoiding fast restarts
-^^^^^^^^^^^^^^^^^^^^^^
+Fast restarts
+^^^^^^^^^^^^^
 When a job exits less than 10 seconds after it started, pmtr waits ten seconds
 before restarting it.  This avoids rapid restart loops.  
 
@@ -177,120 +299,6 @@ SIGKILL shortly afterward.
 
 If you stop pmtr (for example, by running `service pmtr stop`), it terminates
 all its jobs before exiting.  
-
-Configuration file 
-------------------
-When pmtr is started at system boot, it reads the configuration file --
-by default `/etc/pmtr.conf` -- and starts up the jobs defined there. 
-
-Syntax
-~~~~~~
-The configuration file contains any number of jobs. Each job is in a curly-brace
-delimited block.  Comments should be on their own line and prefaced with `#`.
-Indentation is optional. Blank lines are ok. 
-
-  #####################
-  # temperature sensor
-  #####################
-  job {
-    name temp
-    cmd /usr/bin/temp-sensor -a "st paul"
-    dir /usr/temp
-    out temp.out
-    err temp.err
-  }
-
-Only 'name' and 'cmd' are required. The `cmd` is the *absolute path* to the
-executable (which must have its executable bit set). The command may contain
-options and simple double-quoted arguments. 
-
-Job options
-~~~~~~~~~~~
-[[options]]
-[width="90%",cols="10m,50",grid="none",options="header"]
-|===============================================================================
-|option         | argument
-|name           | job name 
-|cmd            | absolute path to executable with optional arguments
-|dir            | absolute path to the working directory 
-|out            | file to receive standard output 
-|err            | file to receive standard error 
-|user           | user under whose uid the job should run
-|env            | `VAR=VALUE` environment variable settings (repeatable)
-|disable        | special shortcut to disable a job, usually temporarily
-|===============================================================================
-
-name::
-  The 'name' must be unique. It is used to make log messages more readable.
-
-cmd::
-  The 'cmd' is the absolute pathname to an executable, with optional arguments.
-  Quoting (using double-quotes only) is supported in the arguments. 
-
-dir::
-  Sets the 'working directory' that the job will have upon startup.
-
-out::
-  file (may be relative to the working directory) to receive stdout. Default: `/dev/null`
-
-err::
-  file (may be relative to the working directory) to receive stderr. Default: `/dev/null`
-
-user::
-  If specified, the job is run under the user's uid rather than root's uid
-
-env::
-  sets an environment variables for the job, e.g., `env XLIB=/usr/lib/xlib.so` (repeatable)
-
-disable::
-  causes the job definition to be inactive. This is sometimes more convenient
-  than commenting out the whole job definition.
-
-One-time jobs
-~~~~~~~~~~~~~
-
-Sometimes we want to run one or more "setup" jobs before our daemons. The setup
-job should run to completion, and not be restarted when it exits. For this, you
-can use the `wait` option and the `once` option.  When a job has the `wait`
-option, pmtr waits until it exits before starting up subsequent jobs (those
-which appear later in the configuration file).  This is used with 'once' to
-prevent the job from restarting. (You can also use `once` without `wait`).
-
-  job {
-    name setup
-    cmd /bin/mkdir /dev/shm/ramdisk
-    wait
-    once
-  }
-
-Manaul startup options
-~~~~~~~~~~~~~~~~~~~~~~
-Normally the only reason to run `pmtr` manually is to test the validity of a
-configuration file. The supported options to pmtr are:
-
-  -t test; parse config file only (implies -F)
-  -c <file> specify configuration file
-  -F foreground
-  -v verbose
-
-Resources
----------
-
-News
-~~~~
-Updates are posted to the http://tkhanson.net/blog[author's blog]. image:rss.png[(RSS)]
-
-Other software
-~~~~~~~~~~~~~~
-The author's other open-source software are listed at http://tkhanson.net.
-
-Contact
-~~~~~~~
-Please send bug reports or suggestions to tdh@tkhanson.net.
-
-License
-~~~~~~~
-See the link:LICENSE.txt[LICENSE] file.
 
 // vim: set tw=80 wm=2 syntax=asciidoc: 
 
