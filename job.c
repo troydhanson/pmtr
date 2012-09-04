@@ -75,9 +75,11 @@ mk_setter(name);
 mk_setter(dir);
 mk_setter(out);
 mk_setter(err);
+
 void set_cmd(parse_t *ps, char *cmd) { 
   utarray_insert(&ps->job->cmdv,&cmd,0);
 }
+
 void set_env(parse_t *ps, char *env) { 
   if (strchr(env,'=') == NULL) {
     utstring_printf(ps->em, "environment string must be VAR=VALUE");
@@ -86,16 +88,23 @@ void set_env(parse_t *ps, char *env) {
   }
   utarray_push_back(&ps->job->envv,&env);
 }
+
 void set_ord(parse_t *ps, char *ord) { 
   if (sscanf(ord,"%d",&ps->job->order) != 1) {
     utstring_printf(ps->em, "non-numeric order parameter");
     ps->rc = -1;
   }
 }
+
 void set_dis(parse_t *ps) { ps->job->disabled = 1; }
 void set_wait(parse_t *ps) { ps->job->wait = 1; }
 void set_once(parse_t *ps) { ps->job->once = 1; }
+
 void set_user(parse_t *ps, char *user) { 
+
+  /* if syntax check only, don't validate username */
+  if (ps->cfg->test_only) return; 
+
   struct passwd *p;
   p = getpwnam(user);
   if (p == NULL) {
@@ -105,6 +114,7 @@ void set_user(parse_t *ps, char *user) {
   }
   ps->job->uid = p->pw_uid;
 }
+
 void push_job(parse_t *ps) {
 
   /* final validation */

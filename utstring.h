@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2008-2010, Troy D. Hanson   http://uthash.sourceforge.net
+Copyright (c) 2008-2012, Troy D. Hanson   http://uthash.sourceforge.net
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -27,7 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef UTSTRING_H
 #define UTSTRING_H
 
-#define UTSTRING_VERSION 1.9.1
+#define UTSTRING_VERSION 1.9.6
 
 #ifdef __GNUC__
 #define _UNUSED_ __attribute__ ((__unused__)) 
@@ -59,6 +59,7 @@ do {                                                       \
 do {                                                       \
   (s)->n = 0; (s)->i = 0; (s)->d = NULL;                   \
   utstring_reserve(s,100);                                 \
+  (s)->d[0] = '\0'; \
 } while(0)
 
 #define utstring_done(s)                                   \
@@ -80,25 +81,35 @@ do {                                                       \
    utstring_init(s);                                       \
 } while(0)
 
+#define utstring_renew(s)                                  \
+do {                                                       \
+   if (s) {                                                \
+     utstring_clear(s);                                    \
+   } else {                                                \
+     utstring_new(s);                                      \
+   }                                                       \
+} while(0)
+
 #define utstring_clear(s)                                  \
 do {                                                       \
   (s)->i = 0;                                              \
+  (s)->d[0] = '\0';                                        \
 } while(0)
 
 #define utstring_bincpy(s,b,l)                             \
 do {                                                       \
-  utstring_reserve(s,(l)+1);                               \
+  utstring_reserve((s),(l)+1);                               \
   if (l) memcpy(&(s)->d[(s)->i], b, l);                    \
-  s->i += l;                                               \
-  s->d[s->i]='\0';                                         \
+  (s)->i += l;                                               \
+  (s)->d[(s)->i]='\0';                                         \
 } while(0)
 
-#define utstring_concat(dst,src)                           \
-do {                                                       \
-  utstring_reserve(dst,(src->i)+1);                        \
-  if (src->i) memcpy(&(dst)->d[(dst)->i], src->d, src->i); \
-  dst->i += src->i;                                        \
-  dst->d[dst->i]='\0';                                     \
+#define utstring_concat(dst,src)                                 \
+do {                                                             \
+  utstring_reserve((dst),((src)->i)+1);                          \
+  if ((src)->i) memcpy(&(dst)->d[(dst)->i], (src)->d, (src)->i); \
+  (dst)->i += (src)->i;                                          \
+  (dst)->d[(dst)->i]='\0';                                       \
 } while(0)
 
 #define utstring_len(s) ((unsigned)((s)->i))
@@ -127,6 +138,11 @@ _UNUSED_ static void utstring_printf_va(UT_string *s, const char *fmt, va_list a
       else utstring_reserve(s,(s->n)*2);   /* 2x */
    }
 }
+#ifdef __GNUC__
+/* support printf format checking (2=the format string, 3=start of varargs) */
+static void utstring_printf(UT_string *s, const char *fmt, ...)
+  __attribute__ (( format( printf, 2, 3) ));
+#endif
 _UNUSED_ static void utstring_printf(UT_string *s, const char *fmt, ...) {
    va_list ap;
    va_start(ap,fmt);

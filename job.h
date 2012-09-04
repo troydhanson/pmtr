@@ -14,7 +14,8 @@
 #define PM_NO_RESTART 33
 
 /* signals that we'll allow (unblock) during sigsuspend */
-static const int sigs[] = {SIGHUP,SIGCHLD,SIGTERM,SIGINT,SIGQUIT,SIGALRM,SIGUSR1};
+static const int sigs[] = {SIGHUP,SIGCHLD,SIGTERM,SIGINT,SIGQUIT,
+                           SIGALRM,SIGUSR1,SIGIO};
 
 typedef struct {
   char *name;

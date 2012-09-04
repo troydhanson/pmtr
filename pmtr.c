@@ -20,7 +20,6 @@
 #define DEFAULT_PM_CONFIG "/etc/pmtr.conf" 
 #define SHORT_DELAY 10
 
-char proctitle[16] = "pmtr";
 sigjmp_buf jmp;
 
 pmtr_t cfg = {
@@ -124,17 +123,6 @@ int main (int argc, char *argv[]) {
   }
   openlog("pmtr", LOG_PID | (cfg.foreground ? LOG_PERROR : 0), LOG_LOCAL0);
   if (!cfg.file) cfg.file = strdup(DEFAULT_PM_CONFIG);
-  utarray_new(cfg.jobs, &job_mm);
-  utarray_new(cfg.listen, &ut_int_icd);
-  utarray_new(cfg.report, &ut_int_icd);
-  if (parse_jobs(&cfg, em) == -1) {
-    syslog(LOG_ERR,"parse failed: %s\n", utstring_body(em));
-    goto done;
-  }
-  if (cfg.test_only) goto done;
-  syslog(LOG_INFO,"pmtr: managing %d jobs\n", (int)utarray_len(cfg.jobs));
-  snprintf(proctitle,sizeof(proctitle),"pmtr [%d jobs]", (int)utarray_len(cfg.jobs));
-  prctl(PR_SET_NAME,(unsigned long)proctitle,0,0,0);
 
   if (!cfg.foreground) {       /* daemon init */
     if (fork() != 0) exit(0);  /* parent exit */
@@ -145,10 +133,24 @@ int main (int argc, char *argv[]) {
   }
   umask(0);
 
+  utarray_new(cfg.jobs, &job_mm);
+  utarray_new(cfg.listen, &ut_int_icd);
+  utarray_new(cfg.report, &ut_int_icd);
+
   /* block all signals. we remain fully blocked except in sigsuspend */
   sigset_t all;
   sigfillset(&all);
   sigprocmask(SIG_SETMASK,&all,NULL);
+
+  /* parse config file. we blocked signals above because we can get SIGIO 
+   * during parsing if we open UDP listeners and get any datagrams */
+  if (parse_jobs(&cfg, em) == -1) {
+    syslog(LOG_ERR,"parse failed: %s\n", utstring_body(em));
+    goto done;
+  }
+
+  if (cfg.test_only) goto done;
+  syslog(LOG_INFO,"pmtr: starting\n");
 
   /* define a smaller set of signals to block within sigsuspend. */
   sigset_t ss;
@@ -217,6 +219,8 @@ int main (int argc, char *argv[]) {
       cfg.alarm_pending=0;
       do_jobs(cfg.jobs);
       break;
+    case SIGIO:  /* our UDP listener (if enabled) got a datagram */
+      break;
     default:
       syslog(LOG_INFO,"pmtr: exiting on signal %d\n", signo);
       goto done;
@@ -233,6 +237,7 @@ int main (int argc, char *argv[]) {
 
  done:
   term_jobs(cfg.jobs);
+  close_sockets(cfg);
   free(cfg.file);
   utarray_free(cfg.jobs);
   utarray_free(cfg.listen);
