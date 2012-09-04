@@ -784,8 +784,8 @@ asciidoc.install(2);
 <h2 id="_what_does_pmtr_do">What does pmtr do?</h2>
 <div class="sectionbody">
 <div class="paragraph"><p>Pmtr is a process monitor for starting your servers at system boot, and keeping
-them running. It&#8217;s a small utility, written in C.  It&#8217;s free, open-source and
-for Linux only.  With pmtr, all your jobs are defined in one configuration file:</p></div>
+them running. It&#8217;s small, written in C, free, open-source and for Linux only.
+With pmtr, all your jobs are defined in one configuration file:</p></div>
 <div class="listingblock">
 <div class="title">Example <tt>/etc/pmtr.conf</tt></div>
 <div class="content">
@@ -896,19 +896,17 @@ a system startup script that runs pmtr at boot as described next.
 <div class="content">
 <pre><tt>service pmtr status</tt></pre>
 </div></div>
-<div class="sect3">
-<h4 id="_who_starts_pmtr_at_boot">Who starts pmtr at boot?</h4>
+<div class="sidebarblock">
+<div class="content">
+<div class="title">Who starts pmtr?</div>
 <div class="paragraph"><p>Pmtr starts up automatically during the boot process. An OS-specific initscript
 makes this happen. (They&#8217;re in the <tt>initscripts/</tt> directory if you&#8217;re curious).
 Manual control is supported. You can use your system&#8217;s <tt>service</tt> command to run
 the usual administrative commands, like <tt>service pmtr start</tt> or <tt>stop</tt>.</p></div>
+</div></div>
 </div>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="_logging">Logging</h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="_logging">Logging</h3>
 <div class="paragraph"><p>Status messages are sent to <strong>syslog</strong>. Typically these go to <tt>/var/log/messages</tt>:</p></div>
 <div class="literalblock">
 <div class="content">
@@ -916,113 +914,6 @@ the usual administrative commands, like <tt>service pmtr start</tt> or <tt>stop<
 Nov  7 21:38:10 ubuntu pmtr[18477]: pmtr: managing 1 jobs
 Nov  7 21:38:10 ubuntu pmtr[18477]: started job doppler [18478]</tt></pre>
 </div></div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="_jobs">Jobs</h2>
-<div class="sectionbody">
-<div class="sect2">
-<h3 id="_requirements">Requirements</h3>
-<div class="paragraph"><p>Jobs that you intend to run under <tt>pmtr</tt> should:</p></div>
-<div class="ulist"><ul>
-<li>
-<p>
-stay in the <strong>foreground</strong>
-</p>
-</li>
-<li>
-<p>
-<strong>exit</strong> on SIGTERM or SIGKILL
-</p>
-</li>
-<li>
-<p>
-arrange so any <strong>sub-processes exit</strong> if the job itself exits
-</p>
-</li>
-</ul></div>
-<div class="sect3">
-<h4 id="_clean_exits">Clean exits</h4>
-<div class="paragraph"><p>Note the last bullet. Shell scripts are especially likely to leave sub-processes
-around if they exit.  (Shells don&#8217;t always pass signals down to their children).
-For example, if you have a shell script like this,</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><tt>#!/bin/bash
-command | etc</tt></pre>
-</div></div>
-<div class="paragraph"><p>and if you run this shell script as a <tt>pmtr</tt> job, then later delete or disable
-the job while it&#8217;s running, pmtr signals the shell process to exit-- but the
-sub-processes <tt>command</tt> and <tt>etc</tt> may continue to run. Avoid this-- instead,
-construct your jobs to exit cleanly, so sub-processes exit if the parent exits.
-(For example, C programs on Linux can use <tt>prctl(PR_SET_PDEATHSIG, SIGHUP);</tt>
-to get signalled if the parent exits).</p></div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="_job_control">Job control</h3>
-<div class="paragraph"><p>When you edit and save <tt>pmtr.conf</tt>, the changes you made get applied immediately.</p></div>
-<div class="ulist"><ul>
-<li>
-<p>
-If you add a job, it gets started.
-</p>
-</li>
-<li>
-<p>
-If you delete a job, or give it the <tt>disable</tt> option, or comment it out, it
-   gets terminated.
-</p>
-</li>
-<li>
-<p>
-If you change a job, it gets restarted with the new settings.
-</p>
-</li>
-</ul></div>
-<div class="paragraph"><p>Other running jobs are left alone- they&#8217;re not needlessly restarted. All this
-happens immediately whenever the configuration file is modified.</p></div>
-</div>
-<div class="sect2">
-<h3 id="_job_restart">Job restart</h3>
-<div class="paragraph"><p>When a job exits-- assuming it&#8217;s been running at least ten seconds-- pmtr restarts
-it.</p></div>
-<div class="sect3">
-<h4 id="_inhibiting_restart">Inhibiting restart</h4>
-<div class="paragraph"><p>There are two ways to inhibit automatic restart: the job itself can exit
-with status 33, which pmtr interprets as a "don&#8217;t restart" indicator; or the
-the job can use the  <em>once</em> option in the configuration file, described below.</p></div>
-</div>
-<div class="sect3">
-<h4 id="_avoiding_fast_restarts">Avoiding fast restarts</h4>
-<div class="paragraph"><p>When a job exits less than 10 seconds after it started, pmtr waits ten seconds
-before restarting it.  This avoids rapid restart loops.</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><tt>Nov  7 22:01:13 ubuntu pmtr[18477]: job xyz 18552 exited after 3 sec: exit status 0
-Nov  7 22:01:13 ubuntu pmtr[18477]: job restarting too fast, delaying restart</tt></pre>
-</div></div>
-<div class="paragraph"><p>Since pmtr is oriented toward running daemons, a quick exit usually means the
-job has some kind of problem (bad arguments, etc) that need to be fixed.</p></div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="_job_shutdown">Job shutdown</h3>
-<div class="paragraph"><p>You can stop a job running under <tt>pmtr</tt> by opening the configuration file and
-deleting (or commenting out) the job definition, or using the <tt>disable</tt> option:</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><tt>job {
-  name tw-sender
-  cmd /usr/bin/tw-sender -a
-  disable
-}</tt></pre>
-</div></div>
-<div class="paragraph"><p>When you save the configuration file, pmtr re-scans it, notices the change and
-terminates the job.  Job termination is handled by sending SIGTERM, then
-SIGKILL shortly afterward.</p></div>
-<div class="paragraph"><p>If you stop pmtr (for example, by running <tt>service pmtr stop</tt>), it terminates
-all its jobs before exiting.</p></div>
 </div>
 </div>
 </div>
@@ -1033,24 +924,26 @@ all its jobs before exiting.</p></div>
 <div class="sect2">
 <h3 id="_syntax">Syntax</h3>
 <div class="paragraph"><p>The configuration file contains any number of jobs. Each job is in a curly-brace
-delimited block.  Comments should be on their own line and prefaced with <tt>#</tt>.
-Indentation is optional. Blank lines are ok.</p></div>
+delimited block.  Indentation is optional. Blank lines are ok.</p></div>
 <div class="literalblock">
 <div class="content">
-<pre><tt>#####################
-# temperature sensor
-#####################
-job {
-  name temp
-  cmd /usr/bin/temp-sensor -a "st paul"
-  dir /usr/temp
-  out temp.out
-  err temp.err
+<pre><tt>job {
+  name mumble-server
+  cmd /usr/bin/mumble
 }</tt></pre>
 </div></div>
 <div class="paragraph"><p>Only <em>name</em> and <em>cmd</em> are required. The <tt>cmd</tt> is the <strong>absolute path</strong> to the
-executable (which must have its executable bit set). The command may contain
-options and simple double-quoted arguments.</p></div>
+executable (which must have its executable bit set).</p></div>
+<div class="paragraph"><p>The command may contain simple <em>double-quoted</em> arguments.  Like this,</p></div>
+<div class="literalblock">
+<div class="content">
+<pre><tt>cmd /bin/echo "st paul"</tt></pre>
+</div></div>
+<div class="paragraph"><p>Comments should be on their own line and prefaced with <tt>#</tt>.</p></div>
+<div class="literalblock">
+<div class="content">
+<pre><tt># this is a comment</tt></pre>
+</div></div>
 </div>
 <div class="sect2">
 <h3 id="_job_options">Job options</h3>
@@ -1098,7 +991,7 @@ cellspacing="0" cellpadding="4">
 </tr>
 <tr>
 <td align="left" valign="top"><p class="table"><tt>disable</tt></p></td>
-<td align="left" valign="top"><p class="table">special shortcut to disable a job, usually temporarily</p></td>
+<td align="left" valign="top"><p class="table">if present, disables the job</p></td>
 </tr>
 </tbody>
 </table>
@@ -1109,7 +1002,7 @@ name
 </dt>
 <dd>
 <p>
-  The <em>name</em> must be unique. It is used to make log messages more readable.
+  unique <em>name</em> for the job, to make log messages more readable
 </p>
 </dd>
 <dt class="hdlist1">
@@ -1117,7 +1010,7 @@ cmd
 </dt>
 <dd>
 <p>
-  The <em>cmd</em> is the absolute pathname to an executable, with optional arguments.
+  the absolute pathname to an executable, with optional arguments.
   Quoting (using double-quotes only) is supported in the arguments.
 </p>
 </dd>
@@ -1126,7 +1019,7 @@ dir
 </dt>
 <dd>
 <p>
-  Sets the <em>working directory</em> that the job will have upon startup.
+  set the <em>working directory</em> that the job will have upon startup.
 </p>
 </dd>
 <dt class="hdlist1">
@@ -1134,7 +1027,7 @@ out
 </dt>
 <dd>
 <p>
-  file (may be relative to the working directory) to receive stdout. Default: <tt>/dev/null</tt>
+  file to receive stdout. Default: <tt>/dev/null</tt>
 </p>
 </dd>
 <dt class="hdlist1">
@@ -1142,7 +1035,7 @@ err
 </dt>
 <dd>
 <p>
-  file (may be relative to the working directory) to receive stderr. Default: <tt>/dev/null</tt>
+  file to receive stderr. Default: <tt>/dev/null</tt>
 </p>
 </dd>
 <dt class="hdlist1">
@@ -1150,7 +1043,7 @@ user
 </dt>
 <dd>
 <p>
-  If specified, the job is run under the user&#8217;s uid rather than root&#8217;s uid
+  the unix username under which the job should be executed. Default: root.
 </p>
 </dd>
 <dt class="hdlist1">
@@ -1158,7 +1051,7 @@ env
 </dt>
 <dd>
 <p>
-  sets an environment variables for the job, e.g., <tt>env XLIB=/usr/lib/xlib.so</tt> (repeatable)
+  set an environment variables for the job, e.g., <tt>env DEBUG=1</tt> (repeatable)
 </p>
 </dd>
 <dt class="hdlist1">
@@ -1166,41 +1059,117 @@ disable
 </dt>
 <dd>
 <p>
-  causes the job definition to be inactive. This is sometimes more convenient
-  than commenting out the whole job definition.
+  make the job inactive. Usually easier than commenting out the job definition.
 </p>
 </dd>
 </dl></div>
 </div>
 <div class="sect2">
-<h3 id="_one_time_jobs">One-time jobs</h3>
-<div class="paragraph"><p>Sometimes we want to run one or more "setup" jobs before our daemons. The setup
-job should run to completion, and not be restarted when it exits. For this, you
-can use the <tt>wait</tt> option and the <tt>once</tt> option.  When a job has the <tt>wait</tt>
-option, pmtr waits until it exits before starting up subsequent jobs (those
-which appear later in the configuration file).  This is used with <em>once</em> to
-prevent the job from restarting. (You can also use <tt>once</tt> without <tt>wait</tt>).</p></div>
+<h3 id="_when_do_configuration_changes_take_effect">When do configuration changes take effect?</h3>
+<div class="paragraph"><p>When you edit and save <tt>pmtr.conf</tt>, the changes get applied immediately. (Pmtr
+uses inotify to get signalled when the configuration file has changed).</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+If you add a job, it gets started.
+</p>
+</li>
+<li>
+<p>
+If you delete a job, or give it the <tt>disable</tt> option, or comment it out, it
+   gets terminated.  Pmtr sends SIGTERM to it, then SIGKILL shortly afterward.
+</p>
+</li>
+<li>
+<p>
+If you change a job, it gets restarted with the new settings.
+</p>
+</li>
+</ul></div>
+<div class="paragraph"><p>Other running jobs are left alone- they&#8217;re not needlessly restarted. All this
+happens immediately whenever the configuration file is modified and written.</p></div>
+<div class="paragraph"><p>If you stop pmtr itself (for example, by running <tt>service pmtr stop</tt>), it
+terminates its jobs before exiting.</p></div>
+</div>
+<div class="sect2">
+<h3 id="_testing_config_file_syntax">Testing config file syntax</h3>
+<div class="paragraph"><p>You can check the syntax of a configuration file using,</p></div>
+<div class="literalblock">
+<div class="content">
+<pre><tt>pmtr -tc /etc/pmtr.conf</tt></pre>
+</div></div>
+<div class="paragraph"><p>The meaning of these options are:</p></div>
+<div class="literalblock">
+<div class="content">
+<pre><tt>-t test syntax only (don't start any jobs, and stay in foreground)
+-c &lt;file&gt; specify configuration file</tt></pre>
+</div></div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_jobs">Jobs</h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="_is_the_job_suitable_to_run_under_pmtr">Is the job suitable to run under pmtr?</h3>
+<div class="paragraph"><p>Jobs that you intend to run under <tt>pmtr</tt> should:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+stay in the <strong>foreground</strong>
+</p>
+</li>
+<li>
+<p>
+<strong>exit</strong> on SIGTERM or SIGKILL
+</p>
+</li>
+<li>
+<p>
+cause any <strong>sub-processes</strong> to exit if the job exits
+</p>
+</li>
+</ul></div>
+</div>
+<div class="sect2">
+<h3 id="_restart_handling">Restart handling</h3>
+<div class="paragraph"><p>Pmtr restarts a job that exits, provided it&#8217;s been running at least ten seconds.</p></div>
+<div class="sect3">
+<h4 id="_restart_loops">Restart loops</h4>
+<div class="paragraph"><p>When a job exits less than 10 seconds after it started, pmtr waits ten seconds
+before restarting it.  This avoids pegging the CPU with rapid restart cycles.
+Since pmtr is oriented toward running daemons, a quick exit usually means the
+job has some kind of problem (bad arguments, etc) that need to be fixed.</p></div>
+<div class="literalblock">
+<div class="content">
+<pre><tt>Nov  7 22:01:13 ubuntu pmtr[18477]: job x 8552 exited after 3 sec: exit status 0
+Nov  7 22:01:13 ubuntu pmtr[18477]: job restarting too fast, delaying restart</tt></pre>
+</div></div>
+</div>
+<div class="sect3">
+<h4 id="_restart_prevention">Restart prevention</h4>
+<div class="paragraph"><p>To prevent pmtr from restarting a job, use the <em>once</em> keyword.  As a
+programmatic alternative, if the job exits with exit status 33, pmtr won&#8217;t
+restart it either.</p></div>
+<div class="sect4">
+<h5 id="_one_time_jobs">One-time jobs</h5>
+<div class="paragraph"><p>Pmtr has limited support for one-time jobs intended for initial "setup"
+situations. The use case is when you want the job to run once (not be
+restarted), and to wait for it to finish before starting subsequent jobs.
+Here&#8217;s an example where we create a directory in a RAM disk.</p></div>
 <div class="literalblock">
 <div class="content">
 <pre><tt>job {
   name setup
-  cmd /bin/mkdir /dev/shm/ramdisk
+  cmd /bin/mkdir -p /dev/shm/ramdisk
   wait
   once
 }</tt></pre>
 </div></div>
+<div class="paragraph"><p>The <tt>wait</tt> option prevents pmtr from starting subsequent jobs until this one
+finishes, and <tt>once</tt> prevents pmtr from restarting it.</p></div>
 </div>
-<div class="sect2">
-<h3 id="_manaul_startup_options">Manaul startup options</h3>
-<div class="paragraph"><p>Normally the only reason to run <tt>pmtr</tt> manually is to test the validity of a
-configuration file. The supported options to pmtr are:</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><tt>-t test; parse config file only (implies -F)
--c &lt;file&gt; specify configuration file
--F foreground
--v verbose</tt></pre>
-</div></div>
+</div>
 </div>
 </div>
 </div>
@@ -1232,7 +1201,7 @@ configuration file. The supported options to pmtr are:</p></div>
 <div id="footer">
 <div id="footer-text">
 Version 1.2<br />
-Last updated 2012-09-03 12:09:14 EDT
+Last updated 2012-09-04 03:07:38 EDT
 </div>
 </div>
 </body>

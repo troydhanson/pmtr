@@ -6,8 +6,8 @@ v1.2, September 2012
 What does pmtr do?
 ------------------
 Pmtr is a process monitor for starting your servers at system boot, and keeping
-them running. It's a small utility, written in C.  It's free, open-source and
-for Linux only.  With pmtr, all your jobs are defined in one configuration file:
+them running. It's small, written in C, free, open-source and for Linux only.
+With pmtr, all your jobs are defined in one configuration file:
 
 .Example `/etc/pmtr.conf`
 --------------------------------------------------------
@@ -99,6 +99,148 @@ Status messages are sent to *syslog*. Typically these go to `/var/log/messages`:
   Nov  7 21:38:10 ubuntu pmtr[18477]: pmtr: managing 1 jobs
   Nov  7 21:38:10 ubuntu pmtr[18477]: started job doppler [18478]
 
+Configuration file 
+------------------
+When pmtr is started at system boot, it reads the configuration file --
+by default `/etc/pmtr.conf` -- and starts up the jobs defined there. 
+
+Syntax
+~~~~~~
+The configuration file contains any number of jobs. Each job is in a curly-brace
+delimited block.  Indentation is optional. Blank lines are ok. 
+
+  job {
+    name mumble-server
+    cmd /usr/bin/mumble
+  }
+
+Only 'name' and 'cmd' are required. The `cmd` is the *absolute path* to the
+executable (which must have its executable bit set). 
+
+The command may contain simple 'double-quoted' arguments.  Like this,
+
+  cmd /bin/echo "st paul"
+
+Comments should be on their own line and prefaced with `#`.
+
+  # this is a comment
+
+Job options
+~~~~~~~~~~~
+[[options]]
+[width="90%",cols="10m,50",grid="none",options="header"]
+|===============================================================================
+|option         | argument
+|name           | job name 
+|cmd            | absolute path to executable with optional arguments
+|dir            | absolute path to the working directory 
+|out            | file to receive standard output 
+|err            | file to receive standard error 
+|user           | user under whose uid the job should run
+|env            | `VAR=VALUE` environment variable settings (repeatable)
+|disable        | if present, disables the job 
+|===============================================================================
+
+name::
+  unique 'name' for the job, to make log messages more readable
+
+cmd::
+  the absolute pathname to an executable, with optional arguments.
+  Quoting (using double-quotes only) is supported in the arguments. 
+
+dir::
+  set the 'working directory' that the job will have upon startup.
+
+out::
+  file to receive stdout. Default: `/dev/null`
+
+err::
+  file to receive stderr. Default: `/dev/null`
+
+user::
+  the unix username under which the job should be executed. Default: root.
+
+env::
+  set an environment variables for the job, e.g., `env DEBUG=1` (repeatable)
+
+disable::
+  make the job inactive. Usually easier than commenting out the job definition.
+
+When do configuration changes take effect?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+When you edit and save `pmtr.conf`, the changes get applied immediately. (Pmtr
+uses inotify to get signalled when the configuration file has changed).
+
+ * If you add a job, it gets started.
+ * If you delete a job, or give it the `disable` option, or comment it out, it
+   gets terminated.  Pmtr sends SIGTERM to it, then SIGKILL shortly afterward.
+ * If you change a job, it gets restarted with the new settings. 
+
+Other running jobs are left alone- they're not needlessly restarted. All this
+happens immediately whenever the configuration file is modified and written.
+
+If you stop pmtr itself (for example, by running `service pmtr stop`), it
+terminates its jobs before exiting.  
+
+Testing config file syntax
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+You can check the syntax of a configuration file using,
+
+  pmtr -tc /etc/pmtr.conf
+
+The meaning of these options are:
+
+  -t test syntax only (don't start any jobs, and stay in foreground)
+  -c <file> specify configuration file
+
+Jobs
+----
+
+Is the job suitable to run under pmtr?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Jobs that you intend to run under `pmtr` should:
+
+ * stay in the *foreground*
+ * *exit* on SIGTERM or SIGKILL 
+ * cause any *sub-processes* to exit if the job exits
+
+Restart handling
+~~~~~~~~~~~~~~~~
+Pmtr restarts a job that exits, provided it's been running at least ten seconds.
+
+Restart loops
+^^^^^^^^^^^^^
+When a job exits less than 10 seconds after it started, pmtr waits ten seconds
+before restarting it.  This avoids pegging the CPU with rapid restart cycles.  
+Since pmtr is oriented toward running daemons, a quick exit usually means the
+job has some kind of problem (bad arguments, etc) that need to be fixed.
+
+  Nov  7 22:01:13 ubuntu pmtr[18477]: job x 8552 exited after 3 sec: exit status 0
+  Nov  7 22:01:13 ubuntu pmtr[18477]: job restarting too fast, delaying restart
+
+Restart prevention
+^^^^^^^^^^^^^^^^^^
+To prevent pmtr from restarting a job, use the 'once' keyword.  As a
+programmatic alternative, if the job exits with exit status 33, pmtr won't
+restart it either. 
+
+One-time jobs
++++++++++++++
+Pmtr has limited support for one-time jobs intended for initial "setup"
+situations. The use case is when you want the job to run once (not be
+restarted), and to wait for it to finish before starting subsequent jobs.
+Here's an example where we create a directory in a RAM disk.
+
+  job {
+    name setup
+    cmd /bin/mkdir -p /dev/shm/ramdisk
+    wait
+    once
+  }
+
+The `wait` option prevents pmtr from starting subsequent jobs until this one
+finishes, and `once` prevents pmtr from restarting it.
+
 Resources
 ---------
 
@@ -118,187 +260,6 @@ License
 ~~~~~~~
 See the link:LICENSE.txt[LICENSE] file.
 
-Configuration file 
-------------------
-When pmtr is started at system boot, it reads the configuration file --
-by default `/etc/pmtr.conf` -- and starts up the jobs defined there. 
-
-Syntax
-~~~~~~
-The configuration file contains any number of jobs. Each job is in a curly-brace
-delimited block.  Indentation is optional. Blank lines are ok. 
-
-  job {
-    name mumble-server
-    cmd /usr/bin/mumble
-  }
-
-Only 'name' and 'cmd' are required. The `cmd` is the *absolute path* to the
-executable (which must have its executable bit set). The command may contain
-simple double-quoted arguments. 
-
-  job {
-    name temp-server
-    dir /home/temp
-    cmd /usr/bin/python temp.py -c "st paul" -c "st louis"
-  }
-
-Comments should be on their own line and prefaced with `#`.
-
-  # this is a comment
-
-
-Job options
-~~~~~~~~~~~
-[[options]]
-[width="90%",cols="10m,50",grid="none",options="header"]
-|===============================================================================
-|option         | argument
-|name           | job name 
-|cmd            | absolute path to executable with optional arguments
-|dir            | absolute path to the working directory 
-|out            | file to receive standard output 
-|err            | file to receive standard error 
-|user           | user under whose uid the job should run
-|env            | `VAR=VALUE` environment variable settings (repeatable)
-|disable        | if present, disables the job 
-|===============================================================================
-
-name::
-  The 'name' must be unique. It is used to make log messages more readable.
-
-cmd::
-  The 'cmd' is the absolute pathname to an executable, with optional arguments.
-  Quoting (using double-quotes only) is supported in the arguments. 
-
-dir::
-  Sets the 'working directory' that the job will have upon startup.
-
-out::
-  file (may be relative to the working directory) to receive stdout. Default: `/dev/null`
-
-err::
-  file (may be relative to the working directory) to receive stderr. Default: `/dev/null`
-
-user::
-  If specified, the job is run under the user's uid rather than root's uid
-
-env::
-  sets an environment variables for the job, e.g., `env XLIB=/usr/lib/xlib.so` (repeatable)
-
-disable::
-  causes the job definition to be inactive. This is sometimes more convenient
-  than commenting out the whole job definition.
-
-One-time jobs
-~~~~~~~~~~~~~
-
-Sometimes we want to run one or more "setup" jobs before our daemons. The setup
-job should run to completion, and not be restarted when it exits. For this, you
-can use the `wait` option and the `once` option.  When a job has the `wait`
-option, pmtr waits until it exits before starting up subsequent jobs (those
-which appear later in the configuration file).  This is used with 'once' to
-prevent the job from restarting. 
-
-  job {
-    name setup
-    cmd /bin/mkdir /dev/shm/ramdisk
-    wait
-    once
-  }
-
-Manual startup options
-~~~~~~~~~~~~~~~~~~~~~~
-Normally the only reason to run `pmtr` manually is to test the validity of a
-configuration file. The supported options to pmtr are:
-
-  -t test; parse config file only (implies -F)
-  -c <file> specify configuration file
-  -F foreground
-  -v verbose
-
-So, you can check the syntax of a configuration file using,
-
-  pmtr -tFcv /etc/pmtr.conf
-
-Jobs
-----
-
-Requirements
-~~~~~~~~~~~~
-Jobs that you intend to run under `pmtr` should:
-
- * stay in the *foreground*
- * *exit* on SIGTERM or SIGKILL 
- * arrange so any *sub-processes exit* if the job itself exits
-
-Clean exits
-^^^^^^^^^^^
-Note the last bullet. Shell scripts are especially likely to leave sub-processes
-around if they exit.  (Shells don't always pass signals down to their children).
-For example, if you have a shell script like this,
-
-  #!/bin/bash
-  command | etc
-
-and if you run this shell script as a `pmtr` job, then later delete or disable
-the job while it's running, pmtr signals the shell process to exit-- but the
-sub-processes `command` and `etc` may continue to run. Avoid this-- instead,
-construct your jobs to exit cleanly, so sub-processes exit if the parent exits.
-(For example, C programs on Linux can use `prctl(PR_SET_PDEATHSIG, SIGHUP);`
-to get signalled if the parent exits).
-
-Job control
-~~~~~~~~~~~
-When you edit and save `pmtr.conf`, the changes you made get applied immediately.
-
- * If you add a job, it gets started.
- * If you delete a job, or give it the `disable` option, or comment it out, it
-   gets terminated.  
- * If you change a job, it gets restarted with the new settings. 
-
-Other running jobs are left alone- they're not needlessly restarted. All this
-happens immediately whenever the configuration file is modified.
-
-Job restart
-~~~~~~~~~~~
-When a job exits-- assuming it's been running at least ten seconds-- pmtr restarts
-it. 
-
-Inhibiting restart
-^^^^^^^^^^^^^^^^^^
-There are two ways to inhibit automatic restart: the job itself can exit
-with status 33, which pmtr interprets as a "don't restart" indicator; or the
-the job can use the  'once' option in the configuration file, described below.
-
-Fast restarts
-^^^^^^^^^^^^^
-When a job exits less than 10 seconds after it started, pmtr waits ten seconds
-before restarting it.  This avoids rapid restart loops.  
-
-  Nov  7 22:01:13 ubuntu pmtr[18477]: job xyz 18552 exited after 3 sec: exit status 0
-  Nov  7 22:01:13 ubuntu pmtr[18477]: job restarting too fast, delaying restart
-
-Since pmtr is oriented toward running daemons, a quick exit usually means the
-job has some kind of problem (bad arguments, etc) that need to be fixed.
-
-Job shutdown
-~~~~~~~~~~~~~
-You can stop a job running under `pmtr` by opening the configuration file and
-deleting (or commenting out) the job definition, or using the `disable` option:
-
-  job {
-    name tw-sender
-    cmd /usr/bin/tw-sender -a
-    disable
-  }
-
-When you save the configuration file, pmtr re-scans it, notices the change and
-terminates the job.  Job termination is handled by sending SIGTERM, then
-SIGKILL shortly afterward.
-
-If you stop pmtr (for example, by running `service pmtr stop`), it terminates
-all its jobs before exiting.  
 
 // vim: set tw=80 wm=2 syntax=asciidoc: 
 
