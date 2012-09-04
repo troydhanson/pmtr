@@ -105,10 +105,6 @@ void set_user(parse_t *ps, char *user) {
   }
   ps->job->uid = p->pw_uid;
 }
-void set_listen(parse_t *ps, char *listen_spec) { 
-}
-void set_report(parse_t *ps, char *report_spec) { 
-}
 void push_job(parse_t *ps) {
 
   /* final validation */

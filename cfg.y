@@ -2,6 +2,7 @@
 %include {#include <stdlib.h>}
 %include {#include <string.h>}
 %include {#include "job.h"}
+%include {#include "net.h"}
 %include {#include "utarray.h"}
 %token_prefix TOK_
 %token_type {char*}
