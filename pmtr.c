@@ -237,7 +237,7 @@ int main (int argc, char *argv[]) {
 
  done:
   term_jobs(cfg.jobs);
-  close_sockets(cfg);
+  close_sockets(&cfg);
   free(cfg.file);
   utarray_free(cfg.jobs);
   utarray_free(cfg.listen);
