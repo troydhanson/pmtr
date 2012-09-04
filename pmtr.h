@@ -10,9 +10,10 @@ typedef struct {
   int alarm_pending;
   int test_only;
   UT_array *jobs;
-  UT_array *rpt_dsts;  /* event report destinations */
-  char *listen;        /* local listener eg udp://1.1.1.1:2222 */
-  int listen_fd;       /* file descriptor to listening udp socket */
+  /* the next two fields are for the UDP control and reporting features */
+  UT_array *listen; /* file descriptors listening on */
+  UT_array *report; /* file descriptors reporting to */
+
 } pmtr_t;
 
 #endif 

@@ -86,18 +86,10 @@ Upon completion of `sudo make install`, pmtr should be running. Verify using:
 .Who starts pmtr?
 ********************************************************************************
 Pmtr starts up automatically during the boot process. An OS-specific initscript
-makes this happen. (They're in the `initscripts/` directory if you're curious). 
-Manual control is supported. You can use your system's `service` command to run
-the usual administrative commands, like `service pmtr start` or `stop`.
+makes this happen.  You can use your system's `service` command to start and
+stop pmtr manually (like `service pmtr start`), but normally you just let the OS
+start up pmtr automatically at boot.
 ********************************************************************************
-
-Logging
-~~~~~~~
-Status messages are sent to *syslog*. Typically these go to `/var/log/messages`:
-
-  Nov  7 22:01:09 ubuntu pmtr[18477]: rescanning job configuration
-  Nov  7 21:38:10 ubuntu pmtr[18477]: pmtr: managing 1 jobs
-  Nov  7 21:38:10 ubuntu pmtr[18477]: started job doppler [18478]
 
 Configuration file 
 ------------------
@@ -195,6 +187,23 @@ The meaning of these options are:
 
 Jobs
 ----
+
+Logging
+~~~~~~~
+As jobs start up, exit, and so on, messages are sent to *syslog*. Depending on
+your syslog configuration, the messages might go to `/var/log/syslog`, or
+`/var/log/messages`, or somewhere else. Typical log messages are like:
+
+  Nov  7 22:01:09 ubuntu pmtr[18477]: rescanning job configuration
+  Nov  7 21:38:10 ubuntu pmtr[18477]: pmtr: managing 1 jobs
+  Nov  7 21:38:10 ubuntu pmtr[18477]: started job doppler [18478]
+
+[NOTE]
+.Look for errors 
+If there's a syntax error or other problem (such as invalid user) in
+your configuration, pmtr can only communicate that back to you in the
+log messages - so be sure you check them when making config changes!
+
 
 Is the job suitable to run under pmtr?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

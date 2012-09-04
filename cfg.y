@@ -7,7 +7,7 @@
 %token_type {char*}
 %extra_argument {parse_t *ps}
 %syntax_error  {
-  utstring_printf(ps->em, "error in %s line %d ", ps->file, ps->line);
+  utstring_printf(ps->em, "error in %s line %d ", ps->cfg->file, ps->line);
   ps->rc=-1;
 }
 %parse_failure {ps->rc=-1;}

@@ -900,19 +900,9 @@ a system startup script that runs pmtr at boot as described next.
 <div class="content">
 <div class="title">Who starts pmtr?</div>
 <div class="paragraph"><p>Pmtr starts up automatically during the boot process. An OS-specific initscript
-makes this happen. (They&#8217;re in the <tt>initscripts/</tt> directory if you&#8217;re curious).
-Manual control is supported. You can use your system&#8217;s <tt>service</tt> command to run
-the usual administrative commands, like <tt>service pmtr start</tt> or <tt>stop</tt>.</p></div>
-</div></div>
-</div>
-<div class="sect2">
-<h3 id="_logging">Logging</h3>
-<div class="paragraph"><p>Status messages are sent to <strong>syslog</strong>. Typically these go to <tt>/var/log/messages</tt>:</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><tt>Nov  7 22:01:09 ubuntu pmtr[18477]: rescanning job configuration
-Nov  7 21:38:10 ubuntu pmtr[18477]: pmtr: managing 1 jobs
-Nov  7 21:38:10 ubuntu pmtr[18477]: started job doppler [18478]</tt></pre>
+makes this happen.  You can use your system&#8217;s <tt>service</tt> command to start and
+stop pmtr manually (like <tt>service pmtr start</tt>), but normally you just let the OS
+start up pmtr automatically at boot.</p></div>
 </div></div>
 </div>
 </div>
@@ -934,10 +924,10 @@ delimited block.  Indentation is optional. Blank lines are ok.</p></div>
 </div></div>
 <div class="paragraph"><p>Only <em>name</em> and <em>cmd</em> are required. The <tt>cmd</tt> is the <strong>absolute path</strong> to the
 executable (which must have its executable bit set).</p></div>
-<div class="paragraph"><p>The command may contain simple <em>double-quoted</em> arguments.  Like this,</p></div>
+<div class="paragraph"><p>The command may contain simple or <em>double-quoted</em> arguments.  Like this,</p></div>
 <div class="literalblock">
 <div class="content">
-<pre><tt>cmd /bin/echo "st paul"</tt></pre>
+<pre><tt>cmd /bin/echo -n "st paul"</tt></pre>
 </div></div>
 <div class="paragraph"><p>Comments should be on their own line and prefaced with <tt>#</tt>.</p></div>
 <div class="literalblock">
@@ -1111,6 +1101,29 @@ terminates its jobs before exiting.</p></div>
 <h2 id="_jobs">Jobs</h2>
 <div class="sectionbody">
 <div class="sect2">
+<h3 id="_logging">Logging</h3>
+<div class="paragraph"><p>As jobs start up, exit, and so on, messages are sent to <strong>syslog</strong>. Depending on
+your syslog configuration, the messages might go to <tt>/var/log/syslog</tt>, or
+<tt>/var/log/messages</tt>, or somewhere else. Typical log messages are like:</p></div>
+<div class="literalblock">
+<div class="content">
+<pre><tt>Nov  7 22:01:09 ubuntu pmtr[18477]: rescanning job configuration
+Nov  7 21:38:10 ubuntu pmtr[18477]: pmtr: managing 1 jobs
+Nov  7 21:38:10 ubuntu pmtr[18477]: started job doppler [18478]</tt></pre>
+</div></div>
+<div class="admonitionblock">
+<table><tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">
+<div class="title">Look for errors</div>If there&#8217;s a syntax error or other problem (such as invalid user) in
+your configuration, pmtr can only communicate that back to you in the
+log messages - so be sure you check them when making config changes!</td>
+</tr></table>
+</div>
+</div>
+<div class="sect2">
 <h3 id="_is_the_job_suitable_to_run_under_pmtr">Is the job suitable to run under pmtr?</h3>
 <div class="paragraph"><p>Jobs that you intend to run under <tt>pmtr</tt> should:</p></div>
 <div class="ulist"><ul>
@@ -1201,7 +1214,7 @@ finishes, and <tt>once</tt> prevents pmtr from restarting it.</p></div>
 <div id="footer">
 <div id="footer-text">
 Version 1.2<br />
-Last updated 2012-09-04 03:07:38 EDT
+Last updated 2012-09-04 14:04:55 EDT
 </div>
 </div>
 </body>

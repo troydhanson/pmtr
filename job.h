@@ -36,11 +36,10 @@ typedef struct {
 
 typedef struct {
   int line;
-  char *file;
   int rc;
   UT_string *em;
   job_t *job; /* scratch space */
-  UT_array *jobs;
+  pmtr_t *cfg; /* the global ptmr config */
 } parse_t;
 
 extern const UT_icd job_mm;

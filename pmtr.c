@@ -125,6 +125,8 @@ int main (int argc, char *argv[]) {
   openlog("pmtr", LOG_PID | (cfg.foreground ? LOG_PERROR : 0), LOG_LOCAL0);
   if (!cfg.file) cfg.file = strdup(DEFAULT_PM_CONFIG);
   utarray_new(cfg.jobs, &job_mm);
+  utarray_new(cfg.listen, &ut_int_icd);
+  utarray_new(cfg.report, &ut_int_icd);
   if (parse_jobs(&cfg, em) == -1) {
     syslog(LOG_ERR,"parse failed: %s\n", utstring_body(em));
     goto done;
@@ -233,6 +235,8 @@ int main (int argc, char *argv[]) {
   term_jobs(cfg.jobs);
   free(cfg.file);
   utarray_free(cfg.jobs);
+  utarray_free(cfg.listen);
+  utarray_free(cfg.report);
   utstring_free(em);
   utstring_free(sm);
   return 0;

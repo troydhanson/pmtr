@@ -65,7 +65,7 @@ const UT_icd job_mm={sizeof(job_t), (init_f*)job_ini,
 void set_ ## n(parse_t *ps, char *v) {                              \
   if (ps->job->n) {                                                 \
     utstring_printf(ps->em, #n " respecified near line %d in %s ",  \
-                    ps->line, ps->file);                            \
+                    ps->line, ps->cfg->file);                       \
     ps->rc = -1;                                                    \
     return;                                                         \
   }                                                                 \
@@ -121,7 +121,7 @@ void push_job(parse_t *ps) {
 
   /* okay. polish it off and copy it into the jobs */
   utarray_extend_back(&ps->job->cmdv); /* put NULL on end of argv */
-  utarray_push_back(ps->jobs, ps->job);
+  utarray_push_back(ps->cfg->jobs, ps->job);
   /* reset job for another parse */
   job_fin(ps->job); 
   job_ini(ps->job);
@@ -167,20 +167,23 @@ int parse_jobs(pmtr_t *cfg, UT_string *em) {
   char *buf, *c, *tok;
   size_t len,toklen;
   UT_array *toks;
-  parse_t ps; /* our own parser state */
+  parse_t ps; /* our own parser state */ 
   void *p;    /* lemon parser */
   int id;
 
   utarray_new(toks,&ut_str_icd);
   job_t job;  /* "scratch" space used when parsing a job */
   job_ini(&job);
+  ps.job=&job; 
 
-  ps.line=1; ps.rc=0; ps.file=cfg->file; ps.em=em, 
-  ps.job=&job; ps.jobs=cfg->jobs;
+  ps.cfg=cfg;
+  ps.line=1; 
+  ps.em=em;
+  ps.rc=0;
 
   p = ParseAlloc(malloc);
 
-  buf = slurp(cfg->file, &len);
+  buf = slurp(ps.cfg->file, &len);
   c = buf;
   while ( (id=get_tok(buf,&c,&len,&toklen,&ps.line)) > 0) {
     tok = strndup(c,toklen); utarray_push_back(toks,&tok); free(tok); 
@@ -192,7 +195,7 @@ int parse_jobs(pmtr_t *cfg, UT_string *em) {
     c += toklen;
   }
   if (id == -1) {
-    utstring_printf(em,"tokenizer error in %s line %d\n", ps.file, ps.line);
+    utstring_printf(em,"syntax error in %s line %d\n", ps.cfg->file, ps.line);
     ps.rc = -1;
     goto done;
   }
