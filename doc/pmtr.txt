@@ -117,9 +117,9 @@ delimited block.  Indentation is optional. Blank lines are ok.
 Only 'name' and 'cmd' are required. The `cmd` is the *absolute path* to the
 executable (which must have its executable bit set). 
 
-The command may contain simple 'double-quoted' arguments.  Like this,
+The command may contain simple or 'double-quoted' arguments.  Like this,
 
-  cmd /bin/echo "st paul"
+  cmd /bin/echo -n "st paul"
 
 Comments should be on their own line and prefaced with `#`.
 
