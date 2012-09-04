@@ -15,6 +15,7 @@
 //#define DEBUG 1
 
 #include "utarray.h"
+#include "pmtr.h"
 #include "job.h"
 
 
@@ -104,6 +105,10 @@ void set_user(parse_t *ps, char *user) {
   }
   ps->job->uid = p->pw_uid;
 }
+void set_listen(parse_t *ps, char *listen_spec) { 
+}
+void set_report(parse_t *ps, char *report_spec) { 
+}
 void push_job(parse_t *ps) {
 
   /* final validation */
@@ -158,7 +163,7 @@ static int order_sort(const void *_a, const void *_b) {
   job_t *a = (job_t*)_a, *b = (job_t*)_b;
   return a->order - b->order;
 }
-int parse_jobs(UT_array *jobs, UT_string *em, char *file, int verbose) {
+int parse_jobs(pmtr_t *cfg, UT_string *em) {
   char *buf, *c, *tok;
   size_t len,toklen;
   UT_array *toks;
@@ -170,15 +175,17 @@ int parse_jobs(UT_array *jobs, UT_string *em, char *file, int verbose) {
   job_t job;  /* "scratch" space used when parsing a job */
   job_ini(&job);
 
-  ps.line=1; ps.rc=0; ps.file=file; ps.em=em, ps.job=&job; ps.jobs=jobs;
+  ps.line=1; ps.rc=0; ps.file=cfg->file; ps.em=em, 
+  ps.job=&job; ps.jobs=cfg->jobs;
+
   p = ParseAlloc(malloc);
 
-  buf = slurp(file, &len);
+  buf = slurp(cfg->file, &len);
   c = buf;
   while ( (id=get_tok(buf,&c,&len,&toklen,&ps.line)) > 0) {
     tok = strndup(c,toklen); utarray_push_back(toks,&tok); free(tok); 
     tok = *(char**)utarray_back(toks);
-    if (verbose >= 2) printf("got token [%s] id=%d line=%d\n",tok, id, ps.line);
+    if (cfg->verbose >=2) printf("token [%s] id=%d line=%d\n",tok, id, ps.line);
     Parse(p, id, tok, &ps);
     if (ps.rc == -1) goto done;
     len -= toklen;
@@ -193,7 +200,7 @@ int parse_jobs(UT_array *jobs, UT_string *em, char *file, int verbose) {
   if (ps.rc == -1) goto done;
 
   /* parsing succeeded */
-  utarray_sort(jobs, order_sort);
+  utarray_sort(cfg->jobs, order_sort);
 
  done:
   utarray_free(toks);

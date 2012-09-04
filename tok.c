@@ -21,6 +21,10 @@ static struct {
  {"once",    4, TOK_ONCE},
  {"{",       1, TOK_LCURLY},
  {"}",       1, TOK_RCURLY},
+ {"listen",  6, TOK_LISTEN},
+ {"on",      2, TOK_ON},
+ {"report",  6, TOK_REPORT},
+ {"to",      2, TOK_TO},
 };
 static const int ws[256] = { ['\r']=1, ['\n']=1, ['\t']=1, [' ']=1 };
 
@@ -48,13 +52,13 @@ int get_tok(char *c_orig, char **c, size_t *bsz, size_t *toksz, int *line) {
     return 0; /* eob while looking for trailing newline */
   }
 
-  /* identity literal keywords */
+  /* identify literal keywords */
   int i;
   for(i=0; i < sizeof(kw)/sizeof(*kw); i++) {
     if (*bsz < kw[i].len) continue;
     if (memcmp(*c,kw[i].str,kw[i].len) ) continue;
-    /* keywords except { must be preceded by start-of-buf or newline */
-    if (kw[i].id != TOK_LCURLY) {
+    /* keywords except "{ on to" must be preceded by start-of-buf or newline */
+    if (kw[i].id != TOK_LCURLY && kw[i].id != TOK_ON && kw[i].id != TOK_TO) {
       for(e=(*c)-1; e > c_orig; e--) {
         if (*e == '\n') break;
         if (ws[(int)*e]) continue;

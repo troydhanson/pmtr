@@ -14,6 +14,7 @@
 #include <time.h>
 #include "utstring.h"
 #include "utarray.h"
+#include "pmtr.h"
 #include "job.h"
 
 #define DEFAULT_PM_CONFIG "/etc/pmtr.conf" 
@@ -22,14 +23,7 @@
 char proctitle[16] = "pmtr";
 sigjmp_buf jmp;
 
-struct {
-  char *file;
-  int verbose;
-  int foreground;
-  int alarm_pending;
-  int test_only;
-  UT_array *jobs;
-} cfg = {
+pmtr_t cfg = {
   .verbose = 0,
   .foreground = 0,
   .alarm_pending = 0,
@@ -79,7 +73,7 @@ int rescan_config(void) {
   syslog(LOG_INFO,"rescanning job configuration");
   UT_array *jobs; utarray_new(jobs, &job_mm);
   UT_string *em; utstring_new(em);
-  if (parse_jobs(jobs, em, cfg.file, cfg.verbose) == -1) {
+  if (parse_jobs(&cfg, em) == -1) {
     syslog(LOG_ERR,"parse failed: %s\n", utstring_body(em));
     syslog(LOG_ERR,"retaining previous configuration\n");
     goto done;
@@ -131,7 +125,7 @@ int main (int argc, char *argv[]) {
   openlog("pmtr", LOG_PID | (cfg.foreground ? LOG_PERROR : 0), LOG_LOCAL0);
   if (!cfg.file) cfg.file = strdup(DEFAULT_PM_CONFIG);
   utarray_new(cfg.jobs, &job_mm);
-  if (parse_jobs(cfg.jobs, em, cfg.file, cfg.verbose) == -1) {
+  if (parse_jobs(&cfg, em) == -1) {
     syslog(LOG_ERR,"parse failed: %s\n", utstring_body(em));
     goto done;
   }

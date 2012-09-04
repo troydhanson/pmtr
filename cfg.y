@@ -14,10 +14,12 @@
 %type path {char*}
 %type arg {char*}
 
-file ::= jobs.
-file ::= .
-jobs ::= jobs job.
-jobs ::= job.
+file ::= decls.
+decls ::= decls job.
+decls ::= decls decl.
+decls ::= .
+decl ::= REPORT TO STR(A). {set_report(ps,A);}
+decl ::= LISTEN ON STR(A). {set_listen(ps,A);}
 job ::= JOB LCURLY sbody RCURLY. {push_job(ps);}
 sbody ::= sbody kv.
 sbody ::= kv.

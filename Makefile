@@ -1,19 +1,16 @@
 SUBDIRS=lemon 
-all: $(SUBDIRS) pmtr 
-CFLAGS=-I /usr/local/include
-CFLAGS+=-g
-
-
-.PHONY: clean $(SUBDIRS)
+all: $(SUBDIRS) cfg.c pmtr 
+#CFLAGS=-g
 
 $(SUBDIRS) doc:
 	$(MAKE) -C $@
 
-cfg.c: cfg.y
+cfg.c cfg.h: cfg.y
 	lemon/lemon $<
 
-pmtr: pmtr.c cfg.c job.c tok.c
-	$(CC) $(CFLAGS) -o $@ $^
+objs := cfg.o $(patsubst %.c,%.o,$(wildcard *.c)) 
+
+pmtr : $(objs)
 
 clean:
 	rm -f *.o *.out pmtr cfg.c cfg.h
@@ -21,3 +18,6 @@ clean:
 
 install: pmtr
 	./install-pmtr.sh
+
+.PHONY: clean $(SUBDIRS)
+

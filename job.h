@@ -6,6 +6,7 @@
 #include <time.h>
 #include <signal.h>
 
+#include "pmtr.h"
 #include "utstring.h"
 #include "utarray.h"
 
@@ -45,7 +46,7 @@ typedef struct {
 extern const UT_icd job_mm;
 
 /* prototypes */
-int parse_jobs(UT_array *jobs, UT_string *em, char *file, int verbose);
+int parse_jobs(pmtr_t *cfg, UT_string *em);
 void do_jobs(UT_array *jobs);
 void term_jobs(UT_array *jobs);
 int term_job(job_t *job);
