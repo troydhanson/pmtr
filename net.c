@@ -1,4 +1,6 @@
 #include <unistd.h>
+#include <assert.h>
+#include <syslog.h>
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -75,6 +77,71 @@ void set_listen(parse_t *ps, char *listen_spec) {
    destination so that events can be sent to it at runtime
 */
 void set_report(parse_t *ps, char *report_spec) { 
+}
+
+/* decode datagram that we received.
+ *
+ * enable job1 [job2 ...] 
+ * disable job1 [job2 ...]
+*/
+static void decode_msg(pmtr_t *cfg, char *buf, size_t n) {
+  char *job, *sp, *eob = &buf[n];
+  enum {err, enable, disable} mode = err;
+
+  if (cfg->verbose) syslog(LOG_DEBUG, "received [%.*s]", n, buf);
+
+  if (n > 7 && !memcmp(buf,"enable ",7)) {mode=enable; job=&buf[7];}
+  if (n > 8 && !memcmp(buf,"disable ",8)) {mode=disable; job=&buf[8];}
+  if (mode == err) goto done;
+
+  /* iterate over jobs named on this line. TODO multi-line */
+  while (eob > job) {
+    /* find space or end-of-buffer (EOB) that delimits the job */
+    while((eob > job) && (*job == ' ')) job++;
+    char *sp = job+1;
+    while ((eob > sp) && (*sp != ' ')) sp++;
+    *sp = '\0'; /*switch space or EOB to null (EOB write ok, we overallocated */
+    job_t *j = get_job_by_name(cfg->jobs, job);
+    if (j) {
+      switch(mode) {
+        case enable:
+          if (j->disabled==0) break; /* already enabled? */
+          syslog(LOG_INFO,"control socket: enabling %s", job);
+          j->disabled=0;             /* ok, enable it */
+          if (!cfg->alarm_pending) {
+            cfg->alarm_pending++;  /* let our SIGALRM handler start it soon */
+            alarm(1);
+          }
+          break;
+        case disable:
+          if (j->disabled) break;
+          syslog(LOG_INFO,"control socket: disabling %s", job);
+          j->disabled=1;
+          if (j->pid) term_job(j);
+          break;
+      }
+    } else {
+      syslog(LOG_INFO,"control error, unknown job %s", job); /* ignore */
+    }
+
+    job = sp+1;
+  }
+
+ done:
+  return;
+  
+}
+
+#define BUF_SZ 2000
+static char buf[BUF_SZ+1];
+/* called when we have datagrams to read */
+void service_socket(pmtr_t *cfg) {
+  ssize_t rc;
+  int *fd = (int*)utarray_front(cfg->listen); assert(fd);
+  do {
+    rc = read(*fd, buf, sizeof(buf));   /* fd is non-blocking, thus */
+    if (rc > 0) decode_msg(cfg,buf,rc); /* we get rc==-1 after last */
+  } while (rc >= 0);
 }
 
 void close_sockets(pmtr_t *cfg) {

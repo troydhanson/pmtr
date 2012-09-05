@@ -220,6 +220,7 @@ int main (int argc, char *argv[]) {
       do_jobs(cfg.jobs);
       break;
     case SIGIO:  /* our UDP listener (if enabled) got a datagram */
+      service_socket(&cfg);
       break;
     default:
       syslog(LOG_INFO,"pmtr: exiting on signal %d\n", signo);
