@@ -145,26 +145,24 @@ void set_report(parse_t *ps, char *dest) {
  * disable job1 [job2 ...]
 */
 static void decode_msg(pmtr_t *cfg, char *buf, size_t n) {
-  char *job, *sp, *eob = &buf[n];
-  enum {err, enable, disable} mode;
+  char *pos=buf, *job, *sp, *eob = &buf[n];
+  enum {err, enable, disable} mode=err;
+  job_t *j;
 
   if (cfg->verbose) syslog(LOG_DEBUG, "received [%.*s]", (int)n, buf);
 
- next:
-  mode=err;
-  if (n > 7 && !memcmp(buf,"enable ",7)) {mode=enable; job=&buf[7];}
-  if (n > 8 && !memcmp(buf,"disable ",8)) {mode=disable; job=&buf[8];}
-  if (mode == err) goto done;
-
-  /* iterate over jobs named on this line. TODO multi-line */
-  while (eob > job) {
-    /* find space or end-of-buffer (EOB) that delimits the job */
-    while((eob > job) && (*job == ' ')) job++;
-    char *sp = job+1;
+  /* iterate over jobs named on this line. */
+  while (eob > pos) {
+    while((eob > pos) && (*pos == ' ')) pos++;
+    char *sp = pos+1;
     while ((eob > sp) && (*sp != ' ')) sp++;
-    *sp = '\0'; /*switch space or EOB to null (EOB write ok, we overallocated */
-    job_t *j = get_job_by_name(cfg->jobs, job);
-    job = sp+1;
+    *sp = '\0'; 
+    if      (!strcmp(pos,"enable"))  { mode=enable;  pos = sp+1; continue; }
+    else if (!strcmp(pos,"disable")) { mode=disable; pos = sp+1; continue; }
+    if (mode == err) { syslog(LOG_ERR, "invalid control msg"); goto done; }
+    job = pos;
+    j = get_job_by_name(cfg->jobs, job);
+    pos = sp+1;
     if (j == NULL) {
       syslog(LOG_INFO,"control msg for unknown job %s", job); /* ignore */
       continue;
