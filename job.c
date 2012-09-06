@@ -318,28 +318,39 @@ void do_jobs(UT_array *jobs) {
   }
 }
 
+static struct timespec half = {.tv_sec = 0, .tv_nsec=500000000}; /* half-sec */
+
+/* terminate a job. collect its status immediately. */
 int term_job(job_t *job) {
-  int es,rc=-1;
+  int es,rc=-1,p,code,i=0;
+  struct timespec *ts;
+  char *msg;
+
+  if (job->pid == 0) return;  /* not running */
 
   UT_string *s;
   utstring_new(s);
-  utstring_printf(s,"job %s [%d]: ", job->name, (int)job->pid);
 
-  if (job->pid == 0) return;  /* not running */
-  kill(job->pid, SIGTERM);
-  if (waitpid(job->pid, &es, WNOHANG) == job->pid) job->pid = 0;
-  else { /* child didn't exit. give it a moment, then force quit. */
-    sleep(1);
-    kill(job->pid, SIGKILL);
-    if (waitpid(job->pid, &es, WNOHANG) == job->pid) job->pid = 0;
-    else {
-      utstring_printf(s, "failed to terminate");
-      goto done;
-    }
+  int sig = SIGTERM;
+  ts = &half;
+
+  do {
+    kill(job->pid, sig);
+    nanosleep(ts, NULL);
+    if (++i > 2) sig=SIGKILL;
+  } while ( i<=3 && (p = waitpid(job->pid, &es, WNOHANG)) == 0);
+
+  utstring_printf(s,"job %s [%d]: ", job->name, (int)job->pid);
+  if      (p <0) utstring_printf(s, "waitpid error: %s", strerror(errno));
+  else if (p==0) utstring_printf(s, "failed to terminate");
+  else {
+    assert(p == job->pid);
+    job->pid = 0;
+    code = (WIFSIGNALED(es)) ? (int)WTERMSIG(es) : (int)WEXITSTATUS(es);
+    msg = (WIFSIGNALED(es)) ? "exited on signal %d" : "exit status %d";
+    utstring_printf(s, msg, code);
+    rc = 0; /* success */
   }
-  rc = 0; /* success */
-  if (WIFSIGNALED(es)) utstring_printf(s,"exited on signal %d", (int)WTERMSIG(es));
-  else if (WIFEXITED(es)) utstring_printf(s,"exit status %d", (int)WEXITSTATUS(es));
 
  done:
   syslog(rc==-1?LOG_ERR:LOG_INFO, "%s", utstring_body(s));
@@ -418,8 +429,8 @@ void alarm_within(pmtr_t *cfg, int sec) {
   int reset = 0;
 
   if (cfg->next_alarm == 0) reset=1;      /* first time setup */
-  if (cfg->next_alarm <= now) reset=1;    
-  if (cfg->next_alarm > now+sec) reset=1; /* want alarm sooner */
+  if (cfg->next_alarm <= now) reset=1;    /* alarm woke us up, rescheduling */
+  if (cfg->next_alarm > now+sec) reset=1; /* move alarm earlier */
   if (!reset) return;
 
   cfg->next_alarm = now+sec;

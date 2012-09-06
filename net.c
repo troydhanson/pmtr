@@ -219,6 +219,8 @@ void close_sockets(pmtr_t *cfg) {
 
 /* report to all configured destinations */
 void report_status(pmtr_t *cfg) {
+  int rc;
+
   /* construct msg */
   utstring_clear(cfg->s);
   utstring_printf(cfg->s, "report 0.0.0.0 hostname\n"); /* TODO */
@@ -231,6 +233,10 @@ void report_status(pmtr_t *cfg) {
   /* send to all dests */
   int *fd=NULL;
   while ( (fd=(int*)utarray_next(cfg->report,fd))) {
-    write(*fd,utstring_body(cfg->s),utstring_len(cfg->s));
+    rc = write(*fd,utstring_body(cfg->s),utstring_len(cfg->s));
+    if (rc < 0) syslog(LOG_INFO,"write error: %s", strerror(errno));
+    if (rc >= 0 && rc < utstring_len(cfg->s)) {
+      syslog(LOG_INFO,"incomplete write %d/%d", rc, utstring_len(cfg->s));
+    }
   }
 }

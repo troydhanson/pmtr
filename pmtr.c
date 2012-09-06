@@ -109,7 +109,6 @@ int rescan_config(void) {
   /* any jobs left in cfg.jobs are no longer in the new configuration */
   pjob=NULL;
   while ( (pjob=(job_t*)utarray_next(cfg.jobs,pjob))) term_job(pjob);
-  /* TODO verify behavior if SIGCHLD comes late, after clearing arrays below */
   utarray_clear(cfg.jobs);
   utarray_concat(cfg.jobs,jobs);  /* make the new jobs official */
 
@@ -201,7 +200,6 @@ int main (int argc, char *argv[]) {
         if (pid == dm_pid) { dm_pid = dep_monitor(cfg.file); continue; }
         job = get_job_by_pid(cfg.jobs, pid);
         if (!job) {
-           /* maybe exited, then while sigchld pending, collected in reconfig */
            syslog(LOG_ERR,"sigchld for unknown pid %d", (int)pid);
            goto done; /* restart for sanity purposes */
            break;
