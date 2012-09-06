@@ -405,3 +405,21 @@ int job_cmp(job_t *a, job_t *b) {
   return 0;
 }
 
+/* certain events require a periodic timer. these are deferred job 
+ * restarts, and periodic status reporting. when we establish the
+ * alarm handler, we only need to reset the timer if the next scheduled
+ * alarm is non-existent or its later than we need. 
+ */
+void alarm_within(pmtr_t *cfg, int sec) {
+  time_t now = time(NULL);
+  int reset = 0;
+
+  if (cfg->next_alarm == 0) reset=1;      /* first time setup */
+  if (cfg->next_alarm <= now) reset=1;    
+  if (cfg->next_alarm > now+sec) reset=1; /* want alarm sooner */
+  if (!reset) return;
+
+  cfg->next_alarm = now+sec;
+  alarm(sec);
+}
+

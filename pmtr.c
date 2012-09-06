@@ -25,7 +25,6 @@ sigjmp_buf jmp;
 pmtr_t cfg = {
   .verbose = 0,
   .foreground = 0,
-  .alarm_pending = 0,
 };
 
 void usage(char *prog) {
@@ -68,6 +67,11 @@ pid_t dep_monitor(char *file) {
   exit(0);
 }
 
+/* TODO should we blow away existing jobs on rescan 'parse failure'
+ * NOTE udp listeners need to be closed right away before a re-parse
+ * (otherwise bind failure!) 
+ * but closing the udp sockets before parse basically invalidates the
+ * notion that we retain previous configuration on parse failure */
 int rescan_config(void) {
   syslog(LOG_INFO,"rescanning job configuration");
   UT_array *jobs; utarray_new(jobs, &job_mm);
@@ -136,6 +140,7 @@ int main (int argc, char *argv[]) {
   utarray_new(cfg.jobs, &job_mm);
   utarray_new(cfg.listen, &ut_int_icd);
   utarray_new(cfg.report, &ut_int_icd);
+  utstring_new(cfg.s);
 
   /* block all signals. we remain fully blocked except in sigsuspend */
   sigset_t all;
@@ -171,6 +176,8 @@ int main (int argc, char *argv[]) {
     case 0:   /* not a signal yet, first time setup */
       do_jobs(cfg.jobs);
       dm_pid = dep_monitor(cfg.file);
+      report_status(&cfg);
+      alarm_within(&cfg,SHORT_DELAY);
       break;
     case SIGHUP:
       rescan_config();
@@ -204,20 +211,13 @@ int main (int argc, char *argv[]) {
         }
         syslog(LOG_INFO,"%s",utstring_body(sm));
       }
-      if (defer_restart) {
-        if (!cfg.alarm_pending) {
-          syslog(LOG_INFO,"job restarting too fast, delaying restart\n");
-          cfg.alarm_pending++;
-          alarm(SHORT_DELAY);
-        }
-      } else {
-        do_jobs(cfg.jobs);
-      }
+      if (!defer_restart) do_jobs(cfg.jobs);
+      else syslog(LOG_INFO,"job restarting too fast, delaying restart\n");
       break;
     case SIGALRM:
-      assert(cfg.alarm_pending == 1);
-      cfg.alarm_pending=0;
       do_jobs(cfg.jobs);
+      report_status(&cfg);
+      alarm_within(&cfg,SHORT_DELAY);
       break;
     case SIGIO:  /* our UDP listener (if enabled) got a datagram */
       service_socket(&cfg);
@@ -243,6 +243,7 @@ int main (int argc, char *argv[]) {
   utarray_free(cfg.jobs);
   utarray_free(cfg.listen);
   utarray_free(cfg.report);
+  utstring_free(cfg.s);
   utstring_free(em);
   utstring_free(sm);
   return 0;

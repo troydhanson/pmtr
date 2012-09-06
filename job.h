@@ -56,6 +56,7 @@ job_t *get_job_by_name(UT_array *jobs, char *name);
 int job_cmp(job_t *a, job_t *b);
 void set_name(parse_t *ps, char *name);
 char *unquote(char *str);
+void alarm_within(pmtr_t *cfg, int sec);
 
 
 #endif /* _JOB_H_ */

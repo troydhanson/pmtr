@@ -6,33 +6,60 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <netdb.h>
+#include <stdlib.h>
+#include <errno.h>
 
 #include <string.h>
 #include "utarray.h"
 #include "net.h"
 
-/* listen_spec is like "udp://127.0.0.1:3333".
+static int parse_spec(pmtr_t *cfg, UT_string *em, char *spec, 
+                      in_addr_t *addr, int *port) {
+  char *proto = spec, *colon, *host;
+  struct hostent *h;
+  int hlen, rc=-1;
+
+  if (strncmp(proto, "udp://", 6)) goto done;
+  host = &spec[6];
+
+  if ( !(colon = strrchr(spec, ':'))) goto done;
+  *port = atoi(colon+1);
+  if ((*port < 0) || (*port > 65535)) goto done;
+
+  /* stop here if syntax checking */
+  if (cfg->test_only) return 0; 
+
+  /* dns lookup. */
+  *colon = '\0'; 
+  h = gethostbyname(host); 
+  hlen = strlen(host);
+  *colon = ':';
+  if (!h) {
+    utstring_printf(em, "lookup [%.*s]: %s", hlen, host, hstrerror(h_errno));
+    rc = -2;
+    goto done;
+  }
+
+  *addr = ((struct in_addr*)h->h_addr)->s_addr;
+  rc = 0; /* success */
+
+ done:
+  if (rc == -1) utstring_printf(em,"expected format is udp://1.2.3.4:5678");
+  return rc;
+
+}
+
+/* addr is like "udp://127.0.0.1:3333".
  * only one listener can be set up currently.
  * we set up a UDP socket file descriptor bound to the port,
  * during the main loop we get SIGIO on incoming datagram 
 */
-void set_listen(parse_t *ps, char *listen_spec) { 
-  int rc = -1;
-  char *proto = listen_spec, *colon, *port_str, *ip_str;
-  if (strncmp(proto, "udp://", 6)) goto done;
-  if ( !(colon = strrchr(listen_spec, ':'))) goto done;
-  ip_str = &listen_spec[6];
-  port_str = colon+1;
+void set_listen(parse_t *ps, char *addr) { 
+  in_addr_t local_ip;
+  int rc = -1, port;
 
-  /* convert the local IP address to in_addr_t */
-  *colon = '\0'; /* temporary for inet_addr */
-  in_addr_t local_ip = inet_addr(ip_str);
-  *colon = ':';
-  if (local_ip == INADDR_NONE) goto done;
-  /* convert the port to number */
-  int port = atoi(port_str);
-  if (port < 0 || port > 65535) goto done;
-
+  if (parse_spec(ps->cfg, ps->em, addr, &local_ip, &port)) goto done;
   if (ps->cfg->test_only) return;  /* syntax looked ok */
 
   int fd = socket(AF_INET, SOCK_DGRAM, 0);
@@ -62,9 +89,9 @@ void set_listen(parse_t *ps, char *listen_spec) {
   rc = 0;
 
  done:
-  if (rc == -1) utstring_printf(ps->em,"expected format is udp://1.2.3.4:5678");
+  if (rc == -1) { /* ps->em already set */ }
   if (rc == -2) utstring_printf(ps->em,"can't open file descriptor");
-  if (rc == -3) utstring_printf(ps->em,"can't bind to %s", listen_spec);
+  if (rc == -3) utstring_printf(ps->em,"can't bind to %s", addr);
   if (rc < 0) {
     utstring_printf(ps->em, " at line %d", ps->line);
     ps->rc = -1;
@@ -76,7 +103,40 @@ void set_listen(parse_t *ps, char *listen_spec) {
    we set up a UDP socket file descriptor 'connected' to the
    destination so that events can be sent to it at runtime
 */
-void set_report(parse_t *ps, char *report_spec) { 
+void set_report(parse_t *ps, char *dest) { 
+  in_addr_t dest_ip;
+  int rc = -1, port;
+
+  if (parse_spec(ps->cfg, ps->em, dest, &dest_ip, &port)) goto done;
+  if (ps->cfg->test_only) return;  /* syntax looked ok */
+
+  int fd = socket(AF_INET, SOCK_DGRAM, 0);
+  if (fd == -1) {rc = -2; goto done;}
+
+  /* specify the local address and port  */
+  struct sockaddr_in sin;
+  sin.sin_family = AF_INET;
+  sin.sin_addr.s_addr = dest_ip;
+  sin.sin_port = htons(port);
+
+  if (connect(fd, (struct sockaddr*)&sin, sizeof(sin)) == -1) {
+    utstring_printf(ps->em, "can't connect to %s: %s", dest, strerror(errno));
+    rc = -3;
+    goto done;
+  }
+
+  /* success */
+  utarray_push_back(ps->cfg->report, &fd);
+  rc = 0;
+
+ done:
+  if (rc == -1) { /* ps->em already set */ }
+  if (rc == -2) utstring_printf(ps->em,"can't open file descriptor");
+  if (rc == -3) { /* ps->em already set */ }
+  if (rc < 0) {
+    utstring_printf(ps->em, " at line %d", ps->line);
+    ps->rc = -1;
+  }
 }
 
 /* decode datagram that we received.
@@ -86,10 +146,12 @@ void set_report(parse_t *ps, char *report_spec) {
 */
 static void decode_msg(pmtr_t *cfg, char *buf, size_t n) {
   char *job, *sp, *eob = &buf[n];
-  enum {err, enable, disable} mode = err;
+  enum {err, enable, disable} mode;
 
-  if (cfg->verbose) syslog(LOG_DEBUG, "received [%.*s]", n, buf);
+  if (cfg->verbose) syslog(LOG_DEBUG, "received [%.*s]", (int)n, buf);
 
+ next:
+  mode=err;
   if (n > 7 && !memcmp(buf,"enable ",7)) {mode=enable; job=&buf[7];}
   if (n > 8 && !memcmp(buf,"disable ",8)) {mode=disable; job=&buf[8];}
   if (mode == err) goto done;
@@ -102,29 +164,25 @@ static void decode_msg(pmtr_t *cfg, char *buf, size_t n) {
     while ((eob > sp) && (*sp != ' ')) sp++;
     *sp = '\0'; /*switch space or EOB to null (EOB write ok, we overallocated */
     job_t *j = get_job_by_name(cfg->jobs, job);
-    if (j) {
-      switch(mode) {
-        case enable:
-          if (j->disabled==0) break; /* already enabled? */
-          syslog(LOG_INFO,"control socket: enabling %s", job);
-          j->disabled=0;             /* ok, enable it */
-          if (!cfg->alarm_pending) {
-            cfg->alarm_pending++;  /* let our SIGALRM handler start it soon */
-            alarm(1);
-          }
-          break;
-        case disable:
-          if (j->disabled) break;
-          syslog(LOG_INFO,"control socket: disabling %s", job);
-          j->disabled=1;
-          if (j->pid) term_job(j);
-          break;
-      }
-    } else {
-      syslog(LOG_INFO,"control error, unknown job %s", job); /* ignore */
-    }
-
     job = sp+1;
+    if (j == NULL) {
+      syslog(LOG_INFO,"control msg for unknown job %s", job); /* ignore */
+      continue;
+    }
+    switch(mode) {
+      case enable:
+        if (!j->disabled) break; /* no-op */
+        syslog(LOG_INFO,"enabling %s", job);
+        j->disabled=0;
+        alarm_within(cfg,1); /* let SIGALRM handler start it soon */
+        break;
+      case disable:
+        if (j->disabled) break; /* no-op */
+        syslog(LOG_INFO,"disabling %s", job);
+        j->disabled=1;
+        if (j->pid) term_job(j);
+        break;
+    }
   }
 
  done:
@@ -150,4 +208,21 @@ void close_sockets(pmtr_t *cfg) {
   utarray_clear(cfg->listen);
   fd=NULL; while( (fd=(int*)utarray_next(cfg->report,fd))) close(*fd);
   utarray_clear(cfg->report);
+}
+
+/* report to all configured destinations */
+void report_status(pmtr_t *cfg) {
+  /* construct msg */
+  utstring_clear(cfg->s);
+  job_t *j = NULL;
+  while ( (j=(job_t*)utarray_next(cfg->jobs,j))) {
+    utstring_printf(cfg->s, "%s %c %u\n", j->name, j->disabled?'d':'e', 
+                    (unsigned)j->start_ts);
+  }
+
+  /* send to all dests */
+  int *fd=NULL;
+  while ( (fd=(int*)utarray_next(cfg->report,fd))) {
+    write(*fd,utstring_body(cfg->s),utstring_len(cfg->s));
+  }
 }
