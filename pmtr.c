@@ -16,6 +16,7 @@
 #include "utarray.h"
 #include "pmtr.h"
 #include "job.h"
+#include "net.h"
 
 #define DEFAULT_PM_CONFIG "/etc/pmtr.conf" 
 #define SHORT_DELAY 10
@@ -67,21 +68,31 @@ pid_t dep_monitor(char *file) {
   exit(0);
 }
 
-/* TODO should we blow away existing jobs on rescan 'parse failure'
- * NOTE udp listeners need to be closed right away before a re-parse
- * (otherwise bind failure!) 
- * but closing the udp sockets before parse basically invalidates the
- * notion that we retain previous configuration on parse failure */
 int rescan_config(void) {
   syslog(LOG_INFO,"rescanning job configuration");
+
+  /* udp sockets get re-opened during config parsing */
+  close_sockets(&cfg); 
+
   UT_array *jobs; utarray_new(jobs, &job_mm);
   UT_string *em; utstring_new(em);
+
+  UT_array *jobs_save = cfg.jobs;
+  cfg.jobs = jobs;
+
   if (parse_jobs(&cfg, em) == -1) {
-    syslog(LOG_ERR,"parse failed: %s\n", utstring_body(em));
-    syslog(LOG_ERR,"retaining previous configuration\n");
+    /* on a parse failure we stop running any jobs! */
+    syslog(LOG_CRIT,"FAILED to parse %s", cfg.file);
+    syslog(LOG_CRIT,"ERROR: %s\n", utstring_body(em));
+    syslog(LOG_CRIT,"NOTE: using EMPTY job config!");
+    cfg.jobs = jobs_save;   /* restore saved jobs list */
+    term_jobs(cfg.jobs);    /* terminate all jobs- treat as emtpy config file */
+    utarray_clear(cfg.jobs);
     goto done;
   }
-  /* compare the new jobs to the existing jobs */
+
+  /* parse succeeded. diff the new jobs vs. existing jobs.cfg */
+  cfg.jobs = jobs_save;
   job_t *job=NULL, *pjob;
   while( (job = (job_t*)utarray_next(jobs,job))) {
     pjob = get_job_by_name(cfg.jobs, job->name);
@@ -98,9 +109,9 @@ int rescan_config(void) {
   /* any jobs left in cfg.jobs are no longer in the new configuration */
   pjob=NULL;
   while ( (pjob=(job_t*)utarray_next(cfg.jobs,pjob))) term_job(pjob);
-  /* set the new job definition. these'll be started in do_jobs, if needed, */
+  /* TODO verify behavior if SIGCHLD comes late, after clearing arrays below */
   utarray_clear(cfg.jobs);
-  utarray_concat(cfg.jobs,jobs);
+  utarray_concat(cfg.jobs,jobs);  /* make the new jobs official */
 
  done:
   utarray_free(jobs);

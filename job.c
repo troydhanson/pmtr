@@ -108,7 +108,7 @@ void set_user(parse_t *ps, char *user) {
   struct passwd *p;
   p = getpwnam(user);
   if (p == NULL) {
-    utstring_printf(ps->em, "cannot find uid for user %s", user);
+    utstring_printf(ps->em, "can't find uid for user %s", user);
     ps->rc = -1;
     return;
   }
@@ -222,8 +222,8 @@ int parse_jobs(pmtr_t *cfg, UT_string *em) {
 /* start up the jobs that are not already running */
 void do_jobs(UT_array *jobs) {
   pid_t pid;
-  int es, n, fo, fe, fi;
-  char *pathname, *o, *e, **argv, **env;
+  int es, n, fo, fe, fi, dc, rc=-1;
+  char *pathname, *o, *e, *i, **argv, **env;
 
   job_t *job = NULL;
   while ( (job = (job_t*)utarray_next(jobs,job))) {
@@ -261,30 +261,29 @@ void do_jobs(UT_array *jobs) {
      * child here 
      ********************************************************************/
     assert(pid == 0);
-    if (job->dir && (chdir(job->dir) == -1)) {
-      syslog(LOG_ERR,"cannot chdir: %s\n", strerror(errno)); goto fail;
-    }
-    /* setup child stdout/stderr */
+
+    /* setup working dir */
+    if (job->dir && (chdir(job->dir) == -1))                 {rc=-1; goto fail;}
+
+    /* setup child stdin/stdout/stderr */
+    i = "/dev/null";
     o = job->out ? job->out : "/dev/null";
     e = job->err ? job->err : "/dev/null";
-    if ( (fo = open(o, O_WRONLY|O_APPEND|O_CREAT, 0644)) == -1) {
-      syslog(LOG_ERR,"cannot open %s: %s\n", o, strerror(errno)); goto fail;
-    }
-    if ( (fe = open(e, O_WRONLY|O_APPEND|O_CREAT, 0644)) == -1) {
-      syslog(LOG_ERR,"cannot open %s: %s\n", e, strerror(errno)); goto fail;
-    }
-    if (dup2(fo,STDOUT_FILENO) == -1) {
-      syslog(LOG_ERR,"cannot dup %s to stdout: %s\n", o, strerror(errno)); goto fail;
-    }
-    if (dup2(fe,STDERR_FILENO) == -1) {
-      syslog(LOG_ERR,"cannot dup %s to stderr: %s\n", e, strerror(errno)); goto fail;
-    }
-    if ( (fi = open("/dev/null", O_RDONLY)) == -1) {
-      syslog(LOG_ERR,"cannot open /dev/null: %s\n", strerror(errno)); goto fail;
-    }
-    if (dup2(fi,STDIN_FILENO) == -1) {
-      syslog(LOG_ERR,"cannot dup /dev/null to stdin: %s\n", strerror(errno)); goto fail;
-    }
+
+    fi = open(i,O_RDONLY);                        if(fi==-1) {rc=-2; goto fail;}
+    fo = open(o,O_WRONLY|O_APPEND|O_CREAT, 0644); if(fo==-1) {rc=-3; goto fail;}
+    fe = open(e,O_WRONLY|O_APPEND|O_CREAT, 0644); if(fe==-1) {rc=-4; goto fail;}
+
+    dc = dup2(fo,STDOUT_FILENO);                  if(dc==-1) {rc=-5; goto fail;}
+    dc = dup2(fe,STDERR_FILENO);                  if(dc==-1) {rc=-5; goto fail;}
+    dc = dup2(fi,STDIN_FILENO);                   if(dc==-1) {rc=-5; goto fail;}
+
+    close(fo);
+    close(fe);
+    close(fi);
+
+    /* close inherited descriptors. only syslog; sockets are close-on-exec */
+    closelog(); 
 
     /* set environment variables */
     env=NULL;
@@ -296,22 +295,26 @@ void do_jobs(UT_array *jobs) {
     sigemptyset(&none);
     sigprocmask(SIG_SETMASK,&none,NULL);
 
+    /* change the real and effective user ids */
+    if ((job->uid != -1) && (setuid(job->uid) == -1))        {rc=-6; goto fail;}
+
     /* at last. we're ready to run the child process */
-    if ((job->uid != -1) && (geteuid() != job->uid)) {
-      if (setuid(job->uid) == -1) {
-        syslog(LOG_ERR,"setuid failed: %s\n", strerror(errno));
-        goto fail;
-      }
-    }
     argv = (char**)utarray_front(&job->cmdv);
     pathname = *argv;
-    if (execv(pathname, argv) == -1) {
-      syslog(LOG_ERR,"exec failed: %s\n", strerror(errno)); goto fail;
-    }
-    assert(0); /* not reached - child has exec'd */
+    if (execv(pathname, argv) == -1)                         {rc=-7; goto fail;}
+
+    /* not reached - child has exec'd */
+    assert(0); 
 
    fail:
-    exit(-1);  /* child exit on failure to exec */
+    if (rc==-1) syslog(LOG_ERR,"can't chdir %s: %s", job->dir, strerror(errno));
+    if (rc==-2) syslog(LOG_ERR,"can't open %s: %s", i, strerror(errno));
+    if (rc==-3) syslog(LOG_ERR,"can't open %s: %s", o, strerror(errno));
+    if (rc==-4) syslog(LOG_ERR,"can't open %s: %s", e, strerror(errno));
+    if (rc==-5) syslog(LOG_ERR,"can't dup: %s", strerror(errno));
+    if (rc==-6) syslog(LOG_ERR,"can't setuid %d: %s", job->uid,strerror(errno));
+    if (rc==-7) syslog(LOG_ERR,"can't exec %s: %s", pathname, strerror(errno));
+    exit(-1);  /* child exit */
   }
 }
 

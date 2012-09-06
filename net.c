@@ -57,13 +57,18 @@ static int parse_spec(pmtr_t *cfg, UT_string *em, char *spec,
 */
 void set_listen(parse_t *ps, char *addr) { 
   in_addr_t local_ip;
-  int rc = -1, port;
+  int rc = -1, port, optval=1, flags;
 
   if (parse_spec(ps->cfg, ps->em, addr, &local_ip, &port)) goto done;
   if (ps->cfg->test_only) return;  /* syntax looked ok */
 
   int fd = socket(AF_INET, SOCK_DGRAM, 0);
   if (fd == -1) {rc = -2; goto done;}
+
+  /* set close-on-exec flag for the descriptor so our jobs don't inherit it */
+  flags = fcntl(fd, F_GETFD);
+  flags |= FD_CLOEXEC;
+  if (fcntl(fd, F_SETFD, flags) == -1) {rc = -3; goto done;}
 
   /* specify the local address and port  */
   struct sockaddr_in sin;
@@ -74,7 +79,8 @@ void set_listen(parse_t *ps, char *addr) {
   /* bind our socket to it */
   if (bind(fd, (struct sockaddr*)&sin, sizeof(sin)) == -1) {
     close(fd);
-    rc = -3; 
+    rc = -4;
+    utstring_printf(ps->em,"can't bind to %s: %s", addr, strerror(errno));
     goto done;
   }
 
@@ -89,13 +95,11 @@ void set_listen(parse_t *ps, char *addr) {
   rc = 0;
 
  done:
-  if (rc == -1) { /* ps->em already set */ }
+  if (rc == -1) utstring_printf(ps->em, " (at line %d)", ps->line); 
   if (rc == -2) utstring_printf(ps->em,"can't open file descriptor");
-  if (rc == -3) utstring_printf(ps->em,"can't bind to %s", addr);
-  if (rc < 0) {
-    utstring_printf(ps->em, " at line %d", ps->line);
-    ps->rc = -1;
-  }
+  if (rc == -3) utstring_printf(ps->em,"can't set close-on-exec");
+  if (rc == -4) { /* ps->em already set */ }
+  if (rc < 0) ps->rc = -1;
 }
 
 /* report destination is like "udp://machine.org:3333". 
@@ -104,14 +108,19 @@ void set_listen(parse_t *ps, char *addr) {
    destination so that events can be sent to it at runtime
 */
 void set_report(parse_t *ps, char *dest) { 
+  int rc = -1, port, flags;
   in_addr_t dest_ip;
-  int rc = -1, port;
 
   if (parse_spec(ps->cfg, ps->em, dest, &dest_ip, &port)) goto done;
   if (ps->cfg->test_only) return;  /* syntax looked ok */
 
   int fd = socket(AF_INET, SOCK_DGRAM, 0);
   if (fd == -1) {rc = -2; goto done;}
+
+  /* set close-on-exec flag for the descriptor so our jobs don't inherit it */
+  flags = fcntl(fd, F_GETFD);
+  flags |= FD_CLOEXEC;
+  if (fcntl(fd, F_SETFD, flags) == -1) {rc = -3; goto done;}
 
   /* specify the local address and port  */
   struct sockaddr_in sin;
