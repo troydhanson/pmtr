@@ -1,6 +1,7 @@
 SUBDIRS=lemon 
 all: $(SUBDIRS) cfg.c pmtr 
-CFLAGS=-g
+CFLAGS=-Iinclude
+CFLAGS+=-g
 
 $(SUBDIRS) doc:
 	$(MAKE) -C $@
