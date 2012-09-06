@@ -203,8 +203,8 @@ void service_socket(pmtr_t *cfg) {
 void close_sockets(pmtr_t *cfg) {
   int *fd;
   fd=NULL; while( (fd=(int*)utarray_next(cfg->listen,fd))) close(*fd);
-  utarray_clear(cfg->listen);
   fd=NULL; while( (fd=(int*)utarray_next(cfg->report,fd))) close(*fd);
+  utarray_clear(cfg->listen);
   utarray_clear(cfg->report);
 }
 
@@ -212,6 +212,7 @@ void close_sockets(pmtr_t *cfg) {
 void report_status(pmtr_t *cfg) {
   /* construct msg */
   utstring_clear(cfg->s);
+  utstring_printf(cfg->s, "report 0.0.0.0 hostname\n"); /* TODO */
   job_t *j = NULL;
   while ( (j=(job_t*)utarray_next(cfg->jobs,j))) {
     utstring_printf(cfg->s, "%s %c %u\n", j->name, j->disabled?'d':'e', 
