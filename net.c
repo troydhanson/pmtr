@@ -10,6 +10,9 @@
 #include <stdlib.h>
 #include <errno.h>
 
+#include <ifaddrs.h>
+#include <net/if.h>
+
 #include <string.h>
 #include "utarray.h"
 #include "net.h"
@@ -47,7 +50,15 @@ static int parse_spec(pmtr_t *cfg, UT_string *em, char *spec,
  done:
   if (rc == -1) utstring_printf(em,"expected format is udp://1.2.3.4:5678");
   return rc;
+}
 
+void set_ident(pmtr_t *cfg, in_addr_t ip, int port) {
+     utstring_clear(cfg->ident);
+     struct in_addr addr = {.s_addr=ip};
+     char host[100];
+     if (gethostname(host,sizeof(host))<0) strncpy(host,"unknown",sizeof(host));
+     else host[sizeof(host)-1] = '\0'; /* ensure termination on truncate */
+     utstring_printf(cfg->ident, "report %s %u %s\n", inet_ntoa(addr), port, host);
 }
 
 /* addr is like "udp://127.0.0.1:3333".
@@ -57,7 +68,7 @@ static int parse_spec(pmtr_t *cfg, UT_string *em, char *spec,
 */
 void set_listen(parse_t *ps, char *addr) { 
   in_addr_t local_ip;
-  int rc = -1, port, optval=1, flags;
+  int rc = -1, port, flags;
 
   if (parse_spec(ps->cfg, ps->em, addr, &local_ip, &port)) goto done;
   if (ps->cfg->test_only) return;  /* syntax looked ok */
@@ -89,6 +100,9 @@ void set_listen(parse_t *ps, char *addr) {
   fl |= O_ASYNC | O_NONBLOCK;
   fcntl(fd, F_SETFL, fl);
   fcntl(fd, F_SETOWN, getpid()); 
+
+  /* setup identity to include in report */
+  set_ident(ps->cfg, local_ip, port);
 
   /* success */
   utarray_push_back(ps->cfg->listen, &fd);
@@ -154,7 +168,7 @@ void set_report(parse_t *ps, char *dest) {
  * disable job1 [job2 ...]
 */
 static void decode_msg(pmtr_t *cfg, char *buf, size_t n) {
-  char *pos=buf, *job, *sp, *eob = &buf[n];
+  char *pos=buf, *job, *eob = &buf[n];
   enum {err, enable, disable} mode=err;
   job_t *j;
 
@@ -188,7 +202,9 @@ static void decode_msg(pmtr_t *cfg, char *buf, size_t n) {
         syslog(LOG_INFO,"disabling %s", job);
         j->disabled=1;
         if (j->pid) term_job(j);
+        alarm_within(cfg,1); /* report soon if needed */
         break;
+      default: assert(0); break;
     }
   }
 
@@ -223,7 +239,8 @@ void report_status(pmtr_t *cfg) {
 
   /* construct msg */
   utstring_clear(cfg->s);
-  utstring_printf(cfg->s, "report 0.0.0.0 hostname\n"); /* TODO */
+  if (utstring_len(cfg->ident)) utstring_concat(cfg->s, cfg->ident);
+  else utstring_printf(cfg->ident, "report\n");
   job_t *j = NULL;
   while ( (j=(job_t*)utarray_next(cfg->jobs,j))) {
     utstring_printf(cfg->s, "%s %c %u\n", j->name, j->disabled?'d':'e', 

@@ -8,6 +8,8 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <sys/wait.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/prctl.h>
 #include <sys/inotify.h>
 #include <assert.h>
@@ -68,7 +70,7 @@ pid_t dep_monitor(char *file) {
   exit(0);
 }
 
-int rescan_config(void) {
+void rescan_config(void) {
   syslog(LOG_INFO,"rescanning job configuration");
 
   /* udp sockets get re-opened during config parsing */
@@ -151,6 +153,7 @@ int main (int argc, char *argv[]) {
   utarray_new(cfg.listen, &ut_int_icd);
   utarray_new(cfg.report, &ut_int_icd);
   utstring_new(cfg.s);
+  utstring_new(cfg.ident);
 
   /* block all signals. we remain fully blocked except in sigsuspend */
   sigset_t all;
@@ -253,6 +256,7 @@ int main (int argc, char *argv[]) {
   utarray_free(cfg.listen);
   utarray_free(cfg.report);
   utstring_free(cfg.s);
+  utstring_free(cfg.ident);
   utstring_free(em);
   utstring_free(sm);
   return 0;

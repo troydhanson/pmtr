@@ -1,6 +1,7 @@
 SUBDIRS=lemon 
 all: $(SUBDIRS) cfg.c pmtr 
-CFLAGS=-Iinclude
+CFLAGS=-Iinclude 
+#CFLAGS+=-Wall
 CFLAGS+=-g
 
 $(SUBDIRS) doc:

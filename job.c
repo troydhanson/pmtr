@@ -326,7 +326,7 @@ int term_job(job_t *job) {
   struct timespec *ts;
   char *msg;
 
-  if (job->pid == 0) return;  /* not running */
+  if (job->pid == 0) return 0;  /* not running */
 
   UT_string *s;
   utstring_new(s);
@@ -352,7 +352,6 @@ int term_job(job_t *job) {
     rc = 0; /* success */
   }
 
- done:
   syslog(rc==-1?LOG_ERR:LOG_INFO, "%s", utstring_body(s));
   utstring_free(s);
   return rc;

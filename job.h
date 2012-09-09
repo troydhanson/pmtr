@@ -57,6 +57,18 @@ int job_cmp(job_t *a, job_t *b);
 void set_name(parse_t *ps, char *name);
 char *unquote(char *str);
 void alarm_within(pmtr_t *cfg, int sec);
+int get_tok(char *c_orig, char **c, size_t *bsz, size_t *toksz, int *line);
+void set_dir(parse_t *ps, char *s);
+void set_out(parse_t *ps, char *s);
+void set_err(parse_t *ps, char *s);
+void set_user(parse_t *ps, char *s);
+void set_ord(parse_t *ps, char *s);
+void set_env(parse_t *ps, char *s);
+void set_dis(parse_t *ps);
+void set_wait(parse_t *ps);
+void set_once(parse_t *ps);
+void set_cmd(parse_t *ps, char *s);
+
 
 
 #endif /* _JOB_H_ */
