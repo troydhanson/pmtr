@@ -203,8 +203,9 @@ int main (int argc, char *argv[]) {
         if (pid == dm_pid) { dm_pid = dep_monitor(cfg.file); continue; }
         job = get_job_by_pid(cfg.jobs, pid);
         if (!job) {
+           /* this can happen if term_job failed to collect a child 
+            * and then it exited later, after its job def was deleted */
            syslog(LOG_ERR,"sigchld for unknown pid %d", (int)pid);
-           goto done; /* restart for sanity purposes */
            break;
         }
         job->pid = 0;
