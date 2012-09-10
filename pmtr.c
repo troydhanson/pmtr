@@ -206,7 +206,7 @@ int main (int argc, char *argv[]) {
            /* this can happen if term_job failed to collect a child 
             * and then it exited later, after its job def was deleted */
            syslog(LOG_ERR,"sigchld for unknown pid %d", (int)pid);
-           break;
+           continue;
         }
         job->pid = 0;
         elapsed = time(NULL) - job->start_ts;
