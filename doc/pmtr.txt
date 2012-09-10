@@ -126,6 +126,7 @@ Job options
 |name           | job name 
 |cmd            | absolute path to executable with optional arguments
 |dir            | absolute path to the working directory 
+|in             | file to set as standard input 
 |out            | file to receive standard output 
 |err            | file to receive standard error 
 |user           | user under whose uid the job should run
@@ -142,6 +143,9 @@ cmd::
 
 dir::
   set the 'working directory' that the job will have upon startup.
+
+in::
+  file to open as stdin. Default: `/dev/null`
 
 out::
   file to receive stdout. Default: `/dev/null`

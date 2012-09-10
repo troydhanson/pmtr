@@ -38,6 +38,7 @@ static void job_fin(job_t *job) {
   if (job->dir) free(job->dir);
   if (job->out) free(job->out);
   if (job->err) free(job->err);
+  if (job->in) free(job->in);
 }
 static void job_cpy(job_t *dst, const job_t *src) {
   dst->name = src->name ? strdup(src->name) : NULL;
@@ -46,6 +47,7 @@ static void job_cpy(job_t *dst, const job_t *src) {
   dst->dir = src->dir ? strdup(src->dir) : NULL;
   dst->out = src->out ? strdup(src->out) : NULL;
   dst->err = src->err ? strdup(src->err) : NULL;
+  dst->in = src->in ? strdup(src->in) : NULL;
   dst->uid = src->uid;
   dst->pid = src->pid;
   dst->start_ts = src->start_ts;
@@ -75,6 +77,7 @@ mk_setter(name);
 mk_setter(dir);
 mk_setter(out);
 mk_setter(err);
+mk_setter(in);
 
 void set_cmd(parse_t *ps, char *cmd) { 
   utarray_insert(&ps->job->cmdv,&cmd,0);
@@ -266,7 +269,7 @@ void do_jobs(UT_array *jobs) {
     if (job->dir && (chdir(job->dir) == -1))                 {rc=-1; goto fail;}
 
     /* setup child stdin/stdout/stderr */
-    i = "/dev/null";
+    i = job->in  ? job->in  : "/dev/null";
     o = job->out ? job->out : "/dev/null";
     e = job->err ? job->err : "/dev/null";
 
@@ -409,6 +412,9 @@ int job_cmp(job_t *a, job_t *b) {
   /* err */
   if ((!a->err && b->err) || (a->err && !b->err) ) return a->err-b->err;
   if ((a->err && b->err) && (rc = strcmp(a->err,b->err))) return rc;
+  /* in */
+  if ((!a->in && b->in) || (a->in && !b->in) ) return a->in-b->in;
+  if ((a->in && b->in) && (rc = strcmp(a->in,b->in))) return rc;
 
   if (a->uid != b->uid) return a->uid - b->uid;
   if (a->order != b->order) return a->order - b->order;

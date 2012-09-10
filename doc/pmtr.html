@@ -964,6 +964,10 @@ cellspacing="0" cellpadding="4">
 <td align="left" valign="top"><p class="table">absolute path to the working directory</p></td>
 </tr>
 <tr>
+<td align="left" valign="top"><p class="table"><tt>in</tt></p></td>
+<td align="left" valign="top"><p class="table">file to set as standard input</p></td>
+</tr>
+<tr>
 <td align="left" valign="top"><p class="table"><tt>out</tt></p></td>
 <td align="left" valign="top"><p class="table">file to receive standard output</p></td>
 </tr>
@@ -1010,6 +1014,14 @@ dir
 <dd>
 <p>
   set the <em>working directory</em> that the job will have upon startup.
+</p>
+</dd>
+<dt class="hdlist1">
+in
+</dt>
+<dd>
+<p>
+  file to open as stdin. Default: <tt>/dev/null</tt>
 </p>
 </dd>
 <dt class="hdlist1">
@@ -1214,7 +1226,7 @@ finishes, and <tt>once</tt> prevents pmtr from restarting it.</p></div>
 <div id="footer">
 <div id="footer-text">
 Version 1.2<br />
-Last updated 2012-09-04 14:04:55 EDT
+Last updated 2012-09-09 22:37:20 EDT
 </div>
 </div>
 </body>

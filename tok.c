@@ -15,6 +15,7 @@ static struct {
  {"dir",     3, TOK_DIR},
  {"out",     3, TOK_OUT},
  {"err",     3, TOK_ERR},
+ {"in",      2, TOK_IN},
  {"order",   5, TOK_ORDER},
  {"disable", 7, TOK_DISABLED},
  {"wait",    4, TOK_WAIT},

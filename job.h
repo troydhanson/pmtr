@@ -24,6 +24,7 @@ typedef struct {
   char *dir;
   char *out;
   char *err;
+  char *in;
   pid_t pid;
   time_t start_ts;
   uid_t uid;
@@ -60,6 +61,7 @@ void alarm_within(pmtr_t *cfg, int sec);
 int get_tok(char *c_orig, char **c, size_t *bsz, size_t *toksz, int *line);
 void set_dir(parse_t *ps, char *s);
 void set_out(parse_t *ps, char *s);
+void set_in(parse_t *ps, char *s);
 void set_err(parse_t *ps, char *s);
 void set_user(parse_t *ps, char *s);
 void set_ord(parse_t *ps, char *s);

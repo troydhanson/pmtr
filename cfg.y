@@ -28,6 +28,7 @@ kv ::= NAME STR(A).    {set_name(ps,A);}
 kv ::= CMD cmd.                         
 kv ::= DIR path(A).    {set_dir(ps,A);}
 kv ::= OUT path(A).    {set_out(ps,A);}
+kv ::= IN path(A).     {set_in(ps,A);}
 kv ::= ERR path(A).    {set_err(ps,A);}
 kv ::= USER STR(A).    {set_user(ps,A);}
 kv ::= ORDER STR(A).   {set_ord(ps,A);}
