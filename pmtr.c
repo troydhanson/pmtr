@@ -107,13 +107,15 @@ void rescan_config(void) {
   /* any jobs left in previous_jobs are no longer in the new configuration */
   old=NULL;
   while ( (old=(job_t*)utarray_next(previous_jobs,old))) {
+    if (old->pid == 0) continue; /* not running. free it below. */
+    /* terminate old job, but keep a record of it til it exits */
     old->terminate=1;
     old->respawn=0;
     old->delete_when_collected=1;
     utstring_clear(em); utstring_printf(em, "%s(deleted)", old->name);
     free(old->name); old->name = strdup(utstring_body(em));
+    utarray_push_back(cfg.jobs, old); 
   }
-  utarray_concat(cfg.jobs, previous_jobs);  /* keep the old jobs til they exit */
   utarray_free(previous_jobs);
 
  done:
