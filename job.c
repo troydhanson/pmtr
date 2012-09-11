@@ -268,6 +268,10 @@ void do_jobs(UT_array *jobs) {
     /* setup working dir */
     if (job->dir && (chdir(job->dir) == -1))                 {rc=-1; goto fail;}
 
+    /* close inherited descriptors- just syslog. (our udp sockets close-on-exec).
+     * we closelog() _before_ dups below, otherwise it can clobber wrong fd */
+    closelog(); 
+
     /* setup child stdin/stdout/stderr */
     i = job->in  ? job->in  : "/dev/null";
     o = job->out ? job->out : "/dev/null";
@@ -281,9 +285,6 @@ void do_jobs(UT_array *jobs) {
     if (fi!=STDIN_FILENO)  {if(dup2(fi,STDIN_FILENO) ==-1)goto fail; close(fi);}
     if (fo!=STDOUT_FILENO) {if(dup2(fo,STDOUT_FILENO)==-1)goto fail; close(fo);}
     if (fe!=STDERR_FILENO) {if(dup2(fe,STDERR_FILENO)==-1)goto fail; close(fe);}
-
-    /* close inherited descriptors. only syslog; sockets are close-on-exec */
-    closelog(); 
 
     /* set environment variables */
     env=NULL;
