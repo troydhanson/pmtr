@@ -26,7 +26,8 @@ typedef struct {
   char *err;
   char *in;
   pid_t pid;
-  time_t start_ts;
+  time_t start_ts; /* last start time */
+  time_t start_at; /* desired next start - used to slow restarts if cycling */
   uid_t uid;
   int respawn;
   int order;
@@ -48,7 +49,7 @@ extern const UT_icd job_mm;
 
 /* prototypes */
 int parse_jobs(pmtr_t *cfg, UT_string *em);
-void do_jobs(UT_array *jobs);
+void do_jobs(pmtr_t *cfg);
 void term_jobs(UT_array *jobs);
 int term_job(job_t *job);
 void push_job(parse_t *ps);

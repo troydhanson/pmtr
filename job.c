@@ -51,6 +51,7 @@ static void job_cpy(job_t *dst, const job_t *src) {
   dst->uid = src->uid;
   dst->pid = src->pid;
   dst->start_ts = src->start_ts;
+  dst->start_at = src->start_at;
   dst->respawn = src->respawn;
   dst->order = src->order;
   dst->disabled = src->disabled;
@@ -223,16 +224,21 @@ int parse_jobs(pmtr_t *cfg, UT_string *em) {
 }
 
 /* start up the jobs that are not already running */
-void do_jobs(UT_array *jobs) {
+void do_jobs(pmtr_t *cfg) {
   pid_t pid;
   int es, n, fo, fe, fi, rc=-1;
   char *pathname, *o, *e, *i, **argv, **env;
+  time_t now = time(NULL);
 
   job_t *job = NULL;
-  while ( (job = (job_t*)utarray_next(jobs,job))) {
+  while ( (job = (job_t*)utarray_next(cfg->jobs,job))) {
     if (job->disabled) continue;
     if (job->pid) continue;  /* running already */
     if (job->respawn == 0) continue;  /* don't respawn */
+    if (job->start_at > now) {  /* not yet */
+      alarm_within(cfg, job->start_at - now);
+      continue;
+    }
 
     if ( (pid = fork()) == -1) {
       syslog(LOG_ERR,"fork error\n");
@@ -319,7 +325,44 @@ void do_jobs(UT_array *jobs) {
   }
 }
 
-static struct timespec half = {.tv_sec = 0, .tv_nsec=500000000}; /* half-sec */
+void collect_jobs(pmtr_t *cfg, UT_string *sm) {
+  int es, ex, elapsed;
+  time_t now;
+  job_t *job;
+  pid_t pid;
+
+  while ( (pid = waitpid(-1, &es, WNOHANG)) > 0) {
+
+    /* just respawn if it's our dependency monitor */
+    if (pid==cfg->dm_pid) { 
+      cfg->dm_pid = dep_monitor(cfg->file);
+      continue;
+    }
+    /* find the job.  we should always find it by pid. */
+    job = get_job_by_pid(cfg->jobs, pid);
+    if (!job) {
+      syslog(LOG_ERR,"sigchld for unknown pid %d",(int)pid); 
+      continue;
+    }
+    /* decide if and when it should be restarted */
+    job->pid = 0;
+    now = time(NULL);
+    elapsed = now - job->start_ts;
+    job->start_at = (elapsed < SHORT_DELAY) ? (now+SHORT_DELAY) : now;
+    if (job->once) job->respawn=0;
+
+    /* write a log message about how the job exited */
+    utstring_clear(sm);
+    utstring_printf(sm,"job %s [%d] exited after %d sec: ", job->name, 
+      (int)pid, elapsed);
+    if (WIFSIGNALED(es)) utstring_printf(sm, "signal %d", (int)WTERMSIG(es));
+    if (WIFEXITED(es)) {
+      if ( (ex = WEXITSTATUS(es)) == PM_NO_RESTART) job->respawn=0;
+      utstring_printf(sm,"exit status %d", ex);
+    }
+    syslog(LOG_INFO,"%s",utstring_body(sm));
+  }
+}
 
 /* terminate a job. collect its status immediately. */
 int term_job(job_t *job) {
@@ -333,6 +376,8 @@ int term_job(job_t *job) {
   utstring_new(s);
 
   int sig = SIGTERM;
+  struct timespec half = {.tv_sec = 0, .tv_nsec=500000000}; /* half-sec */
+
   ts = &half;
 
   do {

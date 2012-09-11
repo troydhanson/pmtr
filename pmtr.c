@@ -20,8 +20,6 @@
 #include "job.h"
 #include "net.h"
 
-#define DEFAULT_PM_CONFIG "/etc/pmtr.conf" 
-#define SHORT_DELAY 10
 
 sigjmp_buf jmp;
 
@@ -120,9 +118,8 @@ void rescan_config(void) {
 }
 
 int main (int argc, char *argv[]) {
-  int n, opt, es, elapsed, defer_restart;
+  int n, opt;
   job_t *job;
-  pid_t pid, dm_pid=0;
 
   UT_string *em, *sm;
   utstring_new(em);
@@ -187,16 +184,19 @@ int main (int argc, char *argv[]) {
 
   switch(signo) {
     case 0:   /* not a signal yet, first time setup */
-      do_jobs(cfg.jobs);
-      dm_pid = dep_monitor(cfg.file);
+      do_jobs(&cfg);
+      cfg.dm_pid = dep_monitor(cfg.file);
       report_status(&cfg);
       alarm_within(&cfg,SHORT_DELAY);
       break;
     case SIGHUP:
       rescan_config();
-      do_jobs(cfg.jobs);
+      do_jobs(&cfg);
       break;
     case SIGCHLD:
+      collect_jobs(&cfg,sm);
+      do_jobs(&cfg);
+#if 0
       /* loop over children that have exited */
       defer_restart=0;
       while ( (pid = waitpid(-1, &es, WNOHANG)) > 0) {
@@ -226,9 +226,10 @@ int main (int argc, char *argv[]) {
       }
       if (!defer_restart) do_jobs(cfg.jobs);
       else syslog(LOG_INFO,"job restarting too fast, delaying restart\n");
+#endif
       break;
     case SIGALRM:
-      do_jobs(cfg.jobs);
+      do_jobs(&cfg);
       report_status(&cfg);
       alarm_within(&cfg,SHORT_DELAY);
       break;
