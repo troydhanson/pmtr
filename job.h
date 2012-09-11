@@ -28,8 +28,10 @@ typedef struct {
   pid_t pid;
   time_t start_ts; /* last start time */
   time_t start_at; /* desired next start - used to slow restarts if cycling */
+  time_t terminate;/* non-zero if termination requested due to disabling */
   uid_t uid;
   int respawn;
+  int delete_when_collected;
   int order;
   int disabled;
   int wait;

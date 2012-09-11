@@ -69,53 +69,58 @@ pid_t dep_monitor(char *file) {
 }
 
 void rescan_config(void) {
+  job_t *job, *old;
+  int c;
+
   syslog(LOG_INFO,"rescanning job configuration");
+  UT_string *em; utstring_new(em);
+  UT_array *previous_jobs = cfg.jobs;
+  UT_array *new_jobs; utarray_new(new_jobs, &job_mm); cfg.jobs = new_jobs;
 
   /* udp sockets get re-opened during config parsing */
   close_sockets(&cfg); 
 
-  UT_array *jobs; utarray_new(jobs, &job_mm);
-  UT_string *em; utstring_new(em);
-
-  UT_array *jobs_save = cfg.jobs;
-  cfg.jobs = jobs;
-
   if (parse_jobs(&cfg, em) == -1) {
-    /* on a parse failure we stop running any jobs! */
     syslog(LOG_CRIT,"FAILED to parse %s", cfg.file);
     syslog(LOG_CRIT,"ERROR: %s\n", utstring_body(em));
-    syslog(LOG_CRIT,"NOTE: using EMPTY job config!");
-    cfg.jobs = jobs_save;   /* restore saved jobs list */
-    term_jobs(cfg.jobs);    /* terminate all jobs- treat as emtpy config file */
-    utarray_clear(cfg.jobs);
+    syslog(LOG_CRIT,"NOTE: using PREVIOUS job config");
+    cfg.jobs = previous_jobs;
     goto done;
   }
 
-  /* parse succeeded. diff the new jobs vs. existing jobs.cfg */
-  cfg.jobs = jobs_save;
-  job_t *job=NULL, *pjob;
-  while( (job = (job_t*)utarray_next(jobs,job))) {
-    pjob = get_job_by_name(cfg.jobs, job->name);
-    if (!pjob) continue; // new job definition; startup forthcoming
-    if (job_cmp(job,pjob) == 0) { // new job identical to old
-      job->pid = pjob->pid;
-      job->start_ts = pjob->start_ts;
-      job->respawn = pjob->respawn;
-    } else {
-      term_job(pjob); // job definition changed; job restart required 
+  /* parse succeeded. diff the new jobs vs. existing jobs */
+  job=NULL;
+  while( (job = (job_t*)utarray_next(new_jobs,job))) {
+    old = get_job_by_name(previous_jobs, job->name);
+    if (!old) continue;          // new job definition; startup forthcoming.
+    c = job_cmp(job,old);        
+    if (c == 0) {                // new job with same name and identical to old:
+      job_fin(job);              // free up new job,
+      job_cpy(job,old);          // and copy old job into new to retain pid etc.
+    } else {                     // new job with same name, but new config:
+      job->start_ts = old->start_ts;
+      job->pid = old->pid;
+      if (job->pid) job->terminate=1;// induce reset to pick up new settings.
     }
-    utarray_erase(cfg.jobs, utarray_eltidx(cfg.jobs,pjob), 1);
+    utarray_erase(previous_jobs, utarray_eltidx(previous_jobs,old), 1);
   }
-  /* any jobs left in cfg.jobs are no longer in the new configuration */
-  pjob=NULL;
-  while ( (pjob=(job_t*)utarray_next(cfg.jobs,pjob))) term_job(pjob);
-  utarray_clear(cfg.jobs);
-  utarray_concat(cfg.jobs,jobs);  /* make the new jobs official */
+  /* any jobs left in previous_jobs are no longer in the new configuration */
+  old=NULL;
+  while ( (old=(job_t*)utarray_next(previous_jobs,old))) {
+    old->terminate=1;
+    old->respawn=0;
+    old->delete_when_collected=1;
+    utstring_clear(em); utstring_printf(em, "%s(deleted)", old->name);
+    free(old->name); old->name = strdup(utstring_body(em));
+  }
+  utarray_concat(cfg.jobs, previous_jobs);  /* keep the old jobs til they exit */
+  utarray_free(previous_jobs);
 
  done:
-  utarray_free(jobs);
   utstring_free(em);
 }
+
+static struct timespec half = {.tv_sec = 0, .tv_nsec=500000000}; /* half-sec */
 
 int main (int argc, char *argv[]) {
   int n, opt;
@@ -196,37 +201,6 @@ int main (int argc, char *argv[]) {
     case SIGCHLD:
       collect_jobs(&cfg,sm);
       do_jobs(&cfg);
-#if 0
-      /* loop over children that have exited */
-      defer_restart=0;
-      while ( (pid = waitpid(-1, &es, WNOHANG)) > 0) {
-        if (pid == dm_pid) { dm_pid = dep_monitor(cfg.file); continue; }
-        job = get_job_by_pid(cfg.jobs, pid);
-        if (!job) {
-           /* this can happen if term_job failed to collect a child 
-            * and then it exited later, after its job def was deleted */
-           syslog(LOG_ERR,"sigchld for unknown pid %d", (int)pid);
-           continue;
-        }
-        job->pid = 0;
-        elapsed = time(NULL) - job->start_ts;
-        if (elapsed < SHORT_DELAY) defer_restart=1;
-        utstring_clear(sm);
-        utstring_printf(sm,"job %s %d exited after %d sec: ",job->name, (int)pid, elapsed);
-        if (WIFSIGNALED(es)) utstring_printf(sm, "signal %d", (int)WTERMSIG(es));
-        else if (WIFEXITED(es)) { 
-          int ex = WEXITSTATUS(es);
-          utstring_printf(sm,"exit status %d", ex);
-          if (job->once || (ex == PM_NO_RESTART)) {
-            job->respawn=0;
-            utstring_printf(sm," (will not be restarted)");
-          }
-        }
-        syslog(LOG_INFO,"%s",utstring_body(sm));
-      }
-      if (!defer_restart) do_jobs(cfg.jobs);
-      else syslog(LOG_INFO,"job restarting too fast, delaying restart\n");
-#endif
       break;
     case SIGALRM:
       do_jobs(&cfg);
@@ -235,6 +209,7 @@ int main (int argc, char *argv[]) {
       break;
     case SIGIO:  /* our UDP listener (if enabled) got a datagram */
       service_socket(&cfg);
+      do_jobs(&cfg);
       break;
     default:
       syslog(LOG_INFO,"pmtr: exiting on signal %d\n", signo);
@@ -251,7 +226,11 @@ int main (int argc, char *argv[]) {
    * one arrives we longjmp back to sigsetjmp! */
 
  done:
-  term_jobs(cfg.jobs);
+  term_jobs(cfg.jobs);   /* just sets termination flag, so */
+  do_jobs(&cfg);         /* run this loop to issue signals */
+  nanosleep(&half,NULL); /* a little time to let them exit */
+  collect_jobs(&cfg,sm); /* collect any jobs that exited */
+
   close_sockets(&cfg);
   free(cfg.file);
   utarray_free(cfg.jobs);

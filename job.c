@@ -24,14 +24,14 @@ void *ParseAlloc();
 void Parse();
 void ParseFree();
 
-static void job_ini(job_t *job) { 
+void job_ini(job_t *job) { 
   memset(job,0,sizeof(*job));
   utarray_init(&job->cmdv, &ut_str_icd); 
   utarray_init(&job->envv, &ut_str_icd); 
   job->respawn=1;
   job->uid=-1;
 }
-static void job_fin(job_t *job) { 
+void job_fin(job_t *job) { 
   if (job->name) free(job->name);
   utarray_done(&job->cmdv); 
   utarray_done(&job->envv); 
@@ -40,7 +40,7 @@ static void job_fin(job_t *job) {
   if (job->err) free(job->err);
   if (job->in) free(job->in);
 }
-static void job_cpy(job_t *dst, const job_t *src) {
+void job_cpy(job_t *dst, const job_t *src) {
   dst->name = src->name ? strdup(src->name) : NULL;
   utarray_init(&dst->cmdv, &ut_str_icd); utarray_concat(&dst->cmdv, &src->cmdv);
   utarray_init(&dst->envv, &ut_str_icd); utarray_concat(&dst->envv, &src->envv);
@@ -52,6 +52,8 @@ static void job_cpy(job_t *dst, const job_t *src) {
   dst->pid = src->pid;
   dst->start_ts = src->start_ts;
   dst->start_at = src->start_at;
+  dst->terminate = src->terminate;
+  dst->delete_when_collected = src->delete_when_collected;
   dst->respawn = src->respawn;
   dst->order = src->order;
   dst->disabled = src->disabled;
@@ -205,7 +207,7 @@ int parse_jobs(pmtr_t *cfg, UT_string *em) {
     c += toklen;
   }
   if (id == -1) {
-    utstring_printf(em,"syntax error in %s line %d\n", ps.cfg->file, ps.line);
+    utstring_printf(em,"syntax error in %s line %d", ps.cfg->file, ps.line);
     ps.rc = -1;
     goto done;
   }
@@ -223,19 +225,38 @@ int parse_jobs(pmtr_t *cfg, UT_string *em) {
   return ps.rc;
 }
 
+void signal_job(job_t *job) {
+  time_t now = time(NULL);
+  switch(job->terminate) {
+   case 0: /* should not be here */ break;
+   case 1: /* initial termination request */
+     syslog(LOG_INFO,"sending SIGTERM to job %s [%d]", job->name, job->pid);
+     if (kill(job->pid,SIGTERM)==-1)syslog(LOG_ERR,"error: %s",strerror(errno));
+     job->terminate = now+SHORT_DELAY;/* how long to wait before kill -9*/
+     break;
+   default: /* job didn't exit, use stronger signal if time has elapsed */
+     if (job->terminate > now) break;
+     syslog(LOG_INFO,"sending SIGKILL to job %s [%d]", job->name, job->pid);
+     if (kill(job->pid,SIGKILL)==-1)syslog(LOG_ERR,"error: %s",strerror(errno));
+     job->terminate = 0; /* don't repeatedly signal */
+     break;
+  }
+}
+
 /* start up the jobs that are not already running */
 void do_jobs(pmtr_t *cfg) {
   pid_t pid;
-  int es, n, fo, fe, fi, rc=-1;
+  time_t now;
+  int es, n, fo, fe, fi, rc=-1, sig, kr;
   char *pathname, *o, *e, *i, **argv, **env;
-  time_t now = time(NULL);
 
   job_t *job = NULL;
   while ( (job = (job_t*)utarray_next(cfg->jobs,job))) {
+    if (job->terminate) {signal_job(job); continue;}
     if (job->disabled) continue;
     if (job->pid) continue;  /* running already */
     if (job->respawn == 0) continue;  /* don't respawn */
-    if (job->start_at > now) {  /* not yet */
+    if (job->start_at > time(&now)) {  /* not yet */
       alarm_within(cfg, job->start_at - now);
       continue;
     }
@@ -346,6 +367,7 @@ void collect_jobs(pmtr_t *cfg, UT_string *sm) {
     }
     /* decide if and when it should be restarted */
     job->pid = 0;
+    job->terminate = 0; /* any termination request has succeeded */
     now = time(NULL);
     elapsed = now - job->start_ts;
     job->start_at = (elapsed < SHORT_DELAY) ? (now+SHORT_DELAY) : now;
@@ -361,51 +383,22 @@ void collect_jobs(pmtr_t *cfg, UT_string *sm) {
       utstring_printf(sm,"exit status %d", ex);
     }
     syslog(LOG_INFO,"%s",utstring_body(sm));
+
+    /* is this a former job that was deleted from the config file? */
+    if (job->delete_when_collected) {
+      utarray_erase(cfg->jobs, utarray_eltidx(cfg->jobs,job), 1);
+      job=NULL;
+    }
   }
 }
 
-/* terminate a job. collect its status immediately. */
-int term_job(job_t *job) {
-  int es,rc=-1,p,code,i=0;
-  struct timespec *ts;
-  char *msg;
-
-  if (job->pid == 0) return 0;  /* not running */
-
-  UT_string *s;
-  utstring_new(s);
-
-  int sig = SIGTERM;
-  struct timespec half = {.tv_sec = 0, .tv_nsec=500000000}; /* half-sec */
-
-  ts = &half;
-
-  do {
-    kill(job->pid, sig);
-    nanosleep(ts, NULL);
-    if (++i > 2) sig=SIGKILL;
-  } while ( i<=3 && (p = waitpid(job->pid, &es, WNOHANG)) == 0);
-
-  utstring_printf(s,"job %s [%d]: ", job->name, (int)job->pid);
-  if      (p <0) utstring_printf(s, "waitpid error: %s", strerror(errno));
-  else if (p==0) utstring_printf(s, "failed to terminate");
-  else {
-    assert(p == job->pid);
-    job->pid = 0;
-    code = (WIFSIGNALED(es)) ? (int)WTERMSIG(es) : (int)WEXITSTATUS(es);
-    msg = (WIFSIGNALED(es)) ? "exited on signal %d" : "exit status %d";
-    utstring_printf(s, msg, code);
-    rc = 0; /* success */
-  }
-
-  syslog(rc==-1?LOG_ERR:LOG_INFO, "%s", utstring_body(s));
-  utstring_free(s);
-  return rc;
-}
-
+/* sets termination flags. run do_jobs() after to actually signal them */
 void term_jobs(UT_array *jobs) {
   job_t *job = NULL;
-  while ( (job = (job_t*)utarray_next(jobs,job))) term_job(job);
+  while ( (job = (job_t*)utarray_next(jobs,job))) {
+    if (job->pid == 0) continue;
+    if (job->terminate==0) job->terminate=1;
+  }
 }
 
 job_t *get_job_by_pid(UT_array *jobs, pid_t pid) {

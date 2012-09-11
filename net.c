@@ -201,7 +201,7 @@ static void decode_msg(pmtr_t *cfg, char *buf, size_t n) {
         if (j->disabled) break; /* no-op */
         syslog(LOG_INFO,"disabling %s", job);
         j->disabled=1;
-        if (j->pid) term_job(j);
+        if (j->pid) { if (j->terminate==0) j->terminate=1; }
         alarm_within(cfg,1); /* report soon if needed */
         break;
       default: assert(0); break;
@@ -243,6 +243,7 @@ void report_status(pmtr_t *cfg) {
   else utstring_printf(cfg->ident, "report\n");
   job_t *j = NULL;
   while ( (j=(job_t*)utarray_next(cfg->jobs,j))) {
+    if (j->respawn == 0) continue; /* don't advertise one-time jobs */
     utstring_printf(cfg->s, "%s %c %u\n", j->name, j->disabled?'d':'e', 
                     (unsigned)j->start_ts);
   }
@@ -251,7 +252,8 @@ void report_status(pmtr_t *cfg) {
   int *fd=NULL;
   while ( (fd=(int*)utarray_next(cfg->report,fd))) {
     rc = write(*fd,utstring_body(cfg->s),utstring_len(cfg->s));
-    if (rc < 0) syslog(LOG_INFO,"write error: %s", strerror(errno));
+    if (rc < 0 && errno != ECONNREFUSED) 
+      syslog(LOG_INFO,"write error: %s", strerror(errno));
     if (rc >= 0 && rc < utstring_len(cfg->s)) {
       syslog(LOG_INFO,"incomplete write %d/%d", rc, utstring_len(cfg->s));
     }
