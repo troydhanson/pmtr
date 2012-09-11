@@ -227,6 +227,7 @@ int parse_jobs(pmtr_t *cfg, UT_string *em) {
 
 void signal_job(job_t *job) {
   time_t now = time(NULL);
+  assert(job->pid);
   switch(job->terminate) {
    case 0: /* should not be here */ break;
    case 1: /* initial termination request */
