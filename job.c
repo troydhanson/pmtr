@@ -225,7 +225,7 @@ int parse_jobs(pmtr_t *cfg, UT_string *em) {
 /* start up the jobs that are not already running */
 void do_jobs(UT_array *jobs) {
   pid_t pid;
-  int es, n, fo, fe, fi, dc, rc=-1;
+  int es, n, fo, fe, fi, rc=-1;
   char *pathname, *o, *e, *i, **argv, **env;
 
   job_t *job = NULL;
@@ -277,13 +277,10 @@ void do_jobs(UT_array *jobs) {
     fo = open(o,O_WRONLY|O_APPEND|O_CREAT, 0644); if(fo==-1) {rc=-3; goto fail;}
     fe = open(e,O_WRONLY|O_APPEND|O_CREAT, 0644); if(fe==-1) {rc=-4; goto fail;}
 
-    dc = dup2(fo,STDOUT_FILENO);                  if(dc==-1) {rc=-5; goto fail;}
-    dc = dup2(fe,STDERR_FILENO);                  if(dc==-1) {rc=-5; goto fail;}
-    dc = dup2(fi,STDIN_FILENO);                   if(dc==-1) {rc=-5; goto fail;}
-
-    close(fo);
-    close(fe);
-    close(fi);
+    rc = -5;
+    if (fi!=STDIN_FILENO)  {if(dup2(fi,STDIN_FILENO) ==-1)goto fail; close(fi);}
+    if (fo!=STDOUT_FILENO) {if(dup2(fo,STDOUT_FILENO)==-1)goto fail; close(fo);}
+    if (fe!=STDERR_FILENO) {if(dup2(fe,STDERR_FILENO)==-1)goto fail; close(fe);}
 
     /* close inherited descriptors. only syslog; sockets are close-on-exec */
     closelog(); 
