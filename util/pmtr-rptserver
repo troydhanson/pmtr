@@ -1,0 +1,84 @@
+#!/usr/bin/perl
+use strict;
+use warnings;
+use IO::Socket;
+use Getopt::Long;
+use Fcntl qw(:seek);
+
+
+################################################################################
+# This script can be used to monitor many pmtr instances across machines. 
+# Each pmtr must be configured to "report to udp://<host>:<port>" in pmtr.conf,
+# where the host and port are where this script is running.
+#
+# When this script is invoked with a filename as a final argument, it keeps that
+# file updated on an ongoing basis with job status for all pmtr instances.
+################################################################################
+
+sub usage {
+  print "usage: $0 [-v] -p <port> [<file>]\n";
+  exit(-1);
+}
+
+our $port;
+our $verbose;
+our $help;
+our $msg;
+our $file = "/dev/stderr";
+our $max=2000;
+our %jobs;
+usage unless GetOptions("port=i"           => \$port,
+                        "verbose+"         => \$verbose,
+                        "help"             => \$help);
+usage if $help;
+usage unless $port;
+$file = shift @ARGV if @ARGV;
+open FILE, ">$file" or die "can't open $file: $!";
+
+my $server = IO::Socket::INET->new(LocalPort => $port, Proto => "udp")
+    or die "Couldn't listen on udp port $port : $@\n";
+
+sub update_file() {
+  my $now = time;
+  seek(FILE,0,SEEK_SET);
+  for my $host (sort keys %jobs) {
+    print FILE "$host:\n";
+    for my $job (@{$jobs{$host}}) {
+      my ($name,$enabled,$start) = @$job;
+      my $e = ($enabled eq 'e') ? '[enabled]' : '[disabled]';
+      my $since = ($now > $start) ? ($now-$start) : 0;
+      my $days = ($since > 24*60*60) ? int($since/24*60*60)."d" : "";
+      $since -= substr($days,0,-1)*(24*60*60) if $days;
+      my $hours = ($since > 60*60) ? int($since/60*60)."h" : "";
+      $since -= substr($hours,0,-1)*(60*60) if $hours;
+      my $mins = ($since > 60) ? int($since/60)."m" : "";
+      $since -= substr($mins,0,-1)*(60) if $mins;
+      my $secs = $since . "s";
+      my $howlong = $days.$hours.$mins.$secs;
+      printf FILE ("\t%-40s %-10s %10s\n",$name,$e,$howlong);
+    }
+  }
+}
+
+# the UDP messages sent by pmtr look like:
+#
+# report 127.0.0.1 1111 jesse
+# echo-test-alt e 1349317996
+# echo-test e 1349318036
+#
+
+
+while ($server->recv($msg, $max)) {
+  print STDERR $msg if $verbose;
+  if ($msg =~ m/report ([\d\.]+) (\d+) ([\w\.]+)/) {
+    my ($ip,$port,$hostname)=($1,$2,$3);
+    delete $jobs{$hostname};
+    my @lines = split /\n/, $msg;
+    shift @lines;
+    for my $line (@lines) {
+      my ($job,$enabled,$start) = split /\s/, $line;
+      push @{$jobs{$hostname}}, [$job,$enabled,$start];
+    }
+  }
+  update_file;
+} 

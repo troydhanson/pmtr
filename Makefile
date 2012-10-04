@@ -22,6 +22,7 @@ clean:
 
 install: pmtr
 	./install-pmtr.sh
+	cp util/pmtr-rptserver /usr/bin
 
 .PHONY: clean $(SUBDIRS)
 
