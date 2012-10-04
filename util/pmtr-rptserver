@@ -55,7 +55,7 @@ sub update_file() {
       $since -= substr($mins,0,-1)*(60) if $mins;
       my $secs = $since . "s";
       my $howlong = $days.$hours.$mins.$secs;
-      printf FILE ("\t%-40s %-10s %10s\n",$name,$e,$howlong);
+      printf FILE ("\t%-40s %-10s %15s\n",$name,$e,$howlong);
     }
   }
 }
