@@ -54,6 +54,7 @@ pid_t dep_monitor(char *file) {
     syslog(LOG_ERR,"error: %s\n", strerror(errno)); 
     exit(-1);
   }
+  close_sockets(&cfg);
 
   /* request HUP if parent exits, unblock, action terminate */
   signal(SIGHUP, SIG_DFL);
