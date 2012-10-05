@@ -38,6 +38,23 @@ open FILE, ">$file" or die "can't open $file: $!";
 my $server = IO::Socket::INET->new(LocalPort => $port, Proto => "udp")
     or die "Couldn't listen on udp port $port : $@\n";
 
+sub sec_to_dhms {
+  my $sec = shift;
+  $sec = 0 if $sec<0;
+
+  my ($d,$h,$m) = (24*60*60, 60*60, 60);
+
+  my $days = int ($sec / $d); $sec = $sec % $d;
+  my $hour = int ($sec / $h); $sec = $sec % $h;
+  my $min  = int ($sec / $m); $sec = $sec % $m;
+
+  $days = ($days > 0) ? "${days}d " : "";
+  $hour = ($hour > 0) ? "${hour}h " : "";
+  $min  = ($min  > 0) ? "${min}m "  : "";
+  $sec  = "${sec}s";
+  return $days.$hour.$min.$sec;
+}
+
 sub update_file() {
   my $now = time;
   seek(FILE,0,SEEK_SET);
@@ -45,17 +62,10 @@ sub update_file() {
     print FILE "$host:\n";
     for my $job (@{$jobs{$host}}) {
       my ($name,$enabled,$start) = @$job;
-      my $e = ($enabled eq 'e') ? '[enabled]' : '[disabled]';
-      my $since = ($now > $start) ? ($now-$start) : 0;
-      my $days = ($since > 24*60*60) ? int($since/24*60*60)."d" : "";
-      $since -= substr($days,0,-1)*(24*60*60) if $days;
-      my $hours = ($since > 60*60) ? int($since/60*60)."h" : "";
-      $since -= substr($hours,0,-1)*(60*60) if $hours;
-      my $mins = ($since > 60) ? int($since/60)."m" : "";
-      $since -= substr($mins,0,-1)*(60) if $mins;
-      my $secs = $since . "s";
-      my $howlong = $days.$hours.$mins.$secs;
-      printf FILE ("\t%-40s %-10s %15s\n",$name,$e,$howlong);
+      my $e = ($enabled eq 'e') ? 'enabled' : 'disabled';
+      my $elapsed = $now-$start;
+      my $howlong = ($enabled eq 'e') ? sec_to_dhms($elapsed) : "-";
+      printf FILE ("\t%-40s %-10s %20s\n",$name,$e,$howlong);
     }
   }
 }
