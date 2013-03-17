@@ -3,7 +3,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
 <head>
 <meta http-equiv="Content-Type" content="application/xhtml+xml; charset=UTF-8" />
-<meta name="generator" content="AsciiDoc 8.6.6" />
+<meta name="generator" content="AsciiDoc 8.6.8" />
 <title>pmtr job manager</title>
 <style type="text/css">
 /* Shared CSS for AsciiDoc xhtml11 and html5 backends */
@@ -87,10 +87,14 @@ ul, ol, li > p {
 ul > li     { color: #aaa; }
 ul > li > * { color: black; }
 
-pre {
+.monospaced, code, pre {
+  font-family: "Courier New", Courier, monospace;
+  font-size: inherit;
+  color: navy;
   padding: 0;
   margin: 0;
 }
+
 
 #author {
   color: #527bbd;
@@ -219,7 +223,7 @@ div.exampleblock > div.content {
 }
 
 div.imageblock div.content { padding-left: 0; }
-span.image img { border-style: none; }
+span.image img { border-style: none; vertical-align: text-bottom; }
 a.image:visited { color: white; }
 
 dl {
@@ -349,7 +353,7 @@ div.colist td img {
   margin-bottom: 0.1em;
 }
 
-div.toclevel1, div.toclevel2, div.toclevel3, div.toclevel4 {
+div.toclevel0, div.toclevel1, div.toclevel2, div.toclevel3, div.toclevel4 {
   margin-top: 0;
   margin-bottom: 0;
 }
@@ -407,17 +411,13 @@ span.underline { text-decoration: underline; }
 span.overline { text-decoration: overline; }
 span.line-through { text-decoration: line-through; }
 
+div.unbreakable { page-break-inside: avoid; }
+
 
 /*
  * xhtml11 specific
  *
  * */
-
-tt {
-  font-family: monospace;
-  font-size: inherit;
-  color: navy;
-}
 
 div.tableblock {
   margin-top: 1.0em;
@@ -451,12 +451,6 @@ div.tableblock > table[frame="vsides"] {
  * html5 specific
  *
  * */
-
-.monospaced {
-  font-family: monospace;
-  font-size: inherit;
-  color: navy;
-}
 
 table.tableblock {
   margin-top: 1.0em;
@@ -537,6 +531,8 @@ body.manpage div.sectionbody {
 @media print {
   body.manpage div#toc { display: none; }
 }
+
+
 @media screen {
   body {
     max-width: 50em; /* approximately 80 characters wide */
@@ -615,7 +611,7 @@ toc: function (toclevels) {
 
   function tocEntries(el, toclevels) {
     var result = new Array;
-    var re = new RegExp('[hH]([2-'+(toclevels+1)+'])');
+    var re = new RegExp('[hH]([1-'+(toclevels+1)+'])');
     // Function that scans the DOM tree for header elements (the DOM2
     // nodeIterator API would be a better technique but not supported by all
     // browsers).
@@ -644,7 +640,7 @@ toc: function (toclevels) {
   var i;
   for (i = 0; i < toc.childNodes.length; i++) {
     var entry = toc.childNodes[i];
-    if (entry.nodeName == 'div'
+    if (entry.nodeName.toLowerCase() == 'div'
      && entry.getAttribute("class")
      && entry.getAttribute("class").match(/^toclevel/))
       tocEntriesToRemove.push(entry);
@@ -690,7 +686,7 @@ footnotes: function () {
   var entriesToRemove = [];
   for (i = 0; i < noteholder.childNodes.length; i++) {
     var entry = noteholder.childNodes[i];
-    if (entry.nodeName == 'div' && entry.getAttribute("class") == "footnote")
+    if (entry.nodeName.toLowerCase() == 'div' && entry.getAttribute("class") == "footnote")
       entriesToRemove.push(entry);
   }
   for (i = 0; i < entriesToRemove.length; i++) {
@@ -771,7 +767,7 @@ asciidoc.install(2);
 <div id="header">
 <h1>pmtr job manager</h1>
 <span id="author">Troy D. Hanson</span><br />
-<span id="email"><tt>&lt;<a href="mailto:tdh@tkhanson.net">tdh@tkhanson.net</a>&gt;</tt></span><br />
+<span id="email"><code>&lt;<a href="mailto:tdh@tkhanson.net">tdh@tkhanson.net</a>&gt;</code></span><br />
 <span id="revnumber">version 1.2,</span>
 <span id="revdate">September 2012</span>
 <div id="toc">
@@ -787,9 +783,9 @@ asciidoc.install(2);
 them running. It&#8217;s small, written in C, free, open-source and for Linux only.
 With pmtr, all your jobs are defined in one configuration file:</p></div>
 <div class="listingblock">
-<div class="title">Example <tt>/etc/pmtr.conf</tt></div>
+<div class="title">Example <code>/etc/pmtr.conf</code></div>
 <div class="content">
-<pre><tt>  job {
+<pre><code>  job {
     name minecraft-server
     dir /home/mc
     cmd /usr/bin/java -jar minecraft_server.jar nogui
@@ -801,7 +797,7 @@ With pmtr, all your jobs are defined in one configuration file:</p></div>
   job {
     name cpu-monitor
     cmd /bin/cpu-monitor -x
-  }</tt></pre>
+  }</code></pre>
 </div></div>
 <div class="paragraph"><p>Here, for the sake of illustration, we&#8217;re running a Minecraft server and
 a CPU monitoring job. As you can see- only the name and command are required.
@@ -814,6 +810,8 @@ to run the process, and where to put the output and error.  The <a href="#option
 easily-edited configuration file. I also wanted them kept separate from the
 system daemons managed by sysvinit and similar mechanisms.</p></div>
 </div></div>
+<div class="paragraph"><div class="title">But has it been tested?</div><p>The pmtr utility has been used in production Linux environments for about two
+years, managing dozens of jobs per system.</p></div>
 </div>
 </div>
 <div class="sect1">
@@ -827,62 +825,50 @@ port to other Unix variants. If you do, feel free to send me a patch.)</p></div>
 <div class="ulist"><ul>
 <li>
 <p>
-Ubuntu (10.04)
+Ubuntu (10+)
 </p>
 </li>
 <li>
 <p>
-Debian (6.0.4)
+CentOS/RHEL (6+)
 </p>
 </li>
 <li>
 <p>
-RHEL (6.3)
+Debian (6+)
 </p>
 </li>
 </ul></div>
 </div>
 <div class="sect2">
 <h3 id="_download_options">Download options</h3>
-<div class="paragraph"><p>You can download pmtr either of these ways:</p></div>
-<div class="dlist"><dl>
-<dt class="hdlist1">
-Clone the git repository
-</dt>
-<dd>
-<p>
-  git clone git://github.com/troydhanson/pmtr.git
-</p>
-</dd>
-<dt class="hdlist1">
-Download a tarball
-</dt>
-<dd>
-<p>
-  A tarball is available at: <a href="https://github.com/troydhanson/pmtr/tarball/master">https://github.com/troydhanson/pmtr/tarball/master</a>
-</p>
-</dd>
-</dl></div>
+<div class="paragraph"><p>You can download a <a href="https://github.com/troydhanson/pmtr/archive/master.zip">zipfile here</a>. Or, if you
+prefer, clone the git repository:</p></div>
+<div class="literalblock">
+<div class="content">
+<pre><code>git clone https://github.com/troydhanson/pmtr.git</code></pre>
+</div></div>
+<div class="paragraph"><p>Other download options are listed on the <a href="https://github.com/troydhanson/pmtr">pmtr Github site</a>.</p></div>
 </div>
 <div class="sect2">
 <h3 id="_build_and_install">Build and install</h3>
 <div class="paragraph"><p>To build and install:</p></div>
 <div class="literalblock">
 <div class="content">
-<pre><tt>cd pmtr
+<pre><code>cd pmtr
 make
-sudo make install</tt></pre>
+sudo make install</code></pre>
 </div></div>
 <div class="paragraph"><p>The result of installation is:</p></div>
 <div class="ulist"><ul>
 <li>
 <p>
-the binary itself <tt>/usr/bin/pmtr</tt>,
+the binary itself <code>/usr/bin/pmtr</code>,
 </p>
 </li>
 <li>
 <p>
-the configuration file <tt>/etc/pmtr.conf</tt> which is initially empty,
+the configuration file <code>/etc/pmtr.conf</code> which is initially empty,
 </p>
 </li>
 <li>
@@ -891,17 +877,17 @@ a system startup script that runs pmtr at boot as described next.
 </p>
 </li>
 </ul></div>
-<div class="paragraph"><p>Upon completion of <tt>sudo make install</tt>, pmtr should be running. Verify using:</p></div>
+<div class="paragraph"><p>Upon completion of <code>sudo make install</code>, pmtr should be running. Verify using:</p></div>
 <div class="literalblock">
 <div class="content">
-<pre><tt>service pmtr status</tt></pre>
+<pre><code>service pmtr status</code></pre>
 </div></div>
 <div class="sidebarblock">
 <div class="content">
 <div class="title">Who starts pmtr?</div>
 <div class="paragraph"><p>Pmtr starts up automatically during the boot process. An OS-specific initscript
-makes this happen.  You can use your system&#8217;s <tt>service</tt> command to start and
-stop pmtr manually (like <tt>service pmtr start</tt>), but normally you just let the OS
+makes this happen.  You can use your system&#8217;s <code>service</code> command to start and
+stop pmtr manually (like <code>service pmtr start</code>), but normally you just let the OS
 start up pmtr automatically at boot.</p></div>
 </div></div>
 </div>
@@ -910,29 +896,29 @@ start up pmtr automatically at boot.</p></div>
 <div class="sect1">
 <h2 id="_configuration_file">Configuration file</h2>
 <div class="sectionbody">
-<div class="paragraph"><p>When pmtr is started at system boot, it reads the configuration file&#8201;&#8212;&#8201;by default <tt>/etc/pmtr.conf</tt>&#8201;&#8212;&#8201;and starts up the jobs defined there.</p></div>
+<div class="paragraph"><p>When pmtr is started at system boot, it reads the configuration file&#8201;&#8212;&#8201;by default <code>/etc/pmtr.conf</code>&#8201;&#8212;&#8201;and starts up the jobs defined there.</p></div>
 <div class="sect2">
 <h3 id="_syntax">Syntax</h3>
 <div class="paragraph"><p>The configuration file contains any number of jobs. Each job is in a curly-brace
 delimited block.  Indentation is optional. Blank lines are ok.</p></div>
 <div class="literalblock">
 <div class="content">
-<pre><tt>job {
+<pre><code>job {
   name mumble-server
   cmd /usr/bin/mumble
-}</tt></pre>
+}</code></pre>
 </div></div>
-<div class="paragraph"><p>Only <em>name</em> and <em>cmd</em> are required. The <tt>cmd</tt> is the <strong>absolute path</strong> to the
+<div class="paragraph"><p>Only <em>name</em> and <em>cmd</em> are required. The <code>cmd</code> is the <strong>absolute path</strong> to the
 executable (which must have its executable bit set).</p></div>
 <div class="paragraph"><p>The command may contain simple or <em>double-quoted</em> arguments.  Like this,</p></div>
 <div class="literalblock">
 <div class="content">
-<pre><tt>cmd /bin/echo -n "st paul"</tt></pre>
+<pre><code>cmd /bin/echo -n "st paul"</code></pre>
 </div></div>
-<div class="paragraph"><p>Comments should be on their own line and prefaced with <tt>#</tt>.</p></div>
+<div class="paragraph"><p>Comments should be on their own line and prefaced with <code>#</code>.</p></div>
 <div class="literalblock">
 <div class="content">
-<pre><tt># this is a comment</tt></pre>
+<pre><code># this is a comment</code></pre>
 </div></div>
 </div>
 <div class="sect2">
@@ -952,39 +938,39 @@ cellspacing="0" cellpadding="4">
 </thead>
 <tbody>
 <tr>
-<td align="left" valign="top"><p class="table"><tt>name</tt></p></td>
+<td align="left" valign="top"><p class="table"><code>name</code></p></td>
 <td align="left" valign="top"><p class="table">job name</p></td>
 </tr>
 <tr>
-<td align="left" valign="top"><p class="table"><tt>cmd</tt></p></td>
+<td align="left" valign="top"><p class="table"><code>cmd</code></p></td>
 <td align="left" valign="top"><p class="table">absolute path to executable with optional arguments</p></td>
 </tr>
 <tr>
-<td align="left" valign="top"><p class="table"><tt>dir</tt></p></td>
+<td align="left" valign="top"><p class="table"><code>dir</code></p></td>
 <td align="left" valign="top"><p class="table">absolute path to the working directory</p></td>
 </tr>
 <tr>
-<td align="left" valign="top"><p class="table"><tt>in</tt></p></td>
+<td align="left" valign="top"><p class="table"><code>in</code></p></td>
 <td align="left" valign="top"><p class="table">file to set as standard input</p></td>
 </tr>
 <tr>
-<td align="left" valign="top"><p class="table"><tt>out</tt></p></td>
+<td align="left" valign="top"><p class="table"><code>out</code></p></td>
 <td align="left" valign="top"><p class="table">file to receive standard output</p></td>
 </tr>
 <tr>
-<td align="left" valign="top"><p class="table"><tt>err</tt></p></td>
+<td align="left" valign="top"><p class="table"><code>err</code></p></td>
 <td align="left" valign="top"><p class="table">file to receive standard error</p></td>
 </tr>
 <tr>
-<td align="left" valign="top"><p class="table"><tt>user</tt></p></td>
+<td align="left" valign="top"><p class="table"><code>user</code></p></td>
 <td align="left" valign="top"><p class="table">user under whose uid the job should run</p></td>
 </tr>
 <tr>
-<td align="left" valign="top"><p class="table"><tt>env</tt></p></td>
-<td align="left" valign="top"><p class="table"><tt>VAR=VALUE</tt> environment variable settings (repeatable)</p></td>
+<td align="left" valign="top"><p class="table"><code>env</code></p></td>
+<td align="left" valign="top"><p class="table"><code>VAR=VALUE</code> environment variable settings (repeatable)</p></td>
 </tr>
 <tr>
-<td align="left" valign="top"><p class="table"><tt>disable</tt></p></td>
+<td align="left" valign="top"><p class="table"><code>disable</code></p></td>
 <td align="left" valign="top"><p class="table">if present, disables the job</p></td>
 </tr>
 </tbody>
@@ -1021,7 +1007,7 @@ in
 </dt>
 <dd>
 <p>
-  file to open as stdin. Default: <tt>/dev/null</tt>
+  file to open as stdin. Default: <code>/dev/null</code>
 </p>
 </dd>
 <dt class="hdlist1">
@@ -1029,7 +1015,7 @@ out
 </dt>
 <dd>
 <p>
-  file to receive stdout. Default: <tt>/dev/null</tt>
+  file to receive stdout. Default: <code>/dev/null</code>
 </p>
 </dd>
 <dt class="hdlist1">
@@ -1037,7 +1023,7 @@ err
 </dt>
 <dd>
 <p>
-  file to receive stderr. Default: <tt>/dev/null</tt>
+  file to receive stderr. Default: <code>/dev/null</code>
 </p>
 </dd>
 <dt class="hdlist1">
@@ -1053,7 +1039,7 @@ env
 </dt>
 <dd>
 <p>
-  set an environment variables for the job, e.g., <tt>env DEBUG=1</tt> (repeatable)
+  set an environment variables for the job, e.g., <code>env DEBUG=1</code> (repeatable)
 </p>
 </dd>
 <dt class="hdlist1">
@@ -1068,7 +1054,7 @@ disable
 </div>
 <div class="sect2">
 <h3 id="_when_do_configuration_changes_take_effect">When do configuration changes take effect?</h3>
-<div class="paragraph"><p>When you edit and save <tt>pmtr.conf</tt>, the changes get applied immediately. (Pmtr
+<div class="paragraph"><p>When you edit and save <code>pmtr.conf</code>, the changes get applied immediately. (Pmtr
 uses inotify to get signalled when the configuration file has changed).</p></div>
 <div class="ulist"><ul>
 <li>
@@ -1078,7 +1064,7 @@ If you add a job, it gets started.
 </li>
 <li>
 <p>
-If you delete a job, or give it the <tt>disable</tt> option, or comment it out, it
+If you delete a job, or give it the <code>disable</code> option, or comment it out, it
    gets terminated.  Pmtr sends SIGTERM to it, then SIGKILL shortly afterward.
 </p>
 </li>
@@ -1090,7 +1076,7 @@ If you change a job, it gets restarted with the new settings.
 </ul></div>
 <div class="paragraph"><p>Other running jobs are left alone- they&#8217;re not needlessly restarted. All this
 happens immediately whenever the configuration file is modified and written.</p></div>
-<div class="paragraph"><p>If you stop pmtr itself (for example, by running <tt>service pmtr stop</tt>), it
+<div class="paragraph"><p>If you stop pmtr itself (for example, by running <code>service pmtr stop</code>), it
 terminates its jobs before exiting.</p></div>
 </div>
 <div class="sect2">
@@ -1098,13 +1084,13 @@ terminates its jobs before exiting.</p></div>
 <div class="paragraph"><p>You can check the syntax of a configuration file using,</p></div>
 <div class="literalblock">
 <div class="content">
-<pre><tt>pmtr -tc /etc/pmtr.conf</tt></pre>
+<pre><code>pmtr -tc /etc/pmtr.conf</code></pre>
 </div></div>
 <div class="paragraph"><p>The meaning of these options are:</p></div>
 <div class="literalblock">
 <div class="content">
-<pre><tt>-t test syntax only (don't start any jobs, and stay in foreground)
--c &lt;file&gt; specify configuration file</tt></pre>
+<pre><code>-t test syntax only (don't start any jobs, and stay in foreground)
+-c &lt;file&gt; specify configuration file</code></pre>
 </div></div>
 </div>
 </div>
@@ -1115,13 +1101,13 @@ terminates its jobs before exiting.</p></div>
 <div class="sect2">
 <h3 id="_logging">Logging</h3>
 <div class="paragraph"><p>As jobs start up, exit, and so on, messages are sent to <strong>syslog</strong>. Depending on
-your syslog configuration, the messages might go to <tt>/var/log/syslog</tt>, or
-<tt>/var/log/messages</tt>, or somewhere else. Typical log messages are like:</p></div>
+your syslog configuration, the messages might go to <code>/var/log/syslog</code>, or
+<code>/var/log/messages</code>, or somewhere else. Typical log messages are like:</p></div>
 <div class="literalblock">
 <div class="content">
-<pre><tt>Nov  7 22:01:09 ubuntu pmtr[18477]: rescanning job configuration
+<pre><code>Nov  7 22:01:09 ubuntu pmtr[18477]: rescanning job configuration
 Nov  7 21:38:10 ubuntu pmtr[18477]: pmtr: managing 1 jobs
-Nov  7 21:38:10 ubuntu pmtr[18477]: started job doppler [18478]</tt></pre>
+Nov  7 21:38:10 ubuntu pmtr[18477]: started job doppler [18478]</code></pre>
 </div></div>
 <div class="admonitionblock">
 <table><tr>
@@ -1137,7 +1123,7 @@ log messages - so be sure you check them when making config changes!</td>
 </div>
 <div class="sect2">
 <h3 id="_is_the_job_suitable_to_run_under_pmtr">Is the job suitable to run under pmtr?</h3>
-<div class="paragraph"><p>Jobs that you intend to run under <tt>pmtr</tt> should:</p></div>
+<div class="paragraph"><p>Jobs that you intend to run under <code>pmtr</code> should:</p></div>
 <div class="ulist"><ul>
 <li>
 <p>
@@ -1167,8 +1153,8 @@ Since pmtr is oriented toward running daemons, a quick exit usually means the
 job has some kind of problem (bad arguments, etc) that need to be fixed.</p></div>
 <div class="literalblock">
 <div class="content">
-<pre><tt>Nov  7 22:01:13 ubuntu pmtr[18477]: job x 8552 exited after 3 sec: exit status 0
-Nov  7 22:01:13 ubuntu pmtr[18477]: job restarting too fast, delaying restart</tt></pre>
+<pre><code>Nov  7 22:01:13 ubuntu pmtr[18477]: job x 8552 exited after 3 sec: exit status 0
+Nov  7 22:01:13 ubuntu pmtr[18477]: job restarting too fast, delaying restart</code></pre>
 </div></div>
 </div>
 <div class="sect3">
@@ -1184,15 +1170,15 @@ restarted), and to wait for it to finish before starting subsequent jobs.
 Here&#8217;s an example where we create a directory in a RAM disk.</p></div>
 <div class="literalblock">
 <div class="content">
-<pre><tt>job {
+<pre><code>job {
   name setup
   cmd /bin/mkdir -p /dev/shm/ramdisk
   wait
   once
-}</tt></pre>
+}</code></pre>
 </div></div>
-<div class="paragraph"><p>The <tt>wait</tt> option prevents pmtr from starting subsequent jobs until this one
-finishes, and <tt>once</tt> prevents pmtr from restarting it.</p></div>
+<div class="paragraph"><p>The <code>wait</code> option prevents pmtr from starting subsequent jobs until this one
+finishes, and <code>once</code> prevents pmtr from restarting it.</p></div>
 </div>
 </div>
 </div>
@@ -1208,12 +1194,17 @@ finishes, and <tt>once</tt> prevents pmtr from restarting it.</p></div>
 </span></p></div>
 </div>
 <div class="sect2">
-<h3 id="_other_software">Other software</h3>
-<div class="paragraph"><p>The author&#8217;s other open-source software are listed at <a href="http://tkhanson.net">http://tkhanson.net</a>.</p></div>
+<h3 id="_contributing">Contributing</h3>
+<div class="paragraph"><p>Feel free to send pull requests through the <a href="https://github.com/troydhanson/pmtr">pmtr Github page</a>.</p></div>
 </div>
 <div class="sect2">
 <h3 id="_contact">Contact</h3>
-<div class="paragraph"><p>Please send bug reports or suggestions to <a href="mailto:tdh@tkhanson.net">tdh@tkhanson.net</a>.</p></div>
+<div class="paragraph"><p>Please send bug reports or suggestions to <a href="mailto:tdh@tkhanson.net">tdh@tkhanson.net</a>. Sorry, I&#8217;m often
+behind by weeks or months in getting back to people.</p></div>
+</div>
+<div class="sect2">
+<h3 id="_other_software">Other software</h3>
+<div class="paragraph"><p>The author&#8217;s other open-source software are listed at <a href="http://tkhanson.net">http://tkhanson.net</a>.</p></div>
 </div>
 <div class="sect2">
 <h3 id="_license">License</h3>
@@ -1226,7 +1217,7 @@ finishes, and <tt>once</tt> prevents pmtr from restarting it.</p></div>
 <div id="footer">
 <div id="footer-text">
 Version 1.2<br />
-Last updated 2012-09-09 22:37:20 EDT
+Last updated 2013-03-17 15:40:31 EDT
 </div>
 </div>
 </body>

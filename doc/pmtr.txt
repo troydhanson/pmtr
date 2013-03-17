@@ -39,6 +39,10 @@ easily-edited configuration file. I also wanted them kept separate from the
 system daemons managed by sysvinit and similar mechanisms. 
 **************************************************************************
 
+.But has it been tested?
+The pmtr utility has been used in production Linux environments for about two
+years, managing dozens of jobs per system.
+
 Download & Install
 ------------------
 
@@ -49,21 +53,19 @@ port to other Unix variants. If you do, feel free to send me a patch.)
 
 It's been tested on:
 
-* Ubuntu (10.04)
-* Debian (6.0.4)
-* RHEL (6.3)
+* Ubuntu (10+)
+* CentOS/RHEL (6+)
+* Debian (6+)
 
 Download options
 ~~~~~~~~~~~~~~~~
-You can download pmtr either of these ways:
 
-Clone the git repository::
+You can download a https://github.com/troydhanson/pmtr/archive/master.zip[zipfile here]. Or, if you
+prefer, clone the git repository:
 
-  git clone git://github.com/troydhanson/pmtr.git
+  git clone https://github.com/troydhanson/pmtr.git 
 
-Download a tarball::
-
-  A tarball is available at: https://github.com/troydhanson/pmtr/tarball/master
+Other download options are listed on the https://github.com/troydhanson/pmtr[pmtr Github site].
 
 Build and install
 ~~~~~~~~~~~~~~~~~
@@ -261,13 +263,18 @@ News
 ~~~~
 Updates are posted to the http://tkhanson.net/blog[author's blog]. image:rss.png[(RSS)]
 
-Other software
-~~~~~~~~~~~~~~
-The author's other open-source software are listed at http://tkhanson.net.
+Contributing
+~~~~~~~~~~~~
+Feel free to send pull requests through the https://github.com/troydhanson/pmtr[pmtr Github page].
 
 Contact
 ~~~~~~~
-Please send bug reports or suggestions to tdh@tkhanson.net.
+Please send bug reports or suggestions to tdh@tkhanson.net. Sorry, I'm often
+behind by weeks or months in getting back to people.
+
+Other software
+~~~~~~~~~~~~~~
+The author's other open-source software are listed at http://tkhanson.net.
 
 License
 ~~~~~~~
