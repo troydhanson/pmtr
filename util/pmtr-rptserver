@@ -3,8 +3,7 @@ use strict;
 use warnings;
 use IO::Socket;
 use Getopt::Long;
-use Fcntl qw(:seek);
-
+use Socket;
 
 ################################################################################
 # This script can be used to monitor many pmtr instances across machines. 
@@ -27,6 +26,7 @@ our $msg;
 our $file = "/tmp/pmtr-status";
 our $max=2000;
 our %jobs;
+our %expire;
 usage unless GetOptions("port=i"           => \$port,
                         "verbose+"         => \$verbose,
                         "file=s"           => \$file,
@@ -60,9 +60,17 @@ sub sec_to_dhms {
 sub update_file() {
   my $now = time;
   open FILE, ">$file" or die "can't open $file: $!";
-  print FILE "update at ".scalar localtime . "\n\n";
+  print FILE "update at ".scalar localtime . "\n";
+  print FILE scalar(keys %jobs) . " systems reporting\n\n";
   for my $host (sort keys %jobs) {
-    print FILE "$host:\n";
+    if ($expire{$host} < $now) { # purge record if too old
+      delete $jobs{$host};
+      delete $expire{$host};
+      next;
+    }
+    my $name = gethostbyaddr(inet_aton($host), AF_INET);
+    $name = $host unless $name;
+    print FILE "$name:\n";
     for my $job (@{$jobs{$host}}) {
       my ($name,$enabled,$start) = @$job;
       my $e = ($enabled eq 'e') ? 'enabled' : 'disabled';
@@ -83,19 +91,18 @@ sub update_file() {
 
 
 while ($server->recv($msg, $max)) {
-  print STDERR $msg if $verbose;
+  my $peer = $server->peerhost();
+  print STDERR "datagram from $peer:\n$msg\n" if $verbose;
   if ($msg =~ m/report ([\d\.]+) (\d+) ([\w\.]+)/) {
-    #print STDERR "regex match\n";
     my ($ip,$port,$hostname)=($1,$2,$3);
-    delete $jobs{$hostname};
+    delete $jobs{$peer};
     my @lines = split /\n/, $msg;
     shift @lines;
     for my $line (@lines) {
       my ($job,$enabled,$start) = split /\s/, $line;
-      push @{$jobs{$hostname}}, [$job,$enabled,$start];
+      push @{$jobs{$peer}}, [$job,$enabled,$start];
+      $expire{$peer} = time + 60; # delete it in a minute if no update
     }
-  } else {
-    #print STDERR "regex match FAILED\n";
-  }
+  } 
   update_file;
-} 
+}
