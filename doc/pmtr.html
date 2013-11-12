@@ -3,7 +3,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
 <head>
 <meta http-equiv="Content-Type" content="application/xhtml+xml; charset=UTF-8" />
-<meta name="generator" content="AsciiDoc 8.6.8" />
+<meta name="generator" content="AsciiDoc 8.6.7" />
 <title>pmtr job manager</title>
 <style type="text/css">
 /* Shared CSS for AsciiDoc xhtml11 and html5 backends */
@@ -87,14 +87,10 @@ ul, ol, li > p {
 ul > li     { color: #aaa; }
 ul > li > * { color: black; }
 
-.monospaced, code, pre {
-  font-family: "Courier New", Courier, monospace;
-  font-size: inherit;
-  color: navy;
+pre {
   padding: 0;
   margin: 0;
 }
-
 
 #author {
   color: #527bbd;
@@ -223,7 +219,7 @@ div.exampleblock > div.content {
 }
 
 div.imageblock div.content { padding-left: 0; }
-span.image img { border-style: none; vertical-align: text-bottom; }
+span.image img { border-style: none; }
 a.image:visited { color: white; }
 
 dl {
@@ -419,6 +415,12 @@ div.unbreakable { page-break-inside: avoid; }
  *
  * */
 
+tt {
+  font-family: "Courier New", Courier, monospace;
+  font-size: inherit;
+  color: navy;
+}
+
 div.tableblock {
   margin-top: 1.0em;
   margin-bottom: 1.5em;
@@ -451,6 +453,12 @@ div.tableblock > table[frame="vsides"] {
  * html5 specific
  *
  * */
+
+.monospaced {
+  font-family: "Courier New", Courier, monospace;
+  font-size: inherit;
+  color: navy;
+}
 
 table.tableblock {
   margin-top: 1.0em;
@@ -531,8 +539,6 @@ body.manpage div.sectionbody {
 @media print {
   body.manpage div#toc { display: none; }
 }
-
-
 @media screen {
   body {
     max-width: 50em; /* approximately 80 characters wide */
@@ -767,9 +773,8 @@ asciidoc.install(2);
 <div id="header">
 <h1>pmtr job manager</h1>
 <span id="author">Troy D. Hanson</span><br />
-<span id="email"><code>&lt;<a href="mailto:tdh@tkhanson.net">tdh@tkhanson.net</a>&gt;</code></span><br />
-<span id="revnumber">version 1.2,</span>
-<span id="revdate">September 2012</span>
+<span id="email"><tt>&lt;<a href="mailto:tdh@tkhanson.net">tdh@tkhanson.net</a>&gt;</tt></span><br />
+<span id="revdate">v1.3 November 2013</span>
 <div id="toc">
   <div id="toctitle">Table of Contents</div>
   <noscript><p><b>JavaScript must be enabled in your browser to display the table of contents.</b></p></noscript>
@@ -783,35 +788,37 @@ asciidoc.install(2);
 them running. It&#8217;s small, written in C, free, open-source and for Linux only.
 With pmtr, all your jobs are defined in one configuration file:</p></div>
 <div class="listingblock">
-<div class="title">Example <code>/etc/pmtr.conf</code></div>
+<div class="title">Example <tt>/etc/pmtr.conf</tt></div>
 <div class="content">
-<pre><code>  job {
-    name minecraft-server
-    dir /home/mc
-    cmd /usr/bin/java -jar minecraft_server.jar nogui
-    err mc.err
-    out mc.out
-    user mc
+<pre><tt>  job {
+    name app-webserver
+    cmd /home/app/webserver.py
   }
 
   job {
-    name cpu-monitor
-    cmd /bin/cpu-monitor -x
-  }</code></pre>
+    name app-server
+    dir /home/app
+    cmd /home/app/server -c 20
+    out server.out
+    err server.err
+    user app
+  }</tt></pre>
 </div></div>
-<div class="paragraph"><p>Here, for the sake of illustration, we&#8217;re running a Minecraft server and
-a CPU monitoring job. As you can see- only the name and command are required.
-If you want to, you can specify the working directory, a user other than root
-to run the process, and where to put the output and error.  The <a href="#options">full options</a> are documented below.</p></div>
+<div class="paragraph"><p>Only the <tt>name</tt> used for logging and <tt>cmd</tt> (the command) are required.  The
+following are optional: the working directory, files to receive stderr and
+stdout, and the user whose id should run the process. See the <a href="#options">full options</a> below.</p></div>
 <div class="sidebarblock">
 <div class="content">
 <div class="title">Why did I write it?</div>
 <div class="paragraph"><p>I wrote pmtr because I wanted to have all my application jobs listed in one
 easily-edited configuration file. I also wanted them kept separate from the
-system daemons managed by sysvinit and similar mechanisms.</p></div>
+system services managed by sysvinit, upstart or similar mechanisms.</p></div>
 </div></div>
-<div class="paragraph"><div class="title">But has it been tested?</div><p>The pmtr utility has been used in production Linux environments for about two
-years, managing dozens of jobs per system.</p></div>
+<div class="paragraph"><p>Some of the other features of pmtr are protection against jobs that restart too
+fast, automatic re-scanning of an updated configuration file, and basic remote
+reporting. Note that the jobs should stay in the foreground so pmtr can detect
+if they restart. See the <a href="#requirements">requirements for pmtr jobs</a> below.</p></div>
+<div class="paragraph"><p>Pmtr has been used in production to manage jobs on hundreds on Linux systems.</p></div>
 </div>
 </div>
 <div class="sect1">
@@ -819,9 +826,7 @@ years, managing dozens of jobs per system.</p></div>
 <div class="sectionbody">
 <div class="sect2">
 <h3 id="_platforms">Platforms</h3>
-<div class="paragraph"><p>Pmtr is <strong>Linux only</strong>, because it uses inotify. (It&#8217;d probably be an easy
-port to other Unix variants. If you do, feel free to send me a patch.)</p></div>
-<div class="paragraph"><p>It&#8217;s been tested on:</p></div>
+<div class="paragraph"><p>Pmtr is for Linux only. It&#8217;s been tested on:</p></div>
 <div class="ulist"><ul>
 <li>
 <p>
@@ -842,52 +847,69 @@ Debian (6+)
 </div>
 <div class="sect2">
 <h3 id="_download_options">Download options</h3>
-<div class="paragraph"><p>You can download a <a href="https://github.com/troydhanson/pmtr/archive/master.zip">zipfile here</a>. Or, if you
-prefer, clone the git repository:</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>git clone https://github.com/troydhanson/pmtr.git</code></pre>
-</div></div>
-<div class="paragraph"><p>Other download options are listed on the <a href="https://github.com/troydhanson/pmtr">pmtr Github site</a>.</p></div>
+<div class="paragraph"><p>You can:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+download a <a href="https://github.com/troydhanson/pmtr/archive/master.zip">zipfile here</a>.
+</p>
+</li>
+<li>
+<p>
+Or clone the git repository: <tt>git clone https://github.com/troydhanson/pmtr.git</tt>
+</p>
+</li>
+</ul></div>
 </div>
 <div class="sect2">
 <h3 id="_build_and_install">Build and install</h3>
 <div class="paragraph"><p>To build and install:</p></div>
 <div class="literalblock">
 <div class="content">
-<pre><code>cd pmtr
+<pre><tt>cd pmtr
 make
-sudo make install</code></pre>
+(if pmtr is already running, stop it using service pmtr stop)
+sudo make install</tt></pre>
 </div></div>
 <div class="paragraph"><p>The result of installation is:</p></div>
 <div class="ulist"><ul>
 <li>
 <p>
-the binary itself <code>/usr/bin/pmtr</code>,
+<tt>/usr/bin/pmtr</tt> - the executable
 </p>
 </li>
 <li>
 <p>
-the configuration file <code>/etc/pmtr.conf</code> which is initially empty,
+<tt>/etc/pmtr.conf</tt> - the configuration file (initially empty)
 </p>
 </li>
 <li>
 <p>
-a system startup script that runs pmtr at boot as described next.
+<tt>/usr/bin/pmtr-rptserver</tt> - for remote monitoring of ptmr jobs
+</p>
+</li>
+<li>
+<p>
+<tt>/usr/bin/pmtr-ctl</tt> - for remote disabling and enabling of jobs
+</p>
+</li>
+<li>
+<p>
+an OS-specific startup script that runs pmtr at boot
 </p>
 </li>
 </ul></div>
-<div class="paragraph"><p>Upon completion of <code>sudo make install</code>, pmtr should be running. Verify using:</p></div>
+<div class="paragraph"><p>Upon completion of <tt>sudo make install</tt>, pmtr should be running. Verify using:</p></div>
 <div class="literalblock">
 <div class="content">
-<pre><code>service pmtr status</code></pre>
+<pre><tt>service pmtr status</tt></pre>
 </div></div>
 <div class="sidebarblock">
 <div class="content">
 <div class="title">Who starts pmtr?</div>
 <div class="paragraph"><p>Pmtr starts up automatically during the boot process. An OS-specific initscript
-makes this happen.  You can use your system&#8217;s <code>service</code> command to start and
-stop pmtr manually (like <code>service pmtr start</code>), but normally you just let the OS
+makes this happen.  You can use your system&#8217;s <tt>service</tt> command to start and
+stop pmtr manually (like <tt>service pmtr start</tt>), but normally you just let the OS
 start up pmtr automatically at boot.</p></div>
 </div></div>
 </div>
@@ -896,30 +918,23 @@ start up pmtr automatically at boot.</p></div>
 <div class="sect1">
 <h2 id="_configuration_file">Configuration file</h2>
 <div class="sectionbody">
-<div class="paragraph"><p>When pmtr is started at system boot, it reads the configuration file&#8201;&#8212;&#8201;by default <code>/etc/pmtr.conf</code>&#8201;&#8212;&#8201;and starts up the jobs defined there.</p></div>
+<div class="paragraph"><p>When pmtr is started at system boot, it reads the configuration file&#8201;&#8212;&#8201;by default <tt>/etc/pmtr.conf</tt>&#8201;&#8212;&#8201;and starts up the jobs defined there.</p></div>
 <div class="sect2">
 <h3 id="_syntax">Syntax</h3>
 <div class="paragraph"><p>The configuration file contains any number of jobs. Each job is in a curly-brace
 delimited block.  Indentation is optional. Blank lines are ok.</p></div>
 <div class="literalblock">
 <div class="content">
-<pre><code>job {
-  name mumble-server
-  cmd /usr/bin/mumble
-}</code></pre>
+<pre><tt># this is a comment
+job {
+  name geo-server
+  cmd /usr/bin/server -e "New York"
+}</tt></pre>
 </div></div>
-<div class="paragraph"><p>Only <em>name</em> and <em>cmd</em> are required. The <code>cmd</code> is the <strong>absolute path</strong> to the
-executable (which must have its executable bit set).</p></div>
-<div class="paragraph"><p>The command may contain simple or <em>double-quoted</em> arguments.  Like this,</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>cmd /bin/echo -n "st paul"</code></pre>
-</div></div>
-<div class="paragraph"><p>Comments should be on their own line and prefaced with <code>#</code>.</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code># this is a comment</code></pre>
-</div></div>
+<div class="paragraph"><p>Only <em>name</em> and <em>cmd</em> are required. The <tt>cmd</tt> is the absolute path to the
+executable. It must have its executable bit set.  The command may contain
+arguments; double-quote the arguments if they contain spaces. Comments should
+be on their own line and start with <tt>#</tt>.</p></div>
 </div>
 <div class="sect2">
 <h3 id="_job_options">Job options</h3>
@@ -938,40 +953,40 @@ cellspacing="0" cellpadding="4">
 </thead>
 <tbody>
 <tr>
-<td align="left" valign="top"><p class="table"><code>name</code></p></td>
-<td align="left" valign="top"><p class="table">job name</p></td>
+<td align="left" valign="top"><p class="table"><tt>name</tt></p></td>
+<td align="left" valign="top"><p class="table">job name (used for logging)</p></td>
 </tr>
 <tr>
-<td align="left" valign="top"><p class="table"><code>cmd</code></p></td>
-<td align="left" valign="top"><p class="table">absolute path to executable with optional arguments</p></td>
+<td align="left" valign="top"><p class="table"><tt>cmd</tt></p></td>
+<td align="left" valign="top"><p class="table">absolute path to executable, with optional arguments</p></td>
 </tr>
 <tr>
-<td align="left" valign="top"><p class="table"><code>dir</code></p></td>
-<td align="left" valign="top"><p class="table">absolute path to the working directory</p></td>
+<td align="left" valign="top"><p class="table"><tt>dir</tt></p></td>
+<td align="left" valign="top"><p class="table">optional- absolute path to the working directory</p></td>
 </tr>
 <tr>
-<td align="left" valign="top"><p class="table"><code>in</code></p></td>
-<td align="left" valign="top"><p class="table">file to set as standard input</p></td>
+<td align="left" valign="top"><p class="table"><tt>out</tt></p></td>
+<td align="left" valign="top"><p class="table">optional- file to receive stdout</p></td>
 </tr>
 <tr>
-<td align="left" valign="top"><p class="table"><code>out</code></p></td>
-<td align="left" valign="top"><p class="table">file to receive standard output</p></td>
+<td align="left" valign="top"><p class="table"><tt>err</tt></p></td>
+<td align="left" valign="top"><p class="table">optional- file to receive stderr</p></td>
 </tr>
 <tr>
-<td align="left" valign="top"><p class="table"><code>err</code></p></td>
-<td align="left" valign="top"><p class="table">file to receive standard error</p></td>
+<td align="left" valign="top"><p class="table"><tt>in</tt></p></td>
+<td align="left" valign="top"><p class="table">optional- file to set up as stdin</p></td>
 </tr>
 <tr>
-<td align="left" valign="top"><p class="table"><code>user</code></p></td>
-<td align="left" valign="top"><p class="table">user under whose uid the job should run</p></td>
+<td align="left" valign="top"><p class="table"><tt>user</tt></p></td>
+<td align="left" valign="top"><p class="table">optional- user whose id to run the job as</p></td>
 </tr>
 <tr>
-<td align="left" valign="top"><p class="table"><code>env</code></p></td>
-<td align="left" valign="top"><p class="table"><code>VAR=VALUE</code> environment variable settings (repeatable)</p></td>
+<td align="left" valign="top"><p class="table"><tt>env</tt></p></td>
+<td align="left" valign="top"><p class="table">optional- <tt>VAR=VALUE</tt> environment variable settings (repeatable)</p></td>
 </tr>
 <tr>
-<td align="left" valign="top"><p class="table"><code>disable</code></p></td>
-<td align="left" valign="top"><p class="table">if present, disables the job</p></td>
+<td align="left" valign="top"><p class="table"><tt>disable</tt></p></td>
+<td align="left" valign="top"><p class="table">optional- if present, disables the job</p></td>
 </tr>
 </tbody>
 </table>
@@ -991,7 +1006,7 @@ cmd
 <dd>
 <p>
   the absolute pathname to an executable, with optional arguments.
-  Quoting (using double-quotes only) is supported in the arguments.
+  Quoting using double-quotes is supported in the arguments.
 </p>
 </dd>
 <dt class="hdlist1">
@@ -1007,7 +1022,7 @@ in
 </dt>
 <dd>
 <p>
-  file to open as stdin. Default: <code>/dev/null</code>
+  file to open as stdin. Default: <tt>/dev/null</tt>
 </p>
 </dd>
 <dt class="hdlist1">
@@ -1015,7 +1030,7 @@ out
 </dt>
 <dd>
 <p>
-  file to receive stdout. Default: <code>/dev/null</code>
+  file to receive stdout. Default: <tt>/dev/null</tt>
 </p>
 </dd>
 <dt class="hdlist1">
@@ -1023,7 +1038,7 @@ err
 </dt>
 <dd>
 <p>
-  file to receive stderr. Default: <code>/dev/null</code>
+  file to receive stderr. Default: <tt>/dev/null</tt>
 </p>
 </dd>
 <dt class="hdlist1">
@@ -1031,7 +1046,7 @@ user
 </dt>
 <dd>
 <p>
-  the unix username under which the job should be executed. Default: root.
+  the unix username whose id should execute the job. Default: root.
 </p>
 </dd>
 <dt class="hdlist1">
@@ -1039,7 +1054,7 @@ env
 </dt>
 <dd>
 <p>
-  set an environment variables for the job, e.g., <code>env DEBUG=1</code> (repeatable)
+  set an environment variable for the job, e.g., <tt>env DEBUG=1</tt> (repeatable)
 </p>
 </dd>
 <dt class="hdlist1">
@@ -1047,51 +1062,63 @@ disable
 </dt>
 <dd>
 <p>
-  make the job inactive. Usually easier than commenting out the job definition.
+  make the job inactive. Can be used instead of commenting out the job definition.
 </p>
 </dd>
 </dl></div>
+<div class="sect3">
+<h4 id="_one_time_jobs">One-time jobs</h4>
+<div class="paragraph"><p>Pmtr has limited support for one-time jobs intended for "initial setup" type of
+situations.  There are two options that are used for this.  The <tt>wait</tt> option
+prevents pmtr from going on to start subsequent jobs, until this one exits.
+Then, <tt>once</tt> tells pmtr not to restart it. (If pmtr itself is restarted, or if
+the job configuration is changed, the job would be executed once again).</p></div>
+<div class="literalblock">
+<div class="content">
+<pre><tt>job {
+  name setup-ramdisk
+  cmd /bin/mkdir /dev/shm/app-ramdisk
+  wait
+  once
+}</tt></pre>
+</div></div>
 </div>
-<div class="sect2">
-<h3 id="_when_do_configuration_changes_take_effect">When do configuration changes take effect?</h3>
-<div class="paragraph"><p>When you edit and save <code>pmtr.conf</code>, the changes get applied immediately. (Pmtr
-uses inotify to get signalled when the configuration file has changed).</p></div>
-<div class="ulist"><ul>
-<li>
-<p>
-If you add a job, it gets started.
-</p>
-</li>
-<li>
-<p>
-If you delete a job, or give it the <code>disable</code> option, or comment it out, it
-   gets terminated.  Pmtr sends SIGTERM to it, then SIGKILL shortly afterward.
-</p>
-</li>
-<li>
-<p>
-If you change a job, it gets restarted with the new settings.
-</p>
-</li>
-</ul></div>
-<div class="paragraph"><p>Other running jobs are left alone- they&#8217;re not needlessly restarted. All this
-happens immediately whenever the configuration file is modified and written.</p></div>
-<div class="paragraph"><p>If you stop pmtr itself (for example, by running <code>service pmtr stop</code>), it
-terminates its jobs before exiting.</p></div>
 </div>
 <div class="sect2">
 <h3 id="_testing_config_file_syntax">Testing config file syntax</h3>
-<div class="paragraph"><p>You can check the syntax of a configuration file using,</p></div>
+<div class="paragraph"><p>You can check the syntax of a configuration file using <tt>-t</tt> (test syntax only)
+which may be used with <tt>-c</tt> to specify a configuration to test. Any syntax errors
+are displayed; the exit code is always 0.</p></div>
 <div class="literalblock">
 <div class="content">
-<pre><code>pmtr -tc /etc/pmtr.conf</code></pre>
+<pre><tt>pmtr -tc /tmp/pmtr.conf</tt></pre>
 </div></div>
-<div class="paragraph"><p>The meaning of these options are:</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>-t test syntax only (don't start any jobs, and stay in foreground)
--c &lt;file&gt; specify configuration file</code></pre>
-</div></div>
+</div>
+<div class="sect2">
+<h3 id="_when_do_configuration_changes_take_effect">When do configuration changes take effect?</h3>
+<div class="paragraph"><p>When you edit and save <tt>pmtr.conf</tt>, the changes get applied immediately. Pmtr
+watchces the configuration file to notice when it has been updated. The changes
+are applied minimally - only jobs whose definition has changed are affected.</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+A newly-added job gets started.
+</p>
+</li>
+<li>
+<p>
+A deleted job is terminated.
+</p>
+</li>
+<li>
+<p>
+A changed job is restarted with its new configuration.
+</p>
+</li>
+</ul></div>
+<div class="paragraph"><p>To terminate a job, pmtr sends SIGTERM to it, then SIGKILL shortly afterward.</p></div>
+<div class="paragraph"><p>If you stop pmtr itself (for example, by running <tt>service pmtr stop</tt>), it
+terminates its jobs before exiting.</p></div>
 </div>
 </div>
 </div>
@@ -1101,13 +1128,13 @@ terminates its jobs before exiting.</p></div>
 <div class="sect2">
 <h3 id="_logging">Logging</h3>
 <div class="paragraph"><p>As jobs start up, exit, and so on, messages are sent to <strong>syslog</strong>. Depending on
-your syslog configuration, the messages might go to <code>/var/log/syslog</code>, or
-<code>/var/log/messages</code>, or somewhere else. Typical log messages are like:</p></div>
+your syslog configuration, the messages might go to <tt>/var/log/syslog</tt>, or
+<tt>/var/log/messages</tt>, or somewhere else. Typical log messages are like:</p></div>
 <div class="literalblock">
 <div class="content">
-<pre><code>Nov  7 22:01:09 ubuntu pmtr[18477]: rescanning job configuration
+<pre><tt>Nov  7 22:01:09 ubuntu pmtr[18477]: rescanning job configuration
 Nov  7 21:38:10 ubuntu pmtr[18477]: pmtr: managing 1 jobs
-Nov  7 21:38:10 ubuntu pmtr[18477]: started job doppler [18478]</code></pre>
+Nov  7 21:38:10 ubuntu pmtr[18477]: started job doppler [18478]</tt></pre>
 </div></div>
 <div class="admonitionblock">
 <table><tr>
@@ -1122,8 +1149,8 @@ log messages - so be sure you check them when making config changes!</td>
 </div>
 </div>
 <div class="sect2">
-<h3 id="_is_the_job_suitable_to_run_under_pmtr">Is the job suitable to run under pmtr?</h3>
-<div class="paragraph"><p>Jobs that you intend to run under <code>pmtr</code> should:</p></div>
+<h3 id="requirements">Is the job suitable to run under pmtr?</h3>
+<div class="paragraph"><p>Jobs that you intend to run under <tt>pmtr</tt> should:</p></div>
 <div class="ulist"><ul>
 <li>
 <p>
@@ -1146,42 +1173,57 @@ cause any <strong>sub-processes</strong> to exit if the job exits
 <h3 id="_restart_handling">Restart handling</h3>
 <div class="paragraph"><p>Pmtr restarts a job that exits, provided it&#8217;s been running at least ten seconds.</p></div>
 <div class="sect3">
-<h4 id="_restart_loops">Restart loops</h4>
-<div class="paragraph"><p>When a job exits less than 10 seconds after it started, pmtr waits ten seconds
-before restarting it.  This avoids pegging the CPU with rapid restart cycles.
-Since pmtr is oriented toward running daemons, a quick exit usually means the
-job has some kind of problem (bad arguments, etc) that need to be fixed.</p></div>
+<h4 id="_rapid_restart_prevention">Rapid restart prevention</h4>
+<div class="paragraph"><p>If a job exits quickly after starting (less than 10 seconds after it started),
+pmtr waits ten seconds before restarting it. This avoids rapid restart cycles.
+For servers, a quick exit often means the job has some sort of configuration problem.</p></div>
 <div class="literalblock">
 <div class="content">
-<pre><code>Nov  7 22:01:13 ubuntu pmtr[18477]: job x 8552 exited after 3 sec: exit status 0
-Nov  7 22:01:13 ubuntu pmtr[18477]: job restarting too fast, delaying restart</code></pre>
+<pre><tt>Nov  7 22:01:13 ubuntu pmtr[18477]: job app-server 8552 exited after 0 sec: exit status 0</tt></pre>
 </div></div>
 </div>
 <div class="sect3">
-<h4 id="_restart_prevention">Restart prevention</h4>
-<div class="paragraph"><p>To prevent pmtr from restarting a job, use the <em>once</em> keyword.  As a
-programmatic alternative, if the job exits with exit status 33, pmtr won&#8217;t
-restart it either.</p></div>
-<div class="sect4">
-<h5 id="_one_time_jobs">One-time jobs</h5>
-<div class="paragraph"><p>Pmtr has limited support for one-time jobs intended for initial "setup"
-situations. The use case is when you want the job to run once (not be
-restarted), and to wait for it to finish before starting subsequent jobs.
-Here&#8217;s an example where we create a directory in a RAM disk.</p></div>
+<h4 id="_exit_status">Exit status</h4>
+<div class="paragraph"><p>A job that exits normally or terminates due to a signal is logged with its exit
+code or signal number. Note that exit code 33 is special. If pmtr sees a job
+exit with code 33 it does not restart it.</p></div>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_remote_control">Remote control</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Two special configuration options can appear in <tt>pmtr.conf</tt>. The first is
+<tt>report to</tt> which causes pmtr to send a periodic (every 10 seconds) status
+message to the remote UDP endpoint whose IP address and port number are listed.
+It can be repeated multiple times to report to multiple remote endpoints.</p></div>
 <div class="literalblock">
 <div class="content">
-<pre><code>job {
-  name setup
-  cmd /bin/mkdir -p /dev/shm/ramdisk
-  wait
-  once
-}</code></pre>
+<pre><tt>report to udp://127.0.0.1:9999</tt></pre>
 </div></div>
-<div class="paragraph"><p>The <code>wait</code> option prevents pmtr from starting subsequent jobs until this one
-finishes, and <code>once</code> prevents pmtr from restarting it.</p></div>
-</div>
-</div>
-</div>
+<div class="paragraph"><p>The script in <tt>pmtr-rptserver</tt> can be run on a remote system to receive these
+packets and maintain a file with the status of all reporting systems. E.g.,</p></div>
+<div class="literalblock">
+<div class="content">
+<pre><tt>/usr/bin/pmtr-rptserver -p 9999 -f /var/log/pmtr-status.txt</tt></pre>
+</div></div>
+<div class="paragraph"><p>The other special option allows remote systems to enable or disable pmtr jobs.</p></div>
+<div class="literalblock">
+<div class="content">
+<pre><tt>listen on udp://0.0.0.0:10000</tt></pre>
+</div></div>
+<div class="paragraph"><p>With that specification, pmtr listens on all local IP addresses (0.0.0.0) on
+port 10000 for UDP messages of the form "enable xyz" or "disable xyz". There is
+a script to make it easy to send these messages like this:</p></div>
+<div class="literalblock">
+<div class="content">
+<pre><tt>/usr/bin/pmtr-ctl -s 127.0.0.1 -p 10000 enable app-server</tt></pre>
+</div></div>
+<div class="paragraph"><p>This is intended for temporary job enabling or disabling. If <tt>pmtr.conf</tt> is
+edited or if pmtr is restarted, the settings in the <tt>pmtr.conf</tt> take effect.</p></div>
+<div class="paragraph"><p>There is no authentication with the <tt>listen on</tt> feature- use it only on trusted
+internal networks.</p></div>
 </div>
 </div>
 <div class="sect1">
@@ -1195,12 +1237,9 @@ finishes, and <code>once</code> prevents pmtr from restarting it.</p></div>
 </div>
 <div class="sect2">
 <h3 id="_contributing">Contributing</h3>
-<div class="paragraph"><p>Feel free to send pull requests through the <a href="https://github.com/troydhanson/pmtr">pmtr Github page</a>.</p></div>
-</div>
-<div class="sect2">
-<h3 id="_contact">Contact</h3>
-<div class="paragraph"><p>Please send bug reports or suggestions to <a href="mailto:tdh@tkhanson.net">tdh@tkhanson.net</a>. Sorry, I&#8217;m often
-behind by weeks or months in getting back to people.</p></div>
+<div class="paragraph"><p>Feel free to send pull requests through the <a href="https://github.com/troydhanson/pmtr">pmtr Github page</a>.
+Please send bug reports or suggestions through GitHub. You can also email me at
+<a href="mailto:tdh@tkhanson.net">tdh@tkhanson.net</a>, but I&#8217;m often behind by weeks or months in getting back to people.</p></div>
 </div>
 <div class="sect2">
 <h3 id="_other_software">Other software</h3>
@@ -1216,8 +1255,7 @@ behind by weeks or months in getting back to people.</p></div>
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
-Version 1.2<br />
-Last updated 2013-03-17 15:40:31 EDT
+Last updated 2013-11-12 12:24:16 EST
 </div>
 </div>
 </body>

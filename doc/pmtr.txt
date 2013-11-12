@@ -160,7 +160,7 @@ disable::
   make the job inactive. Can be used instead of commenting out the job definition.
 
 One-time jobs
-+++++++++++++
+^^^^^^^^^^^^^
 Pmtr has limited support for one-time jobs intended for "initial setup" type of
 situations.  There are two options that are used for this.  The `wait` option
 prevents pmtr from going on to start subsequent jobs, until this one exits.
