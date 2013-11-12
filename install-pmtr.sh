@@ -36,7 +36,6 @@ then
   exit -1
 fi
 
-BINDIR=/usr/bin
 if [ ! -d "$BINDIR" ]
 then
   echo "the install directory $BINDIR does not exist."
@@ -44,6 +43,7 @@ then
   exit -1
 fi
 
+echo "Installing pmtr in $BINDIR"
 cp ./pmtr "$BINDIR"
 touch /etc/pmtr.conf
 

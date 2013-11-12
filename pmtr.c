@@ -158,7 +158,6 @@ int main (int argc, char *argv[]) {
   utarray_new(cfg.listen, &ut_int_icd);
   utarray_new(cfg.report, &ut_int_icd);
   utstring_new(cfg.s);
-  utstring_new(cfg.ident);
 
   /* block all signals. we remain fully blocked except in sigsuspend */
   sigset_t all;
@@ -169,10 +168,10 @@ int main (int argc, char *argv[]) {
    * during parsing if we open UDP listeners and get any datagrams */
   if (parse_jobs(&cfg, em) == -1) {
     syslog(LOG_ERR,"parse failed: %s\n", utstring_body(em));
-    goto done;
+    goto final;
   }
 
-  if (cfg.test_only) goto done;
+  if (cfg.test_only) goto final;
   syslog(LOG_INFO,"pmtr: starting\n");
 
   /* define a smaller set of signals to block within sigsuspend. */
@@ -234,13 +233,13 @@ int main (int argc, char *argv[]) {
   nanosleep(&half,NULL); /* a little time to let them exit */
   collect_jobs(&cfg,sm); /* collect any jobs that exited */
 
+ final:
   close_sockets(&cfg);
   free(cfg.file);
   utarray_free(cfg.jobs);
   utarray_free(cfg.listen);
   utarray_free(cfg.report);
   utstring_free(cfg.s);
-  utstring_free(cfg.ident);
   utstring_free(em);
   utstring_free(sm);
   return 0;

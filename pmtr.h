@@ -20,7 +20,6 @@ typedef struct {
   UT_array *listen; /* file descriptors listening on */
   UT_array *report; /* file descriptors reporting to */
   UT_string *s;     /* scratch space */
-  UT_string *ident; /* e.g. "1.2.3.4 3456 host.xyz.net" to report */
 
 } pmtr_t;
 

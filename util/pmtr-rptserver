@@ -25,6 +25,7 @@ our $help;
 our $msg;
 our $file = "/tmp/pmtr-status";
 our $max=2000;
+our $last=0;
 our %jobs;
 our %expire;
 usage unless GetOptions("port=i"           => \$port,
@@ -59,6 +60,7 @@ sub sec_to_dhms {
 
 sub update_file() {
   my $now = time;
+  $last = $now;
   open FILE, ">$file" or die "can't open $file: $!";
   print FILE "update at ".scalar localtime . "\n";
   print FILE scalar(keys %jobs) . " systems reporting\n\n";
@@ -72,9 +74,8 @@ sub update_file() {
     $name = $host unless $name;
     print FILE "$name:\n";
     for my $job (@{$jobs{$host}}) {
-      my ($name,$enabled,$start) = @$job;
+      my ($name,$enabled,$elapsed) = @$job;
       my $e = ($enabled eq 'e') ? 'enabled' : 'disabled';
-      my $elapsed = $now-$start;
       my $howlong = ($enabled eq 'e') ? sec_to_dhms($elapsed) : "-";
       printf FILE ("\t%-40s %-10s %20s\n",$name,$e,$howlong);
     }
@@ -84,7 +85,7 @@ sub update_file() {
 
 # the UDP messages sent by pmtr look like:
 #
-# report 127.0.0.1 1111 jesse
+# report 
 # echo-test-alt e 1349317996
 # echo-test e 1349318036
 #
@@ -93,16 +94,15 @@ sub update_file() {
 while ($server->recv($msg, $max)) {
   my $peer = $server->peerhost();
   print STDERR "datagram from $peer:\n$msg\n" if $verbose;
-  if ($msg =~ m/report ([\d\.]+) (\d+) ([\w\.]+)/) {
-    my ($ip,$port,$hostname)=($1,$2,$3);
+  if ($msg =~ m/report/) {
     delete $jobs{$peer};
     my @lines = split /\n/, $msg;
     shift @lines;
     for my $line (@lines) {
-      my ($job,$enabled,$start) = split /\s/, $line;
-      push @{$jobs{$peer}}, [$job,$enabled,$start];
+      my ($job,$enabled,$elapsed) = split /\s/, $line;
+      push @{$jobs{$peer}}, [$job,$enabled,$elapsed];
       $expire{$peer} = time + 60; # delete it in a minute if no update
     }
   } 
-  update_file;
+  update_file if ((time - $last) >= 10); # 10 seconds min between file re-writes
 }

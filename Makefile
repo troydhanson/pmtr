@@ -20,9 +20,12 @@ clean:
 	rm -f *.o *.out pmtr cfg.c cfg.h
 	for f in $(SUBDIRS); do make -C $$f $@; done
 
+export BINDIR=/usr/bin
+UTILS=pmtr-rptserver pmtr-ctl
 install: pmtr
 	./install-pmtr.sh
-	cp util/pmtr-rptserver /usr/bin
+	(cd util; cp ${UTILS} ${BINDIR})
+	(cd ${BINDIR}; chmod a+rx pmtr ${UTILS})
 
 .PHONY: clean $(SUBDIRS)
 

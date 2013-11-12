@@ -473,8 +473,12 @@ void alarm_within(pmtr_t *cfg, int sec) {
   if (cfg->next_alarm == 0) reset=1;      /* first time setup */
   if (cfg->next_alarm <= now) reset=1;    /* alarm woke us up, rescheduling */
   if (cfg->next_alarm > now+sec) reset=1; /* move alarm earlier */
-  if (!reset) return;
+  if (!reset) {
+    alarm(cfg->next_alarm - now);         /* already set but play it safe .*/
+    return;
+  }
 
+  if (sec==0) sec=1;                      /* zero-second timer is ignored */
   cfg->next_alarm = now+sec;
   alarm(sec);
 }

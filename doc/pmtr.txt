@@ -1,7 +1,7 @@
 pmtr job manager
 ================
 Troy D. Hanson <tdh@tkhanson.net>
-v1.2, September 2012
+v1.3 November 2013
 
 What does pmtr do?
 ------------------
@@ -12,46 +12,45 @@ With pmtr, all your jobs are defined in one configuration file:
 .Example `/etc/pmtr.conf`
 --------------------------------------------------------
   job {
-    name minecraft-server
-    dir /home/mc
-    cmd /usr/bin/java -jar minecraft_server.jar nogui
-    err mc.err
-    out mc.out
-    user mc
+    name app-webserver
+    cmd /home/app/webserver.py 
   }
 
   job {
-    name cpu-monitor
-    cmd /bin/cpu-monitor -x 
+    name app-server
+    dir /home/app
+    cmd /home/app/server -c 20 
+    out server.out
+    err server.err
+    user app
   }
 --------------------------------------------------------
 
-Here, for the sake of illustration, we're running a Minecraft server and
-a CPU monitoring job. As you can see- only the name and command are required.
-If you want to, you can specify the working directory, a user other than root
-to run the process, and where to put the output and error.  The <<options,full
-options>> are documented below. 
+Only the `name` used for logging and `cmd` (the command) are required.  The
+following are optional: the working directory, files to receive stderr and
+stdout, and the user whose id should run the process. See the <<options,full
+options>> below. 
 
 .Why did I write it?
 **************************************************************************
 I wrote pmtr because I wanted to have all my application jobs listed in one
 easily-edited configuration file. I also wanted them kept separate from the 
-system daemons managed by sysvinit and similar mechanisms. 
+system services managed by sysvinit, upstart or similar mechanisms. 
 **************************************************************************
 
-.But has it been tested?
-The pmtr utility has been used in production Linux environments for about two
-years, managing dozens of jobs per system.
+Some of the other features of pmtr are protection against jobs that restart too
+fast, automatic re-scanning of an updated configuration file, and basic remote
+reporting. Note that the jobs should stay in the foreground so pmtr can detect
+if they restart. See the <<requirements,requirements for pmtr jobs>> below.
+
+Pmtr has been used in production to manage jobs on hundreds on Linux systems.
 
 Download & Install
 ------------------
 
 Platforms
 ~~~~~~~~~
-Pmtr is *Linux only*, because it uses inotify. (It'd probably be an easy
-port to other Unix variants. If you do, feel free to send me a patch.)
-
-It's been tested on:
+Pmtr is for Linux only. It's been tested on:
 
 * Ubuntu (10+)
 * CentOS/RHEL (6+)
@@ -60,12 +59,10 @@ It's been tested on:
 Download options
 ~~~~~~~~~~~~~~~~
 
-You can download a https://github.com/troydhanson/pmtr/archive/master.zip[zipfile here]. Or, if you
-prefer, clone the git repository:
+You can:
 
-  git clone https://github.com/troydhanson/pmtr.git 
-
-Other download options are listed on the https://github.com/troydhanson/pmtr[pmtr Github site].
+ * download a https://github.com/troydhanson/pmtr/archive/master.zip[zipfile here]. 
+ * Or clone the git repository: `git clone https://github.com/troydhanson/pmtr.git`
 
 Build and install
 ~~~~~~~~~~~~~~~~~
@@ -73,13 +70,16 @@ To build and install:
 
   cd pmtr
   make
+  (if pmtr is already running, stop it using service pmtr stop)
   sudo make install
 
 The result of installation is:
 
- * the binary itself `/usr/bin/pmtr`, 
- * the configuration file `/etc/pmtr.conf` which is initially empty,
- * a system startup script that runs pmtr at boot as described next.
+ * `/usr/bin/pmtr` - the executable
+ * `/etc/pmtr.conf` - the configuration file (initially empty)
+ * `/usr/bin/pmtr-rptserver` - for remote monitoring of ptmr jobs
+ * `/usr/bin/pmtr-ctl` - for remote disabling and enabling of jobs
+ * an OS-specific startup script that runs pmtr at boot 
 
 Upon completion of `sudo make install`, pmtr should be running. Verify using:
 
@@ -103,21 +103,16 @@ Syntax
 The configuration file contains any number of jobs. Each job is in a curly-brace
 delimited block.  Indentation is optional. Blank lines are ok. 
 
+  # this is a comment
   job {
-    name mumble-server
-    cmd /usr/bin/mumble
+    name geo-server
+    cmd /usr/bin/server -e "New York"
   }
 
-Only 'name' and 'cmd' are required. The `cmd` is the *absolute path* to the
-executable (which must have its executable bit set). 
-
-The command may contain simple or 'double-quoted' arguments.  Like this,
-
-  cmd /bin/echo -n "st paul"
-
-Comments should be on their own line and prefaced with `#`.
-
-  # this is a comment
+Only 'name' and 'cmd' are required. The `cmd` is the absolute path to the
+executable. It must have its executable bit set.  The command may contain 
+arguments; double-quote the arguments if they contain spaces. Comments should
+be on their own line and start with `#`.
 
 Job options
 ~~~~~~~~~~~
@@ -125,15 +120,15 @@ Job options
 [width="90%",cols="10m,50",grid="none",options="header"]
 |===============================================================================
 |option         | argument
-|name           | job name 
-|cmd            | absolute path to executable with optional arguments
-|dir            | absolute path to the working directory 
-|in             | file to set as standard input 
-|out            | file to receive standard output 
-|err            | file to receive standard error 
-|user           | user under whose uid the job should run
-|env            | `VAR=VALUE` environment variable settings (repeatable)
-|disable        | if present, disables the job 
+|name           | job name (used for logging)
+|cmd            | absolute path to executable, with optional arguments
+|dir            | optional- absolute path to the working directory 
+|out            | optional- file to receive stdout
+|err            | optional- file to receive stderr
+|in             | optional- file to set up as stdin
+|user           | optional- user whose id to run the job as
+|env            | optional- `VAR=VALUE` environment variable settings (repeatable)
+|disable        | optional- if present, disables the job 
 |===============================================================================
 
 name::
@@ -141,7 +136,7 @@ name::
 
 cmd::
   the absolute pathname to an executable, with optional arguments.
-  Quoting (using double-quotes only) is supported in the arguments. 
+  Quoting using double-quotes is supported in the arguments. 
 
 dir::
   set the 'working directory' that the job will have upon startup.
@@ -156,40 +151,51 @@ err::
   file to receive stderr. Default: `/dev/null`
 
 user::
-  the unix username under which the job should be executed. Default: root.
+  the unix username whose id should execute the job. Default: root.
 
 env::
-  set an environment variables for the job, e.g., `env DEBUG=1` (repeatable)
+  set an environment variable for the job, e.g., `env DEBUG=1` (repeatable)
 
 disable::
-  make the job inactive. Usually easier than commenting out the job definition.
+  make the job inactive. Can be used instead of commenting out the job definition.
 
-When do configuration changes take effect?
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-When you edit and save `pmtr.conf`, the changes get applied immediately. (Pmtr
-uses inotify to get signalled when the configuration file has changed).
+One-time jobs
++++++++++++++
+Pmtr has limited support for one-time jobs intended for "initial setup" type of
+situations.  There are two options that are used for this.  The `wait` option
+prevents pmtr from going on to start subsequent jobs, until this one exits.
+Then, `once` tells pmtr not to restart it. (If pmtr itself is restarted, or if
+the job configuration is changed, the job would be executed once again).
 
- * If you add a job, it gets started.
- * If you delete a job, or give it the `disable` option, or comment it out, it
-   gets terminated.  Pmtr sends SIGTERM to it, then SIGKILL shortly afterward.
- * If you change a job, it gets restarted with the new settings. 
-
-Other running jobs are left alone- they're not needlessly restarted. All this
-happens immediately whenever the configuration file is modified and written.
-
-If you stop pmtr itself (for example, by running `service pmtr stop`), it
-terminates its jobs before exiting.  
+  job {
+    name setup-ramdisk
+    cmd /bin/mkdir /dev/shm/app-ramdisk
+    wait
+    once
+  }
 
 Testing config file syntax
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
-You can check the syntax of a configuration file using,
+You can check the syntax of a configuration file using `-t` (test syntax only)
+which may be used with `-c` to specify a configuration to test. Any syntax errors
+are displayed; the exit code is always 0.
 
-  pmtr -tc /etc/pmtr.conf
+  pmtr -tc /tmp/pmtr.conf
 
-The meaning of these options are:
+When do configuration changes take effect?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+When you edit and save `pmtr.conf`, the changes get applied immediately. Pmtr
+watchces the configuration file to notice when it has been updated. The changes
+are applied minimally - only jobs whose definition has changed are affected. 
 
-  -t test syntax only (don't start any jobs, and stay in foreground)
-  -c <file> specify configuration file
+ * A newly-added job gets started.
+ * A deleted job is terminated.
+ * A changed job is restarted with its new configuration.
+
+To terminate a job, pmtr sends SIGTERM to it, then SIGKILL shortly afterward.
+
+If you stop pmtr itself (for example, by running `service pmtr stop`), it
+terminates its jobs before exiting.  
 
 Jobs
 ----
@@ -210,7 +216,7 @@ If there's a syntax error or other problem (such as invalid user) in
 your configuration, pmtr can only communicate that back to you in the
 log messages - so be sure you check them when making config changes!
 
-
+[[requirements]]
 Is the job suitable to run under pmtr?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Jobs that you intend to run under `pmtr` should:
@@ -223,38 +229,49 @@ Restart handling
 ~~~~~~~~~~~~~~~~
 Pmtr restarts a job that exits, provided it's been running at least ten seconds.
 
-Restart loops
-^^^^^^^^^^^^^
-When a job exits less than 10 seconds after it started, pmtr waits ten seconds
-before restarting it.  This avoids pegging the CPU with rapid restart cycles.  
-Since pmtr is oriented toward running daemons, a quick exit usually means the
-job has some kind of problem (bad arguments, etc) that need to be fixed.
+Rapid restart prevention
+^^^^^^^^^^^^^^^^^^^^^^^^
+If a job exits quickly after starting (less than 10 seconds after it started),
+pmtr waits ten seconds before restarting it. This avoids rapid restart cycles.
+For servers, a quick exit often means the job has some sort of configuration problem.
 
-  Nov  7 22:01:13 ubuntu pmtr[18477]: job x 8552 exited after 3 sec: exit status 0
-  Nov  7 22:01:13 ubuntu pmtr[18477]: job restarting too fast, delaying restart
+  Nov  7 22:01:13 ubuntu pmtr[18477]: job app-server 8552 exited after 0 sec: exit status 0
 
-Restart prevention
-^^^^^^^^^^^^^^^^^^
-To prevent pmtr from restarting a job, use the 'once' keyword.  As a
-programmatic alternative, if the job exits with exit status 33, pmtr won't
-restart it either. 
+Exit status
+^^^^^^^^^^^
+A job that exits normally or terminates due to a signal is logged with its exit
+code or signal number. Note that exit code 33 is special. If pmtr sees a job
+exit with code 33 it does not restart it.
 
-One-time jobs
-+++++++++++++
-Pmtr has limited support for one-time jobs intended for initial "setup"
-situations. The use case is when you want the job to run once (not be
-restarted), and to wait for it to finish before starting subsequent jobs.
-Here's an example where we create a directory in a RAM disk.
+Remote control
+--------------
+Two special configuration options can appear in `pmtr.conf`. The first is
+`report to` which causes pmtr to send a periodic (every 10 seconds) status
+message to the remote UDP endpoint whose IP address and port number are listed.
+It can be repeated multiple times to report to multiple remote endpoints.
 
-  job {
-    name setup
-    cmd /bin/mkdir -p /dev/shm/ramdisk
-    wait
-    once
-  }
+  report to udp://127.0.0.1:9999
 
-The `wait` option prevents pmtr from starting subsequent jobs until this one
-finishes, and `once` prevents pmtr from restarting it.
+The script in `pmtr-rptserver` can be run on a remote system to receive these
+packets and maintain a file with the status of all reporting systems. E.g.,
+
+  /usr/bin/pmtr-rptserver -p 9999 -f /var/log/pmtr-status.txt
+
+The other special option allows remote systems to enable or disable pmtr jobs.
+
+  listen on udp://0.0.0.0:10000
+
+With that specification, pmtr listens on all local IP addresses (0.0.0.0) on
+port 10000 for UDP messages of the form "enable xyz" or "disable xyz". There is
+a script to make it easy to send these messages like this:
+
+  /usr/bin/pmtr-ctl -s 127.0.0.1 -p 10000 enable app-server
+
+This is intended for temporary job enabling or disabling. If `pmtr.conf` is 
+edited or if pmtr is restarted, the settings in the `pmtr.conf` take effect.
+
+There is no authentication with the `listen on` feature- use it only on trusted
+internal networks. 
 
 Resources
 ---------
@@ -266,11 +283,8 @@ Updates are posted to the http://tkhanson.net/blog[author's blog]. image:rss.png
 Contributing
 ~~~~~~~~~~~~
 Feel free to send pull requests through the https://github.com/troydhanson/pmtr[pmtr Github page].
-
-Contact
-~~~~~~~
-Please send bug reports or suggestions to tdh@tkhanson.net. Sorry, I'm often
-behind by weeks or months in getting back to people.
+Please send bug reports or suggestions through GitHub. You can also email me at
+tdh@tkhanson.net, but I'm often behind by weeks or months in getting back to people.
 
 Other software
 ~~~~~~~~~~~~~~

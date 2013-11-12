@@ -52,15 +52,6 @@ static int parse_spec(pmtr_t *cfg, UT_string *em, char *spec,
   return rc;
 }
 
-void set_ident(pmtr_t *cfg, in_addr_t ip, int port) {
-     utstring_clear(cfg->ident);
-     struct in_addr addr = {.s_addr=ip};
-     char host[100];
-     if (gethostname(host,sizeof(host))<0) strncpy(host,"unknown",sizeof(host));
-     else host[sizeof(host)-1] = '\0'; /* ensure termination on truncate */
-     utstring_printf(cfg->ident, "report %s %u %s\n", inet_ntoa(addr), port, host);
-}
-
 /* addr is like "udp://127.0.0.1:3333".
  * only one listener can be set up currently.
  * we set up a UDP socket file descriptor bound to the port,
@@ -100,9 +91,6 @@ void set_listen(parse_t *ps, char *addr) {
   fl |= O_ASYNC | O_NONBLOCK;
   fcntl(fd, F_SETFL, fl);
   fcntl(fd, F_SETOWN, getpid()); 
-
-  /* setup identity to include in report */
-  set_ident(ps->cfg, local_ip, port);
 
   /* success */
   utarray_push_back(ps->cfg->listen, &fd);
@@ -236,16 +224,16 @@ void close_sockets(pmtr_t *cfg) {
 /* report to all configured destinations */
 void report_status(pmtr_t *cfg) {
   int rc;
+  time_t now = time(NULL);
 
   /* construct msg */
   utstring_clear(cfg->s);
-  if (utstring_len(cfg->ident)) utstring_concat(cfg->s, cfg->ident);
-  else utstring_printf(cfg->ident, "report\n");
+  utstring_printf(cfg->s, "report\n");
   job_t *j = NULL;
   while ( (j=(job_t*)utarray_next(cfg->jobs,j))) {
     if (j->respawn == 0) continue; /* don't advertise one-time jobs */
     utstring_printf(cfg->s, "%s %c %u\n", j->name, j->disabled?'d':'e', 
-                    (unsigned)j->start_ts);
+                    (unsigned)(now - j->start_ts));
   }
 
   /* send to all dests */
