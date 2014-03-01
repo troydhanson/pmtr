@@ -3,6 +3,8 @@ pmtr job manager
 Troy D. Hanson <tdh@tkhanson.net>
 v1.3 November 2013
 
+include::twitter.txt[]
+
 What does pmtr do?
 ------------------
 Pmtr is a process monitor for starting your servers at system boot, and keeping
