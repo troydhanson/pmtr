@@ -1,51 +1,45 @@
 pmtr job manager
 ================
 Troy D. Hanson <tdh@tkhanson.net>
-v1.3 November 2013
+v1.4 March 2014
 
 include::twitter.txt[]
 
 What does pmtr do?
 ------------------
-Pmtr is a process monitor for starting your servers at system boot, and keeping
-them running. It's small, written in C, free, open-source and for Linux only.
-With pmtr, all your jobs are defined in one configuration file:
+Pmtr is like an "initscript"- it's used to start your servers at boot. If they
+exit, it restarts them. It's small, written in C, free, open-source and for Linux only.
+You can have any number of servers (jobs) defined in the configuration file.
 
 .Example `/etc/pmtr.conf`
 --------------------------------------------------------
   job {
-    name app-webserver
-    cmd /home/app/webserver.py 
-  }
-
-  job {
-    name app-server
-    dir /home/app
-    cmd /home/app/server -c 20 
-    out server.out
-    err server.err
+    name node-app
+    dir /data/app
+    cmd /usr/local/bin/node websocket-server.js
+    out node.out
+    err node.err
     user app
   }
+
 --------------------------------------------------------
 
-Only the `name` used for logging and `cmd` (the command) are required.  The
-following are optional: the working directory, files to receive stderr and
-stdout, and the user whose id should run the process. See the <<options,full
-options>> below. 
+Only the `name` and `cmd` (the command) are required. The rest are
+optional.  See the <<options,full options>> below. 
 
 .Why did I write it?
 **************************************************************************
-I wrote pmtr because I wanted to have all my application jobs listed in one
-easily-edited configuration file. I also wanted them kept separate from the 
-system services managed by sysvinit, upstart or similar mechanisms. 
+I wanted to have all my application jobs listed in one easily-edited file.
+You could instead write platform-specific initscripts, upstart jobs, etc. 
+I prefer pmtr for application servers. It works on Centos, Ubuntu, etc.
 **************************************************************************
 
-Some of the other features of pmtr are protection against jobs that restart too
-fast, automatic re-scanning of an updated configuration file, and basic remote
-reporting. Note that the jobs should stay in the foreground so pmtr can detect
-if they restart. See the <<requirements,requirements for pmtr jobs>> below.
+Pmtr re-reads its configuration file whenever it's edited- see <<rescan,When do
+configuration changes take effect?>> below.
+Take note of See the <<requirements,requirements for pmtr jobs>>.
 
-Pmtr has been used in production to manage jobs on hundreds on Linux systems.
+Pmtr has been used in production for several years, managing jobs on hundreds on
+Linux systems.
 
 Download & Install
 ------------------
@@ -63,8 +57,8 @@ Download options
 
 You can:
 
- * download a https://github.com/troydhanson/pmtr/archive/master.zip[zipfile here]. 
- * Or clone the git repository: `git clone https://github.com/troydhanson/pmtr.git`
+ * download a https://github.io/troydhanson/pmtr/archive/master.zip[zipfile here]. 
+ * Or clone the git repository: `git clone https://github.io/troydhanson/pmtr.git`
 
 Build and install
 ~~~~~~~~~~~~~~~~~
@@ -79,13 +73,16 @@ The result of installation is:
 
  * `/usr/bin/pmtr` - the executable
  * `/etc/pmtr.conf` - the configuration file (initially empty)
- * `/usr/bin/pmtr-rptserver` - for remote monitoring of ptmr jobs
- * `/usr/bin/pmtr-ctl` - for remote disabling and enabling of jobs
  * an OS-specific startup script that runs pmtr at boot 
 
 Upon completion of `sudo make install`, pmtr should be running. Verify using:
 
   service pmtr status
+
+A couple ancillary scripts are installed also:
+
+ * `/usr/bin/pmtr-rptserver` - for remote monitoring of ptmr jobs
+ * `/usr/bin/pmtr-ctl` - for remote disabling and enabling of jobs
 
 .Who starts pmtr?
 ********************************************************************************
@@ -105,10 +102,9 @@ Syntax
 The configuration file contains any number of jobs. Each job is in a curly-brace
 delimited block.  Indentation is optional. Blank lines are ok. 
 
-  # this is a comment
   job {
-    name geo-server
-    cmd /usr/bin/server -e "New York"
+    name node-server
+    cmd /usr/local/bin/node trends.js -e "New York"
   }
 
 Only 'name' and 'cmd' are required. The `cmd` is the absolute path to the
@@ -184,6 +180,7 @@ are displayed; the exit code is always 0.
 
   pmtr -tc /tmp/pmtr.conf
 
+[[rescan]]
 When do configuration changes take effect?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 When you edit and save `pmtr.conf`, the changes get applied immediately. Pmtr
@@ -209,8 +206,7 @@ your syslog configuration, the messages might go to `/var/log/syslog`, or
 `/var/log/messages`, or somewhere else. Typical log messages are like:
 
   Nov  7 22:01:09 ubuntu pmtr[18477]: rescanning job configuration
-  Nov  7 21:38:10 ubuntu pmtr[18477]: pmtr: managing 1 jobs
-  Nov  7 21:38:10 ubuntu pmtr[18477]: started job doppler [18478]
+  Nov  7 21:38:10 ubuntu pmtr[18477]: started job websocket-server [18478]
 
 [NOTE]
 .Look for errors 
@@ -280,13 +276,14 @@ Resources
 
 News
 ~~~~
-Updates are posted to the http://tkhanson.net/blog[author's blog]. image:rss.png[(RSS)]
+I post to @troydhanson on Twitter.  Updates are also posted to the
+http://tkhanson.net/blog[author's blog]. image:rss.png[(RSS)]
 
 Contributing
 ~~~~~~~~~~~~
-Feel free to send pull requests through the https://github.com/troydhanson/pmtr[pmtr Github page].
-Please send bug reports or suggestions through GitHub. You can also email me at
-tdh@tkhanson.net, but I'm often behind by weeks or months in getting back to people.
+Feel free to send pull requests through the https://github.io/troydhanson/pmtr[pmtr Github page].
+Please send bug reports or suggestions through GitHub. You can email me at
+tdh@tkhanson.net, but I'm often behind by weeks or months in replying.
 
 Other software
 ~~~~~~~~~~~~~~

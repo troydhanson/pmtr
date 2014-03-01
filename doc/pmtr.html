@@ -774,7 +774,7 @@ asciidoc.install(2);
 <h1>pmtr job manager</h1>
 <span id="author">Troy D. Hanson</span><br />
 <span id="email"><tt>&lt;<a href="mailto:tdh@tkhanson.net">tdh@tkhanson.net</a>&gt;</tt></span><br />
-<span id="revdate">v1.3 November 2013</span>
+<span id="revdate">v1.4 March 2014</span>
 <div id="toc">
   <div id="toctitle">Table of Contents</div>
   <noscript><p><b>JavaScript must be enabled in your browser to display the table of contents.</b></p></noscript>
@@ -794,41 +794,34 @@ asciidoc.install(2);
 <div class="sect1">
 <h2 id="_what_does_pmtr_do">What does pmtr do?</h2>
 <div class="sectionbody">
-<div class="paragraph"><p>Pmtr is a process monitor for starting your servers at system boot, and keeping
-them running. It&#8217;s small, written in C, free, open-source and for Linux only.
-With pmtr, all your jobs are defined in one configuration file:</p></div>
+<div class="paragraph"><p>Pmtr is like an "initscript"- it&#8217;s used to start your servers at boot. If they
+exit, it restarts them. It&#8217;s small, written in C, free, open-source and for Linux only.
+You can have any number of servers (jobs) defined in the configuration file.</p></div>
 <div class="listingblock">
 <div class="title">Example <tt>/etc/pmtr.conf</tt></div>
 <div class="content">
 <pre><tt>  job {
-    name app-webserver
-    cmd /home/app/webserver.py
-  }
-
-  job {
-    name app-server
-    dir /home/app
-    cmd /home/app/server -c 20
-    out server.out
-    err server.err
+    name node-app
+    dir /data/app
+    cmd /usr/local/bin/node websocket-server.js
+    out node.out
+    err node.err
     user app
   }</tt></pre>
 </div></div>
-<div class="paragraph"><p>Only the <tt>name</tt> used for logging and <tt>cmd</tt> (the command) are required.  The
-following are optional: the working directory, files to receive stderr and
-stdout, and the user whose id should run the process. See the <a href="#options">full options</a> below.</p></div>
+<div class="paragraph"><p>Only the <tt>name</tt> and <tt>cmd</tt> (the command) are required. The rest are
+optional.  See the <a href="#options">full options</a> below.</p></div>
 <div class="sidebarblock">
 <div class="content">
 <div class="title">Why did I write it?</div>
-<div class="paragraph"><p>I wrote pmtr because I wanted to have all my application jobs listed in one
-easily-edited configuration file. I also wanted them kept separate from the
-system services managed by sysvinit, upstart or similar mechanisms.</p></div>
+<div class="paragraph"><p>I wanted to have all my application jobs listed in one easily-edited file.
+You could instead write platform-specific initscripts, upstart jobs, etc.
+I prefer pmtr for application servers. It works on Centos, Ubuntu, etc.</p></div>
 </div></div>
-<div class="paragraph"><p>Some of the other features of pmtr are protection against jobs that restart too
-fast, automatic re-scanning of an updated configuration file, and basic remote
-reporting. Note that the jobs should stay in the foreground so pmtr can detect
-if they restart. See the <a href="#requirements">requirements for pmtr jobs</a> below.</p></div>
-<div class="paragraph"><p>Pmtr has been used in production to manage jobs on hundreds on Linux systems.</p></div>
+<div class="paragraph"><p>Pmtr re-reads its configuration file whenever it&#8217;s edited- see <a href="#rescan">When do configuration changes take effect?</a> below.
+Take note of See the <a href="#requirements">requirements for pmtr jobs</a>.</p></div>
+<div class="paragraph"><p>Pmtr has been used in production for several years, managing jobs on hundreds on
+Linux systems.</p></div>
 </div>
 </div>
 <div class="sect1">
@@ -861,12 +854,12 @@ Debian (6+)
 <div class="ulist"><ul>
 <li>
 <p>
-download a <a href="https://github.com/troydhanson/pmtr/archive/master.zip">zipfile here</a>.
+download a <a href="https://github.io/troydhanson/pmtr/archive/master.zip">zipfile here</a>.
 </p>
 </li>
 <li>
 <p>
-Or clone the git repository: <tt>git clone https://github.com/troydhanson/pmtr.git</tt>
+Or clone the git repository: <tt>git clone https://github.io/troydhanson/pmtr.git</tt>
 </p>
 </li>
 </ul></div>
@@ -895,16 +888,6 @@ sudo make install</tt></pre>
 </li>
 <li>
 <p>
-<tt>/usr/bin/pmtr-rptserver</tt> - for remote monitoring of ptmr jobs
-</p>
-</li>
-<li>
-<p>
-<tt>/usr/bin/pmtr-ctl</tt> - for remote disabling and enabling of jobs
-</p>
-</li>
-<li>
-<p>
 an OS-specific startup script that runs pmtr at boot
 </p>
 </li>
@@ -914,6 +897,19 @@ an OS-specific startup script that runs pmtr at boot
 <div class="content">
 <pre><tt>service pmtr status</tt></pre>
 </div></div>
+<div class="paragraph"><p>A couple ancillary scripts are installed also:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+<tt>/usr/bin/pmtr-rptserver</tt> - for remote monitoring of ptmr jobs
+</p>
+</li>
+<li>
+<p>
+<tt>/usr/bin/pmtr-ctl</tt> - for remote disabling and enabling of jobs
+</p>
+</li>
+</ul></div>
 <div class="sidebarblock">
 <div class="content">
 <div class="title">Who starts pmtr?</div>
@@ -935,10 +931,9 @@ start up pmtr automatically at boot.</p></div>
 delimited block.  Indentation is optional. Blank lines are ok.</p></div>
 <div class="literalblock">
 <div class="content">
-<pre><tt># this is a comment
-job {
-  name geo-server
-  cmd /usr/bin/server -e "New York"
+<pre><tt>job {
+  name node-server
+  cmd /usr/local/bin/node trends.js -e "New York"
 }</tt></pre>
 </div></div>
 <div class="paragraph"><p>Only <em>name</em> and <em>cmd</em> are required. The <tt>cmd</tt> is the absolute path to the
@@ -1105,7 +1100,7 @@ are displayed; the exit code is always 0.</p></div>
 </div></div>
 </div>
 <div class="sect2">
-<h3 id="_when_do_configuration_changes_take_effect">When do configuration changes take effect?</h3>
+<h3 id="rescan">When do configuration changes take effect?</h3>
 <div class="paragraph"><p>When you edit and save <tt>pmtr.conf</tt>, the changes get applied immediately. Pmtr
 watchces the configuration file to notice when it has been updated. The changes
 are applied minimally - only jobs whose definition has changed are affected.</p></div>
@@ -1143,8 +1138,7 @@ your syslog configuration, the messages might go to <tt>/var/log/syslog</tt>, or
 <div class="literalblock">
 <div class="content">
 <pre><tt>Nov  7 22:01:09 ubuntu pmtr[18477]: rescanning job configuration
-Nov  7 21:38:10 ubuntu pmtr[18477]: pmtr: managing 1 jobs
-Nov  7 21:38:10 ubuntu pmtr[18477]: started job doppler [18478]</tt></pre>
+Nov  7 21:38:10 ubuntu pmtr[18477]: started job websocket-server [18478]</tt></pre>
 </div></div>
 <div class="admonitionblock">
 <table><tr>
@@ -1241,15 +1235,16 @@ internal networks.</p></div>
 <div class="sectionbody">
 <div class="sect2">
 <h3 id="_news">News</h3>
-<div class="paragraph"><p>Updates are posted to the <a href="http://tkhanson.net/blog">author&#8217;s blog</a>. <span class="image">
+<div class="paragraph"><p>I post to @troydhanson on Twitter.  Updates are also posted to the
+<a href="http://tkhanson.net/blog">author&#8217;s blog</a>. <span class="image">
 <img src="rss.png" alt="(RSS)" />
 </span></p></div>
 </div>
 <div class="sect2">
 <h3 id="_contributing">Contributing</h3>
-<div class="paragraph"><p>Feel free to send pull requests through the <a href="https://github.com/troydhanson/pmtr">pmtr Github page</a>.
-Please send bug reports or suggestions through GitHub. You can also email me at
-<a href="mailto:tdh@tkhanson.net">tdh@tkhanson.net</a>, but I&#8217;m often behind by weeks or months in getting back to people.</p></div>
+<div class="paragraph"><p>Feel free to send pull requests through the <a href="https://github.io/troydhanson/pmtr">pmtr Github page</a>.
+Please send bug reports or suggestions through GitHub. You can email me at
+<a href="mailto:tdh@tkhanson.net">tdh@tkhanson.net</a>, but I&#8217;m often behind by weeks or months in replying.</p></div>
 </div>
 <div class="sect2">
 <h3 id="_other_software">Other software</h3>
@@ -1265,7 +1260,7 @@ Please send bug reports or suggestions through GitHub. You can also email me at
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2014-03-01 14:20:26 EST
+Last updated 2014-03-01 14:40:51 EST
 </div>
 </div>
 </body>
