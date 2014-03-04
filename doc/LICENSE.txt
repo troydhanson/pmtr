@@ -1,6 +1,6 @@
 LICENSE AND DISCLAIMER
 
-Copyright (c) 2011 The Johns Hopkins University/Applied Physics Laboratory
+Copyright (c) 2011-2014 The Johns Hopkins University/Applied Physics Laboratory
 
 This software was developed at The Johns Hopkins University/Applied Physics
 Laboratory ("JHU/APL") that is the author thereof under the "work made for

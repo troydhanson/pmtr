@@ -1,5 +1,5 @@
-pmtr job manager
-================
+pmtr: a non-initscript for servers
+==================================
 Troy D. Hanson <tdh@tkhanson.net>
 v1.4 March 2014
 
@@ -8,15 +8,17 @@ include::twitter.txt[]
 What does pmtr do?
 ------------------
 Pmtr is like an "initscript"- it's used to start your servers at boot. If they
-exit, it restarts them. It's small, written in C, free, open-source and for Linux only.
-You can have any number of servers (jobs) defined in the configuration file.
+exit, it restarts them. It's small, written in C, free, open-source and for
+Linux only.  You can have any number of servers (daemons) in the config file.
 
 .Example `/etc/pmtr.conf`
 --------------------------------------------------------
   job {
     name node-app
-    dir /data/app
     cmd /usr/local/bin/node websocket-server.js
+
+    # the rest are optional
+    dir /data/app
     out node.out
     err node.err
     user app
@@ -24,8 +26,7 @@ You can have any number of servers (jobs) defined in the configuration file.
 
 --------------------------------------------------------
 
-Only the `name` and `cmd` (the command) are required. The rest are
-optional.  See the <<options,full options>> below. 
+Only the name and command are required. See the <<options,full options>> below. 
 
 .Why did I write it?
 **************************************************************************
@@ -34,9 +35,9 @@ You could instead write platform-specific initscripts, upstart jobs, etc.
 I prefer pmtr for application servers. It works on Centos, Ubuntu, etc.
 **************************************************************************
 
-Pmtr re-reads its configuration file whenever it's edited- see <<rescan,When do
-configuration changes take effect?>> below.
-Take note of See the <<requirements,requirements for pmtr jobs>>.
+Pmtr applies changes immediately whenever its configuration is edited- see
+<<rescan,When do configuration changes take effect?>>.  Take note of the
+<<requirements,requirements for pmtr jobs>>.
 
 Pmtr has been used in production for several years, managing jobs on hundreds on
 Linux systems.
@@ -57,8 +58,8 @@ Download options
 
 You can:
 
- * download a https://github.io/troydhanson/pmtr/archive/master.zip[zipfile here]. 
- * Or clone the git repository: `git clone https://github.io/troydhanson/pmtr.git`
+ * download a https://github.com/troydhanson/pmtr/archive/master.zip[zipfile here]. 
+ * Or clone the git repository: `git clone https://github.com/troydhanson/pmtr.git`
 
 Build and install
 ~~~~~~~~~~~~~~~~~
@@ -66,23 +67,21 @@ To build and install:
 
   cd pmtr
   make
-  (if pmtr is already running, stop it using service pmtr stop)
   sudo make install
 
 The result of installation is:
 
  * `/usr/bin/pmtr` - the executable
  * `/etc/pmtr.conf` - the configuration file (initially empty)
- * an OS-specific startup script that runs pmtr at boot 
+ * an initscript to run pmtr at boot (OS-specific)
 
 Upon completion of `sudo make install`, pmtr should be running. Verify using:
 
   service pmtr status
 
-A couple ancillary scripts are installed also:
-
- * `/usr/bin/pmtr-rptserver` - for remote monitoring of ptmr jobs
- * `/usr/bin/pmtr-ctl` - for remote disabling and enabling of jobs
+A couple ancillary scripts are installed also: `/usr/bin/pmtr-rptserver` - for
+remote monitoring of pmtr jobs, if enabled; and `/usr/bin/pmtr-ctl` - for remote
+disabling and enabling of jobs. These remote features are disabled by default.
 
 .Who starts pmtr?
 ********************************************************************************
@@ -243,31 +242,35 @@ exit with code 33 it does not restart it.
 
 Remote control
 --------------
+NOTE: remote control is disabled by default.
+
 Two special configuration options can appear in `pmtr.conf`. The first is
 `report to` which causes pmtr to send a periodic (every 10 seconds) status
 message to the remote UDP endpoint whose IP address and port number are listed.
-It can be repeated multiple times to report to multiple remote endpoints.
+The `listen on` option allows remote systems to enable or disable pmtr jobs.
 
   report to udp://127.0.0.1:9999
-
-The script in `pmtr-rptserver` can be run on a remote system to receive these
-packets and maintain a file with the status of all reporting systems. E.g.,
-
-  /usr/bin/pmtr-rptserver -p 9999 -f /var/log/pmtr-status.txt
-
-The other special option allows remote systems to enable or disable pmtr jobs.
-
   listen on udp://0.0.0.0:10000
 
-With that specification, pmtr listens on all local IP addresses (0.0.0.0) on
-port 10000 for UDP messages of the form "enable xyz" or "disable xyz". There is
-a script to make it easy to send these messages like this:
+report to
+~~~~~~~~~
+The `report to` option designates a remote endpoint to receive updates from pmtr.
+The udp packet sent by pmtr to the remote endpoint lists the jobs and their
+elapsed runtime. Its payload is in simple text format. An example script,
+`pmtr-rptserver`, included with pmtr, can be run to receive the reports.  It
+maintains a file with the status of all reporting systems. E.g., 
+`/usr/bin/pmtr-rptserver -p 9999 -f /var/log/pmtr-status.txt`.
+
+listen on
+~~~~~~~~~
+With the `listen on` specification, pmtr listens on the specified IP address and
+port for UDP messages of the form "enable xyz" or "disable xyz". An example
+script included with pmtr can send these messages under command-line control: 
 
   /usr/bin/pmtr-ctl -s 127.0.0.1 -p 10000 enable app-server
 
-This is intended for temporary job enabling or disabling. If `pmtr.conf` is 
-edited or if pmtr is restarted, the settings in the `pmtr.conf` take effect.
-
+This is to temporarily enable or disable a job. If `pmtr.conf` is edited or if
+pmtr is restarted, the settings in the `pmtr.conf` once again take precedence.
 There is no authentication with the `listen on` feature- use it only on trusted
 internal networks. 
 
@@ -276,14 +279,15 @@ Resources
 
 News
 ~~~~
-I post to @troydhanson on Twitter.  Updates are also posted to the
+News on pmtr may be found by following @troydhanson on Twitter or on the
 http://tkhanson.net/blog[author's blog]. image:rss.png[(RSS)]
 
-Contributing
-~~~~~~~~~~~~
-Feel free to send pull requests through the https://github.io/troydhanson/pmtr[pmtr Github page].
-Please send bug reports or suggestions through GitHub. You can email me at
-tdh@tkhanson.net, but I'm often behind by weeks or months in replying.
+Helping
+~~~~~~~
+Feel free to send pull requests through the
+https://github.com/troydhanson/pmtr[pmtr Github page].  Please send bug reports
+or suggestions through GitHub. You can email me at tdh@tkhanson.net, but I'm
+often behind by weeks or months in replying.
 
 Other software
 ~~~~~~~~~~~~~~

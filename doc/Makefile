@@ -1,14 +1,15 @@
-all: pmtr.html
+all: index.html
 
-pmtr.html: pmtr.txt
+index.html: index.txt
 	asciidoc -a toc2 $<
 
 TMP=/tmp/pmtr-gh-pages
 stage:
 	mkdir -p ${TMP}
 	rm -if ${TMP}/*
-	cp pmtr.html ${TMP}/index.html
+	cp LICENSE.txt ${TMP}
+	cp *.html ${TMP}
 	cp *.png ${TMP}
 
 clean: 
-	rm -f pmtr.html
+	rm -f index.html
