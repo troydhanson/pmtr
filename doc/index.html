@@ -4,7 +4,7 @@
 <head>
 <meta http-equiv="Content-Type" content="application/xhtml+xml; charset=UTF-8" />
 <meta name="generator" content="AsciiDoc 8.6.7" />
-<title>pmtr job manager</title>
+<title>pmtr: a non-initscript for servers</title>
 <style type="text/css">
 /* Shared CSS for AsciiDoc xhtml11 and html5 backends */
 
@@ -771,7 +771,7 @@ asciidoc.install(2);
 </head>
 <body class="article">
 <div id="header">
-<h1>pmtr job manager</h1>
+<h1>pmtr: a non-initscript for servers</h1>
 <span id="author">Troy D. Hanson</span><br />
 <span id="email"><tt>&lt;<a href="mailto:tdh@tkhanson.net">tdh@tkhanson.net</a>&gt;</tt></span><br />
 <span id="revdate">v1.4 March 2014</span>
@@ -795,22 +795,23 @@ asciidoc.install(2);
 <h2 id="_what_does_pmtr_do">What does pmtr do?</h2>
 <div class="sectionbody">
 <div class="paragraph"><p>Pmtr is like an "initscript"- it&#8217;s used to start your servers at boot. If they
-exit, it restarts them. It&#8217;s small, written in C, free, open-source and for Linux only.
-You can have any number of servers (jobs) defined in the configuration file.</p></div>
+exit, it restarts them. It&#8217;s small, written in C, free, open-source and for
+Linux only.  You can have any number of servers (daemons) in the config file.</p></div>
 <div class="listingblock">
 <div class="title">Example <tt>/etc/pmtr.conf</tt></div>
 <div class="content">
 <pre><tt>  job {
     name node-app
-    dir /data/app
     cmd /usr/local/bin/node websocket-server.js
+
+    # the rest are optional
+    dir /data/app
     out node.out
     err node.err
     user app
   }</tt></pre>
 </div></div>
-<div class="paragraph"><p>Only the <tt>name</tt> and <tt>cmd</tt> (the command) are required. The rest are
-optional.  See the <a href="#options">full options</a> below.</p></div>
+<div class="paragraph"><p>Only the name and command are required. See the <a href="#options">full options</a> below.</p></div>
 <div class="sidebarblock">
 <div class="content">
 <div class="title">Why did I write it?</div>
@@ -818,8 +819,9 @@ optional.  See the <a href="#options">full options</a> below.</p></div>
 You could instead write platform-specific initscripts, upstart jobs, etc.
 I prefer pmtr for application servers. It works on Centos, Ubuntu, etc.</p></div>
 </div></div>
-<div class="paragraph"><p>Pmtr re-reads its configuration file whenever it&#8217;s edited- see <a href="#rescan">When do configuration changes take effect?</a> below.
-Take note of See the <a href="#requirements">requirements for pmtr jobs</a>.</p></div>
+<div class="paragraph"><p>Pmtr applies changes immediately whenever its configuration is edited- see
+<a href="#rescan">When do configuration changes take effect?</a>.  Take note of the
+<a href="#requirements">requirements for pmtr jobs</a>.</p></div>
 <div class="paragraph"><p>Pmtr has been used in production for several years, managing jobs on hundreds on
 Linux systems.</p></div>
 </div>
@@ -833,7 +835,7 @@ Linux systems.</p></div>
 <div class="ulist"><ul>
 <li>
 <p>
-Ubuntu (10+)
+Ubuntu (10,11,12,13)
 </p>
 </li>
 <li>
@@ -846,6 +848,11 @@ CentOS/RHEL (6+)
 Debian (6+)
 </p>
 </li>
+<li>
+<p>
+Raspbian (6,7) (Raspberry Pi)
+</p>
+</li>
 </ul></div>
 </div>
 <div class="sect2">
@@ -854,12 +861,12 @@ Debian (6+)
 <div class="ulist"><ul>
 <li>
 <p>
-download a <a href="https://github.io/troydhanson/pmtr/archive/master.zip">zipfile here</a>.
+download a <a href="https://github.com/troydhanson/pmtr/archive/master.zip">zipfile here</a>.
 </p>
 </li>
 <li>
 <p>
-Or clone the git repository: <tt>git clone https://github.io/troydhanson/pmtr.git</tt>
+Or clone the git repository: <tt>git clone https://github.com/troydhanson/pmtr.git</tt>
 </p>
 </li>
 </ul></div>
@@ -871,7 +878,6 @@ Or clone the git repository: <tt>git clone https://github.io/troydhanson/pmtr.gi
 <div class="content">
 <pre><tt>cd pmtr
 make
-(if pmtr is already running, stop it using service pmtr stop)
 sudo make install</tt></pre>
 </div></div>
 <div class="paragraph"><p>The result of installation is:</p></div>
@@ -888,7 +894,7 @@ sudo make install</tt></pre>
 </li>
 <li>
 <p>
-an OS-specific startup script that runs pmtr at boot
+an initscript to run pmtr at boot (OS-specific)
 </p>
 </li>
 </ul></div>
@@ -897,19 +903,6 @@ an OS-specific startup script that runs pmtr at boot
 <div class="content">
 <pre><tt>service pmtr status</tt></pre>
 </div></div>
-<div class="paragraph"><p>A couple ancillary scripts are installed also:</p></div>
-<div class="ulist"><ul>
-<li>
-<p>
-<tt>/usr/bin/pmtr-rptserver</tt> - for remote monitoring of ptmr jobs
-</p>
-</li>
-<li>
-<p>
-<tt>/usr/bin/pmtr-ctl</tt> - for remote disabling and enabling of jobs
-</p>
-</li>
-</ul></div>
 <div class="sidebarblock">
 <div class="content">
 <div class="title">Who starts pmtr?</div>
@@ -1130,6 +1123,8 @@ terminates its jobs before exiting.</p></div>
 <div class="sect1">
 <h2 id="_jobs">Jobs</h2>
 <div class="sectionbody">
+<div class="paragraph"><p>Hint: use <tt>pstree -p</tt> to inspect the process tree, for a quick look
+at the process hierarchy, including the jobs running under pmtr.</p></div>
 <div class="sect2">
 <h3 id="_logging">Logging</h3>
 <div class="paragraph"><p>As jobs start up, exit, and so on, messages are sent to <strong>syslog</strong>. Depending on
@@ -1198,36 +1193,43 @@ exit with code 33 it does not restart it.</p></div>
 <div class="sect1">
 <h2 id="_remote_control">Remote control</h2>
 <div class="sectionbody">
+<div class="admonitionblock">
+<table><tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">remote reporting and remote control are disabled by default.</td>
+</tr></table>
+</div>
 <div class="paragraph"><p>Two special configuration options can appear in <tt>pmtr.conf</tt>. The first is
 <tt>report to</tt> which causes pmtr to send a periodic (every 10 seconds) status
 message to the remote UDP endpoint whose IP address and port number are listed.
-It can be repeated multiple times to report to multiple remote endpoints.</p></div>
+The <tt>listen on</tt> option allows remote systems to enable or disable pmtr jobs.</p></div>
 <div class="literalblock">
 <div class="content">
-<pre><tt>report to udp://127.0.0.1:9999</tt></pre>
+<pre><tt>report to udp://127.0.0.1:9999
+listen on udp://0.0.0.0:10000</tt></pre>
 </div></div>
-<div class="paragraph"><p>The script in <tt>pmtr-rptserver</tt> can be run on a remote system to receive these
-packets and maintain a file with the status of all reporting systems. E.g.,</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><tt>/usr/bin/pmtr-rptserver -p 9999 -f /var/log/pmtr-status.txt</tt></pre>
-</div></div>
-<div class="paragraph"><p>The other special option allows remote systems to enable or disable pmtr jobs.</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><tt>listen on udp://0.0.0.0:10000</tt></pre>
-</div></div>
-<div class="paragraph"><p>With that specification, pmtr listens on all local IP addresses (0.0.0.0) on
-port 10000 for UDP messages of the form "enable xyz" or "disable xyz". There is
-a script to make it easy to send these messages like this:</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><tt>/usr/bin/pmtr-ctl -s 127.0.0.1 -p 10000 enable app-server</tt></pre>
-</div></div>
-<div class="paragraph"><p>This is intended for temporary job enabling or disabling. If <tt>pmtr.conf</tt> is
-edited or if pmtr is restarted, the settings in the <tt>pmtr.conf</tt> take effect.</p></div>
-<div class="paragraph"><p>There is no authentication with the <tt>listen on</tt> feature- use it only on trusted
-internal networks.</p></div>
+<div class="sect2">
+<h3 id="_report_to">report to</h3>
+<div class="paragraph"><p>The <tt>report to</tt> option designates a remote endpoint to receive updates from pmtr.
+The udp packet sent by pmtr to the remote endpoint lists the jobs and their
+elapsed runtime. Its payload is in simple text format. An example script,
+<tt>utils/pmtr-rptserver</tt>, included with pmtr, can be run to receive the reports.  It
+maintains a file with the status of all reporting systems. E.g.,
+<tt>pmtr-rptserver -p 9999 -f /var/log/pmtr-status.txt</tt>.</p></div>
+</div>
+<div class="sect2">
+<h3 id="_listen_on">listen on</h3>
+<div class="paragraph"><p>With the <tt>listen on</tt> specification, pmtr listens on the specified IP address and
+port for UDP messages of the form "enable xyz" or "disable xyz" (where xyz is
+the name of a job). An example script included with pmtr, <tt>utils/pmtr-ctl</tt>, can
+send these messages, e.g., <tt>pmtr-ctl -s 192.168.0.22 -p 10000 enable node-server</tt>.
+This feature is used to temporarily enable or disable a job. If <tt>pmtr.conf</tt> is
+edited or if pmtr is restarted, the settings in the <tt>pmtr.conf</tt> once again take
+precedence.  There is no authentication with the <tt>listen on</tt> feature- use it
+only on trusted internal networks.</p></div>
+</div>
 </div>
 </div>
 <div class="sect1">
@@ -1235,16 +1237,17 @@ internal networks.</p></div>
 <div class="sectionbody">
 <div class="sect2">
 <h3 id="_news">News</h3>
-<div class="paragraph"><p>I post to @troydhanson on Twitter.  Updates are also posted to the
+<div class="paragraph"><p>News on pmtr may be found by following @troydhanson on Twitter or on the
 <a href="http://tkhanson.net/blog">author&#8217;s blog</a>. <span class="image">
 <img src="rss.png" alt="(RSS)" />
 </span></p></div>
 </div>
 <div class="sect2">
-<h3 id="_contributing">Contributing</h3>
-<div class="paragraph"><p>Feel free to send pull requests through the <a href="https://github.io/troydhanson/pmtr">pmtr Github page</a>.
-Please send bug reports or suggestions through GitHub. You can email me at
-<a href="mailto:tdh@tkhanson.net">tdh@tkhanson.net</a>, but I&#8217;m often behind by weeks or months in replying.</p></div>
+<h3 id="_helping">Helping</h3>
+<div class="paragraph"><p>Feel free to send pull requests through the
+<a href="https://github.com/troydhanson/pmtr">pmtr Github page</a>.  Please send bug reports
+or suggestions through GitHub. You can email me at <a href="mailto:tdh@tkhanson.net">tdh@tkhanson.net</a>, but I&#8217;m
+often behind by weeks or months in replying.</p></div>
 </div>
 <div class="sect2">
 <h3 id="_other_software">Other software</h3>
@@ -1260,7 +1263,7 @@ Please send bug reports or suggestions through GitHub. You can email me at
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2014-03-01 14:40:51 EST
+Last updated 2014-03-03 22:02:30 EST
 </div>
 </div>
 </body>
