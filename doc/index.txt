@@ -49,9 +49,10 @@ Platforms
 ~~~~~~~~~
 Pmtr is for Linux only. It's been tested on:
 
-* Ubuntu (10+)
+* Ubuntu (10,11,12,13)
 * CentOS/RHEL (6+)
 * Debian (6+)
+* Raspbian (6,7) (Raspberry Pi)
 
 Download options
 ~~~~~~~~~~~~~~~~
@@ -78,10 +79,6 @@ The result of installation is:
 Upon completion of `sudo make install`, pmtr should be running. Verify using:
 
   service pmtr status
-
-A couple ancillary scripts are installed also: `/usr/bin/pmtr-rptserver` - for
-remote monitoring of pmtr jobs, if enabled; and `/usr/bin/pmtr-ctl` - for remote
-disabling and enabling of jobs. These remote features are disabled by default.
 
 .Who starts pmtr?
 ********************************************************************************
@@ -198,6 +195,9 @@ terminates its jobs before exiting.
 Jobs
 ----
 
+Hint: use `pstree -p` to inspect the process tree, for a quick look
+at the process hierarchy, including the jobs running under pmtr.
+
 Logging
 ~~~~~~~
 As jobs start up, exit, and so on, messages are sent to *syslog*. Depending on
@@ -242,7 +242,7 @@ exit with code 33 it does not restart it.
 
 Remote control
 --------------
-NOTE: remote control is disabled by default.
+NOTE: remote reporting and remote control are disabled by default.
 
 Two special configuration options can appear in `pmtr.conf`. The first is
 `report to` which causes pmtr to send a periodic (every 10 seconds) status
@@ -257,22 +257,20 @@ report to
 The `report to` option designates a remote endpoint to receive updates from pmtr.
 The udp packet sent by pmtr to the remote endpoint lists the jobs and their
 elapsed runtime. Its payload is in simple text format. An example script,
-`pmtr-rptserver`, included with pmtr, can be run to receive the reports.  It
+`utils/pmtr-rptserver`, included with pmtr, can be run to receive the reports.  It
 maintains a file with the status of all reporting systems. E.g., 
-`/usr/bin/pmtr-rptserver -p 9999 -f /var/log/pmtr-status.txt`.
+`pmtr-rptserver -p 9999 -f /var/log/pmtr-status.txt`.
 
 listen on
 ~~~~~~~~~
 With the `listen on` specification, pmtr listens on the specified IP address and
-port for UDP messages of the form "enable xyz" or "disable xyz". An example
-script included with pmtr can send these messages under command-line control: 
-
-  /usr/bin/pmtr-ctl -s 127.0.0.1 -p 10000 enable app-server
-
-This is to temporarily enable or disable a job. If `pmtr.conf` is edited or if
-pmtr is restarted, the settings in the `pmtr.conf` once again take precedence.
-There is no authentication with the `listen on` feature- use it only on trusted
-internal networks. 
+port for UDP messages of the form "enable xyz" or "disable xyz" (where xyz is
+the name of a job). An example script included with pmtr, `utils/pmtr-ctl`, can
+send these messages, e.g., `pmtr-ctl -s 192.168.0.22 -p 10000 enable node-server`.  
+This feature is used to temporarily enable or disable a job. If `pmtr.conf` is
+edited or if pmtr is restarted, the settings in the `pmtr.conf` once again take
+precedence.  There is no authentication with the `listen on` feature- use it
+only on trusted internal networks. 
 
 Resources
 ---------

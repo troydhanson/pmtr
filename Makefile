@@ -21,11 +21,15 @@ clean:
 	for f in $(SUBDIRS); do make -C $$f $@; done
 
 export BINDIR=/usr/bin
-UTILS=pmtr-rptserver pmtr-ctl
 install: pmtr
 	./install-pmtr.sh
+	(cd ${BINDIR}; chmod a+rx pmtr)
+
+# these ancillary scripts not installed by default
+UTILS=pmtr-rptserver pmtr-ctl
+install-utils: 
 	(cd util; cp ${UTILS} ${BINDIR})
-	(cd ${BINDIR}; chmod a+rx pmtr ${UTILS})
+	(cd ${BINDIR}; chmod a+rx ${UTILS})
 
 .PHONY: clean $(SUBDIRS)
 
