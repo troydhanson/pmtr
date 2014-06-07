@@ -1,0 +1,7 @@
+
+
+x bounce every 5m
+x report to @eth2 
+
+multicast-rptserver
+reliable handling of unlink/mv

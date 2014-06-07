@@ -46,12 +46,12 @@ void sighandler(int signo) {
 pid_t dep_monitor(char *file) {
   size_t eblen = sizeof(struct inotify_event)+PATH_MAX;
   char *eb;
-  int rc,fd,wd;
+  int rc,fd,wd, events = IN_MODIFY/*|IN_DELETE_SELF*/;
   pid_t dm_pid = fork();
   if (dm_pid > 0) return dm_pid;
   if ((dm_pid == (pid_t)-1)                              ||
       ( (fd=inotify_init()) == -1)                       ||
-      ( (wd=inotify_add_watch(fd,file,IN_MODIFY)) == -1)) {
+      ( (wd=inotify_add_watch(fd,file, events )) == -1)) {
     syslog(LOG_ERR,"error: %s\n", strerror(errno)); 
     exit(-1);
   }
