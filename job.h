@@ -36,6 +36,7 @@ typedef struct {
   int disabled;
   int wait;
   int once;
+  int bounce_interval;
   /* remember to edit job_cmp in job.c if equality definition needs updating */
 } job_t;
 

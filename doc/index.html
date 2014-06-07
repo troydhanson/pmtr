@@ -834,9 +834,10 @@ toaster if it runs Linux.</p></div>
 <div class="content">
 <div class="title">Why did I write it?</div>
 <div class="paragraph"><p>I wrote pmtr because I wanted one simple configuration file where I could
-list the programs that I need started at boot, and restarted if they die.
-It&#8217;s the umbrella that runs my programs and gives me uniform configuration
-across distros (unlike initscripts).</p></div>
+list the programs that I need to run at boot, with confidence that they&#8217;d
+be restarted if they exit or crash. I also wanted to have a few special
+features like the ability to bounce processes at a set interval, or edit
+the config file and see those changes take effect instantly.</p></div>
 </div></div>
 <div class="paragraph"><p>Pmtr applies changes immediately whenever the config file is edited- see
 <a href="#rescan">When do configuration changes take effect?</a>.  Take note of the
@@ -1003,6 +1004,10 @@ cellspacing="0" cellpadding="4">
 <td align="left" valign="top"><p class="table">unix username under whose id to run the process</p></td>
 </tr>
 <tr>
+<td align="left" valign="top"><p class="table"><tt>bounce every</tt></p></td>
+<td align="left" valign="top"><p class="table">a time interval like 5m (five minutes) - units are smhd</p></td>
+</tr>
+<tr>
 <td align="left" valign="top"><p class="table"><tt>disable</tt></p></td>
 <td align="left" valign="top"><p class="table">disables the job if present</p></td>
 </tr>
@@ -1044,6 +1049,15 @@ The standard output, error and input channels (<tt>out</tt>, <tt>err</tt>, and <
 <li>
 <p>
 The <tt>user</tt> defaults to root.
+</p>
+</li>
+<li>
+<p>
+The <tt>bounce every</tt> command is for jobs that leak memory, act up, or mis-
+  behave when left running too long; it simply kills the job then restarts it.  It
+  takes a number and unit, like 5m. The units are smhd- (s)econds, (m)inutes,
+  (h)ours or (d)ays. The bounce timer runs every 10s, so that much additional
+  time may elapse after the process is due to be bounced before it occurs.
 </p>
 </li>
 </ul></div>
@@ -1184,7 +1198,7 @@ Nov  7 21:38:10 ubuntu pmtr[18477]: started job websocket-server [18478]</tt></p
 <div class="sect3">
 <h4 id="_report_listen">Report/Listen</h4>
 <div class="paragraph"><p>These two experimental features providing limited reporting and control
-over the network are disabled by default.  To enable them, these global
+over the network are <strong>disabled by default</strong>.  To enable them, these global
 configuration options may appear in <tt>pmtr.conf</tt>.</p></div>
 <div class="literalblock">
 <div class="content">
@@ -1206,7 +1220,7 @@ in pmtr.conf once again take precedence.  There is no authentication with the
 <tt>listen on</tt> feature- use it only on trusted internal networks.</p></div>
 <div class="sect4">
 <h5 id="_multicast_interface_selection">Multicast interface selection</h5>
-<div class="paragraph"><p>The <tt>report to</tt> address may be in the multicast UDP range (e.g. 239.0.0.1 etc).
+<div class="paragraph"><p>A <tt>report to</tt> address may be in the multicast UDP range (e.g. 239.0.0.1, etc).
 If it is, the specification may optionally include a trailing interface name.
 This selects the network interface from which the UDP datagrams should egress.</p></div>
 <div class="literalblock">
@@ -1269,7 +1283,7 @@ You can email me at <a href="mailto:tdh@tkhanson.net">tdh@tkhanson.net</a>. (I m
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2014-06-07 00:13:59 EDT
+Last updated 2014-06-07 01:38:46 EDT
 </div>
 </div>
 </body>

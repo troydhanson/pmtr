@@ -44,9 +44,10 @@ toaster if it runs Linux.
 .Why did I write it?
 **************************************************************************
 I wrote pmtr because I wanted one simple configuration file where I could
-list the programs that I need started at boot, and restarted if they die.
-It's the umbrella that runs my programs and gives me uniform configuration
-across distros (unlike initscripts). 
+list the programs that I need to run at boot, with confidence that they'd
+be restarted if they exit or crash. I also wanted to have a few special
+features like the ability to bounce processes at a set interval, or edit
+the config file and see those changes take effect instantly.
 **************************************************************************
 
 Pmtr applies changes immediately whenever the config file is edited- see
@@ -137,6 +138,7 @@ Options
 |in             | hook stdin to this file
 |env            | environment variable setting `VAR=VALUE` (repeatable)
 |user           | unix username under whose id to run the process 
+|bounce every   | a time interval like 5m (five minutes) - units are smhd
 |disable        | disables the job if present
 |===============================================================================
 
@@ -153,6 +155,11 @@ Notes:
 * The standard output, error and input channels (`out`, `err`, and `in`) default
   to `/dev/null`.
 * The `user` defaults to root.
+* The `bounce every` command is for jobs that leak memory, act up, or mis-
+  behave when left running too long; it simply kills the job then restarts it.  It
+  takes a number and unit, like 5m. The units are smhd- (s)econds, (m)inutes,
+  (h)ours or (d)ays. The bounce timer runs every 10s, so that much additional
+  time may elapse after the process is due to be bounced before it occurs.
 
 Tips
 ^^^^
@@ -241,7 +248,7 @@ Lesser features
 Report/Listen
 ^^^^^^^^^^^^^
 These two experimental features providing limited reporting and control
-over the network are disabled by default.  To enable them, these global
+over the network are *disabled by default*.  To enable them, these global
 configuration options may appear in `pmtr.conf`.
 
   report to udp://127.0.0.1:9999
@@ -264,7 +271,7 @@ in pmtr.conf once again take precedence.  There is no authentication with the
 
 Multicast interface selection
 +++++++++++++++++++++++++++++
-The `report to` address may be in the multicast UDP range (e.g. 239.0.0.1 etc).
+A `report to` address may be in the multicast UDP range (e.g. 239.0.0.1, etc).
 If it is, the specification may optionally include a trailing interface name.
 This selects the network interface from which the UDP datagrams should egress.
 

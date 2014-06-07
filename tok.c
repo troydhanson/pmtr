@@ -26,6 +26,8 @@ static struct {
  {"on",      2, TOK_ON},
  {"report",  6, TOK_REPORT},
  {"to",      2, TOK_TO},
+ {"bounce",  6, TOK_BOUNCE},
+ {"every",   5, TOK_EVERY},
 };
 static const int ws[256] = { ['\r']=1, ['\n']=1, ['\t']=1, [' ']=1 };
 
@@ -58,8 +60,11 @@ int get_tok(char *c_orig, char **c, size_t *bsz, size_t *toksz, int *line) {
   for(i=0; i < sizeof(kw)/sizeof(*kw); i++) {
     if (*bsz < kw[i].len) continue;
     if (memcmp(*c,kw[i].str,kw[i].len) ) continue;
-    /* keywords except "{ on to" must be preceded by start-of-buf or newline */
-    if (kw[i].id != TOK_LCURLY && kw[i].id != TOK_ON && kw[i].id != TOK_TO) {
+    /* keywords except "{ on to every" must be preceded by start-of-buf or newline */
+    if (kw[i].id != TOK_LCURLY && 
+        kw[i].id != TOK_ON     && 
+        kw[i].id != TOK_TO     && 
+        kw[i].id != TOK_EVERY) {
       for(e=(*c)-1; e > c_orig; e--) {
         if (*e == '\n') break;
         if (ws[(int)*e]) continue;

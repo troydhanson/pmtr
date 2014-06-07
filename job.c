@@ -59,6 +59,7 @@ void job_cpy(job_t *dst, const job_t *src) {
   dst->disabled = src->disabled;
   dst->wait = src->wait;
   dst->once = src->once;
+  dst->bounce_interval = src->bounce_interval;
 }
 const UT_icd job_mm={sizeof(job_t), (init_f*)job_ini, 
                     (ctor_f*)job_cpy, (dtor_f*)job_fin };
@@ -105,6 +106,31 @@ void set_ord(parse_t *ps, char *ord) {
 void set_dis(parse_t *ps) { ps->job->disabled = 1; }
 void set_wait(parse_t *ps) { ps->job->wait = 1; }
 void set_once(parse_t *ps) { ps->job->once = 1; }
+
+void set_bounce(parse_t *ps, char *timespec) { 
+  int l = strlen(timespec), interval;
+  char *unit_ptr = &timespec[l-1];
+  char unit = *unit_ptr;
+  *unit_ptr = '\0';
+  if (sscanf(timespec, "%u", &interval) != 1) {
+    utstring_printf(ps->em, "invalid time interval in 'bounce every'");
+    ps->rc = -1;
+    return;
+  }
+
+  switch (unit) {
+    case 's': break;
+    case 'm': interval *= 60;       break;
+    case 'h': interval *= 60*60;    break;
+    case 'd': interval *= 60*60*24; break;
+    default: 
+      utstring_printf(ps->em, "invalid time unit in 'bounce every'");
+      ps->rc = -1;
+      return;
+  }
+
+  ps->job->bounce_interval = interval;
+}
 
 void set_user(parse_t *ps, char *user) { 
 
@@ -247,12 +273,17 @@ void signal_job(job_t *job) {
 /* start up the jobs that are not already running */
 void do_jobs(pmtr_t *cfg) {
   pid_t pid;
-  time_t now;
+  time_t now, elapsed;
   int es, n, fo, fe, fi, rc=-1, sig, kr;
   char *pathname, *o, *e, *i, **argv, **env;
 
   job_t *job = NULL;
   while ( (job = (job_t*)utarray_next(cfg->jobs,job))) {
+    if (job->bounce_interval && job->pid) { 
+      now = time(NULL);
+      elapsed = now - job->start_ts;
+      if (elapsed >= job->bounce_interval) job->terminate=1; 
+    }
     if (job->terminate) {signal_job(job); continue;}
     if (job->disabled) continue;
     if (job->pid) continue;  /* running already */
@@ -458,6 +489,7 @@ int job_cmp(job_t *a, job_t *b) {
   if (a->disabled != b->disabled) return a->disabled - b->disabled;
   if (a->wait != b->wait) return a->wait - b->wait;
   if (a->once != b->once) return a->once - b->once;
+  if (a->bounce_interval != b->bounce_interval) return a->bounce_interval - b->bounce_interval;
   return 0;
 }
 
