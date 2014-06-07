@@ -127,7 +127,7 @@ be on their own line and start with `#`.
 Options
 ^^^^^^^
 [[options]]
-[width="90%",cols="10m,50",grid="none",options="header"]
+[width="90%",cols="20m,50",grid="none",options="header"]
 |===============================================================================
 |option         | argument
 |name           | descriptive job name used for logging - must be unique
