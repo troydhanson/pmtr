@@ -4,7 +4,7 @@
 <head>
 <meta http-equiv="Content-Type" content="application/xhtml+xml; charset=UTF-8" />
 <meta name="generator" content="AsciiDoc 8.6.7" />
-<title>pmtr: an initscript alternative</title>
+<title>pmtr: a process monitor</title>
 <style type="text/css">
 /* Shared CSS for AsciiDoc xhtml11 and html5 backends */
 
@@ -771,10 +771,10 @@ asciidoc.install(2);
 </head>
 <body class="article">
 <div id="header">
-<h1>pmtr: an initscript alternative</h1>
+<h1>pmtr: a process monitor</h1>
 <span id="author">Troy D. Hanson</span><br />
 <span id="email"><tt>&lt;<a href="mailto:tdh@tkhanson.net">tdh@tkhanson.net</a>&gt;</tt></span><br />
-<span id="revdate">v1.4 March 2014</span>
+<span id="revdate">v1.5 June 2014</span>
 <div id="toc">
   <div id="toctitle">Table of Contents</div>
   <noscript><p><b>JavaScript must be enabled in your browser to display the table of contents.</b></p></noscript>
@@ -789,46 +789,54 @@ asciidoc.install(2);
 <a href="https://twitter.com/share" class="twitter-share-button" data-via="troydhanson">Tweet</a>
 <script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0];if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src="//platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>
 </div>
+<div class="paragraph"><p>Back to the <a href="https://github.com/troydhanson/pmtr">pmtr Github page</a>.</p></div>
 <div class="dlist"><dl>
 <dt class="hdlist1">
 pmtr
 </dt>
 <dd>
 <p>
-  a Linux program that can be used instead of initscripts to start your
-  executable binaries or scripts at boot up, and restart them if they exit
+  a Linux program that can be used to start your executable binaries or scripts
+  at boot up, and restart them if they exit
 </p>
 </dd>
 </dl></div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="_look_ma_no_initscript">Look ma, no initscript</h2>
+<h2 id="_pmtr_runs_your_servers">pmtr runs your servers</h2>
 <div class="sectionbody">
-<div class="paragraph"><p>Typically, <em>initscripts</em> start system processes at boot; pmtr is an initscript
-alternative for your own programs. It has a simple configuration file. It
-starts your jobs at boot, and restarts them if they exit. It&#8217;s small, written in
-C, open-source and for Linux only.  The config file can have any number of jobs:</p></div>
+<div class="paragraph"><p>Pmtr is a tool to start your programs-- the long-running processes that you want
+to have running all the time, like your node.js server, your sensor, or your
+networked applications.  It has a simple configuration file.  The config file
+can have any number of "jobs" - the programs you want pmtr to start up at boot:</p></div>
 <div class="listingblock">
 <div class="title">Example <tt>/etc/pmtr.conf</tt></div>
 <div class="content">
 <pre><tt>  job {
-    name ws-server
-    cmd /bin/node websocket-server.js
+    name nodejs
+    cmd /bin/node websocket.js
+  }
 
-    # optional:
-    dir /data/app
-    out node.out
-    err node.err
-    user app
+  job {
+    name ingest
+    dir /data
+    cmd /usr/sbin/tcpdump -i tap -s 0 -G 10 -w %Y%m%d%H%M%S.pcap
   }</tt></pre>
 </div></div>
-<div class="paragraph"><p>Only the name and command are required. See the <a href="#options">full options</a> below.</p></div>
+<div class="paragraph"><p>You can also specify standard output redirection, environment variables, the
+user to run the process, etc. See the <a href="#options">full options</a> below.</p></div>
+<div class="paragraph"><p>Pmtr starts these programs (jobs) at boot, and restarts them if they exit or
+crash. Pmtr is small, written in C, open-source and for Linux only.  It runs on
+Ubuntu, Debian, RHEL/CentOS, in Docker, on Raspberry Pi, and probably on your
+toaster if it runs Linux.</p></div>
 <div class="sidebarblock">
 <div class="content">
 <div class="title">Why did I write it?</div>
-<div class="paragraph"><p>I wrote pmtr because I wanted friendly syntax, a single configuration file,
-and a uniform way to run my app services on several Linux distributions.</p></div>
+<div class="paragraph"><p>I wrote pmtr because I wanted one simple configuration file where I could
+list the programs that I need started at boot, and restarted if they die.
+It&#8217;s the umbrella that runs my programs and gives me uniform configuration
+across distros (unlike initscripts).</p></div>
 </div></div>
 <div class="paragraph"><p>Pmtr applies changes immediately whenever the config file is edited- see
 <a href="#rescan">When do configuration changes take effect?</a>.  Take note of the
@@ -869,18 +877,21 @@ Raspbian (6,7) (Raspberry Pi)
 </div>
 <div class="sect2">
 <h3 id="_download_options">Download options</h3>
-<div class="paragraph"><p>Among the options on the <a href="https://github.com/troydhanson/pmtr">pmtr Github page</a>,
-you can:</p></div>
+<div class="paragraph"><p>The options on the <a href="https://github.com/troydhanson/pmtr">pmtr Github page</a> include:</p></div>
 <div class="ulist"><ul>
 <li>
 <p>
-download a <a href="https://github.com/troydhanson/pmtr/archive/master.zip">zipfile here</a>.
+download a <a href="https://github.com/troydhanson/pmtr/archive/master.zip">zipfile</a>.
 </p>
 </li>
 <li>
 <p>
-clone the git repository: <tt>git clone https://github.com/troydhanson/pmtr.git</tt>
+clone it:
 </p>
+<div class="literalblock">
+<div class="content">
+<pre><tt>git clone https://github.com/troydhanson/pmtr.git</tt></pre>
+</div></div>
 </li>
 </ul></div>
 </div>
@@ -928,7 +939,7 @@ service pmtr start</tt></pre>
 <div class="sect1">
 <h2 id="_configuration_file">Configuration file</h2>
 <div class="sectionbody">
-<div class="paragraph"><p>The pmtr configuration file is normally <tt>/etc/pmtr.conf</tt>. You can specify a different
+<div class="paragraph"><p>The pmtr configuration file is <tt>/etc/pmtr.conf</tt>. You can specify a different
 config file using the <tt>-c</tt> file.</p></div>
 <div class="sect2">
 <h3 id="_syntax">Syntax</h3>
@@ -937,9 +948,9 @@ delimited block.  Indentation is optional. Blank lines are ok.  Comments should
 be on their own line and start with <tt>#</tt>.</p></div>
 <div class="literalblock">
 <div class="content">
-<pre><tt>job {
+<pre><tt># this is a comment
+job {
   name stock-tracker
-  # track some stocks
   cmd /usr/local/bin/node trends.js "AAPL GOOG"
 }</tt></pre>
 </div></div>
@@ -1069,10 +1080,11 @@ There is no shell expansion in the <tt>cmd</tt>: things like wildcards and backt
 </div>
 </div>
 <div class="sect2">
-<h3 id="_syntax_or_other_errors">Syntax or other errors</h3>
-<div class="paragraph"><p>Syntax errors- and other errors- in pmtr.conf get reported via syslog. Typically
-this goes to <tt>/var/log/messages</tt> or <tt>/var/log/syslog</tt>.  To verify config file
-syntax manually use the <tt>-t</tt> flag like: <tt>pmtr -tc /etc/pmtr.conf</tt>.</p></div>
+<h3 id="_checking_config_syntax">Checking config syntax</h3>
+<div class="paragraph"><p>Syntax errors- like other pmtr messages- get reported via syslog. Typically
+this goes to <tt>/var/log/messages</tt> (RHEL/CentOS) or <tt>/var/log/syslog</tt> (Ubuntu).
+To check the syntax of a configuration file manually, you can use the test flag
+<tt>-t</tt> like: <tt>pmtr -tc /etc/pmtr.conf</tt>.</p></div>
 </div>
 <div class="sect2">
 <h3 id="rescan">When do configuration changes take effect?</h3>
@@ -1192,6 +1204,16 @@ example script in <tt>pmtr/utils</tt> can send these messages using a command li
 disables a job. When pmtr.conf is edited or pmtr is restarted, the settings
 in pmtr.conf once again take precedence.  There is no authentication with the
 <tt>listen on</tt> feature- use it only on trusted internal networks.</p></div>
+<div class="sect4">
+<h5 id="_multicast_interface_selection">Multicast interface selection</h5>
+<div class="paragraph"><p>The <tt>report to</tt> address may be in the multicast UDP range (e.g. 239.0.0.1 etc).
+If it is, the specification may optionally include a trailing interface name.
+This selects the network interface from which the UDP datagrams should egress.</p></div>
+<div class="literalblock">
+<div class="content">
+<pre><tt>report to udp://239.0.0.1:9999@eth2</tt></pre>
+</div></div>
+</div>
 </div>
 <div class="sect3">
 <h4 id="_one_time_jobs">One-time jobs</h4>
@@ -1247,7 +1269,7 @@ You can email me at <a href="mailto:tdh@tkhanson.net">tdh@tkhanson.net</a>. (I m
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2014-03-10 02:07:21 EDT
+Last updated 2014-06-07 00:13:59 EDT
 </div>
 </div>
 </body>

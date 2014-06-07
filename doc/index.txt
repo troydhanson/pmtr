@@ -1,42 +1,52 @@
-pmtr: an initscript alternative
-===============================
+pmtr: a process monitor
+=======================
 Troy D. Hanson <tdh@tkhanson.net>
-v1.4 March 2014
+v1.5 June 2014
 
 include::twitter.txt[]
 
-pmtr::
-  a Linux program that can be used instead of initscripts to start your
-  executable binaries or scripts at boot up, and restart them if they exit
+Back to the https://github.com/troydhanson/pmtr[pmtr Github page].
 
-Look ma, no initscript
+pmtr::
+  a Linux program that can be used to start your executable binaries or scripts
+  at boot up, and restart them if they exit
+
+pmtr runs your servers
 ----------------------
-Typically, 'initscripts' start system processes at boot; pmtr is an initscript
-alternative for your own programs. It has a simple configuration file. It
-starts your jobs at boot, and restarts them if they exit. It's small, written in
-C, open-source and for Linux only.  The config file can have any number of jobs:
+Pmtr is a tool to start your programs-- the long-running processes that you want
+to have running all the time, like your node.js server, your sensor, or your
+networked applications.  It has a simple configuration file.  The config file
+can have any number of "jobs" - the programs you want pmtr to start up at boot:
 
 .Example `/etc/pmtr.conf`
 --------------------------------------------------------
   job {
-    name ws-server
-    cmd /bin/node websocket-server.js
+    name nodejs
+    cmd /bin/node websocket.js
+  }
 
-    # optional:
-    dir /data/app
-    out node.out
-    err node.err
-    user app
+  job {
+    name ingest
+    dir /data
+    cmd /usr/sbin/tcpdump -i tap -s 0 -G 10 -w %Y%m%d%H%M%S.pcap
   }
 
 --------------------------------------------------------
 
-Only the name and command are required. See the <<options,full options>> below. 
+You can also specify standard output redirection, environment variables, the
+user to run the process, etc. See the <<options,full options>> below. 
+
+Pmtr starts these programs (jobs) at boot, and restarts them if they exit or
+crash. Pmtr is small, written in C, open-source and for Linux only.  It runs on
+Ubuntu, Debian, RHEL/CentOS, in Docker, on Raspberry Pi, and probably on your
+toaster if it runs Linux.
 
 .Why did I write it?
 **************************************************************************
-I wrote pmtr because I wanted friendly syntax, a single configuration file,
-and a uniform way to run my app services on several Linux distributions.
+I wrote pmtr because I wanted one simple configuration file where I could
+list the programs that I need started at boot, and restarted if they die.
+It's the umbrella that runs my programs and gives me uniform configuration
+across distros (unlike initscripts). 
 **************************************************************************
 
 Pmtr applies changes immediately whenever the config file is edited- see
@@ -65,11 +75,12 @@ Pmtr is for Linux only. It's been tested on:
 Download options
 ~~~~~~~~~~~~~~~~
 
-Among the options on the https://github.com/troydhanson/pmtr[pmtr Github page],
-you can:
+The options on the https://github.com/troydhanson/pmtr[pmtr Github page] include:
 
- * download a https://github.com/troydhanson/pmtr/archive/master.zip[zipfile here]. 
- * clone the git repository: `git clone https://github.com/troydhanson/pmtr.git`
+ * download a https://github.com/troydhanson/pmtr/archive/master.zip[zipfile]. 
+ * clone it: 
+ 
+  git clone https://github.com/troydhanson/pmtr.git
 
 Build and install
 ~~~~~~~~~~~~~~~~~
@@ -96,7 +107,7 @@ If you need to, you can manually stop and start pmtr the usual way:
 
 Configuration file 
 ------------------
-The pmtr configuration file is normally `/etc/pmtr.conf`. You can specify a different
+The pmtr configuration file is `/etc/pmtr.conf`. You can specify a different
 config file using the `-c` file.
 
 Syntax
@@ -105,9 +116,9 @@ The configuration file contains any number of jobs. Each job is in a curly-brace
 delimited block.  Indentation is optional. Blank lines are ok.  Comments should
 be on their own line and start with `#`.
 
+  # this is a comment
   job {
     name stock-tracker
-    # track some stocks
     cmd /usr/local/bin/node trends.js "AAPL GOOG"
   }
 
@@ -157,11 +168,12 @@ Tips
 
    cmd /bin/bash -c "DATE=`date`; /bin/node -d $DATE"
 
-Syntax or other errors
+Checking config syntax
 ~~~~~~~~~~~~~~~~~~~~~~
-Syntax errors- and other errors- in pmtr.conf get reported via syslog. Typically
-this goes to `/var/log/messages` or `/var/log/syslog`.  To verify config file
-syntax manually use the `-t` flag like: `pmtr -tc /etc/pmtr.conf`.
+Syntax errors- like other pmtr messages- get reported via syslog. Typically
+this goes to `/var/log/messages` (RHEL/CentOS) or `/var/log/syslog` (Ubuntu).
+To check the syntax of a configuration file manually, you can use the test flag
+`-t` like: `pmtr -tc /etc/pmtr.conf`.
 
 [[rescan]]
 When do configuration changes take effect?
@@ -249,6 +261,14 @@ example script in `pmtr/utils` can send these messages using a command line like
 disables a job. When pmtr.conf is edited or pmtr is restarted, the settings
 in pmtr.conf once again take precedence.  There is no authentication with the
 `listen on` feature- use it only on trusted internal networks. 
+
+Multicast interface selection
++++++++++++++++++++++++++++++
+The `report to` address may be in the multicast UDP range (e.g. 239.0.0.1 etc).
+If it is, the specification may optionally include a trailing interface name.
+This selects the network interface from which the UDP datagrams should egress.
+
+  report to udp://239.0.0.1:9999@eth2
 
 One-time jobs
 ^^^^^^^^^^^^^

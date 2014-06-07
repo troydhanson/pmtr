@@ -7,6 +7,7 @@
 
 #define DEFAULT_PM_CONFIG "/etc/pmtr.conf" 
 #define SHORT_DELAY 10
+#define PMTR_VERSION "1.5"
 
 typedef struct {
   char *file;

@@ -3,6 +3,7 @@
 #include <syslog.h>
 #include <fcntl.h>
 #include <sys/types.h>
+#include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -18,10 +19,11 @@
 #include "net.h"
 
 static int parse_spec(pmtr_t *cfg, UT_string *em, char *spec, 
-                      in_addr_t *addr, int *port) {
-  char *proto = spec, *colon, *host;
+                      in_addr_t *addr, int *port, char **iface) {
+  char *proto = spec, *colon, *host, *at;
   struct hostent *h;
   int hlen, rc=-1;
+  if (iface) *iface = NULL;
 
   if (strncmp(proto, "udp://", 6)) goto done;
   host = &spec[6];
@@ -29,6 +31,10 @@ static int parse_spec(pmtr_t *cfg, UT_string *em, char *spec,
   if ( !(colon = strrchr(spec, ':'))) goto done;
   *port = atoi(colon+1);
   if ((*port < 0) || (*port > 65535)) goto done;
+
+  if ( (at = strrchr(spec, '@')) != NULL) { // trailing @eth2
+    if (iface) *iface = at+1;
+  }
 
   /* stop here if syntax checking */
   if (cfg->test_only) return 0; 
@@ -48,7 +54,7 @@ static int parse_spec(pmtr_t *cfg, UT_string *em, char *spec,
   rc = 0; /* success */
 
  done:
-  if (rc == -1) utstring_printf(em,"expected format is udp://1.2.3.4:5678");
+  if (rc == -1) utstring_printf(em,"required format: udp://1.2.3.4:5678[@eth2]");
   return rc;
 }
 
@@ -61,7 +67,7 @@ void set_listen(parse_t *ps, char *addr) {
   in_addr_t local_ip;
   int rc = -1, port, flags;
 
-  if (parse_spec(ps->cfg, ps->em, addr, &local_ip, &port)) goto done;
+  if (parse_spec(ps->cfg, ps->em, addr, &local_ip, &port, NULL)) goto done;
   if (ps->cfg->test_only) return;  /* syntax looked ok */
 
   int fd = socket(AF_INET, SOCK_DGRAM, 0);
@@ -112,8 +118,9 @@ void set_listen(parse_t *ps, char *addr) {
 void set_report(parse_t *ps, char *dest) { 
   int rc = -1, port, flags;
   in_addr_t dest_ip;
+  char *iface;
 
-  if (parse_spec(ps->cfg, ps->em, dest, &dest_ip, &port)) goto done;
+  if (parse_spec(ps->cfg, ps->em, dest, &dest_ip, &port, &iface)) goto done;
   if (ps->cfg->test_only) return;  /* syntax looked ok */
 
   int fd = socket(AF_INET, SOCK_DGRAM, 0);
@@ -123,6 +130,33 @@ void set_report(parse_t *ps, char *dest) {
   flags = fcntl(fd, F_GETFD);
   flags |= FD_CLOEXEC;
   if (fcntl(fd, F_SETFD, flags) == -1) {rc = -3; goto done;}
+
+  /* use a specific NIC if one was specified, supported here for multicast */
+  if (iface) {
+    int l = strlen(iface);
+    if (l+1 >IFNAMSIZ) {utstring_printf(ps->em,"interface too long\n"); goto done;}
+
+    struct ifreq ifr;
+    ifr.ifr_addr.sa_family = AF_INET;
+    memcpy(ifr.ifr_name, iface, l+1);
+
+    /* does this interface support multicast? */
+    if (ioctl(fd, SIOCGIFFLAGS, &ifr)) {utstring_printf(ps->em,"ioctl: %s\n", strerror(errno)); goto done;} 
+    if (!(ifr.ifr_flags & IFF_MULTICAST)) {utstring_printf(ps->em,"%s does not multicast\n",iface); goto done;}
+
+    /* get the interface IP address */
+    struct in_addr iface_addr;
+    if (ioctl(fd, SIOCGIFADDR, &ifr)) {utstring_printf(ps->em,"ioctl: %s\n", strerror(errno)); goto done;} 
+    iface_addr = (((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr);
+    // utstring_printf(ps->em,"iface %s has addr %s\n", iface, inet_ntoa(iface_addr));
+
+    /* ask kernel to use its IP address for outgoing multicast */
+    if (setsockopt(fd, IPPROTO_IP, IP_MULTICAST_IF, &iface_addr, sizeof(iface_addr))) {
+      utstring_printf(ps->em,"setsockopt: %s\n", strerror(errno));
+      goto done;
+    }
+  }
+
 
   /* specify the local address and port  */
   struct sockaddr_in sin;

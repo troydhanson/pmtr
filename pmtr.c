@@ -29,6 +29,7 @@ pmtr_t cfg = {
 };
 
 void usage(char *prog) {
+  fprintf(stderr, "%s version %s\n\n", prog, PMTR_VERSION);
   fprintf(stderr, "usage: %s [-v] [-F] [-c cfg] [-t]\n", prog);
   fprintf(stderr, "  -v verbose\n");
   fprintf(stderr, "  -F foreground\n");
@@ -133,13 +134,13 @@ int main (int argc, char *argv[]) {
   utstring_new(em);
   utstring_new(sm);
 
-  while ( (opt = getopt(argc, argv, "v+Fc:s:t")) != -1) {
+  while ( (opt = getopt(argc, argv, "v+Fc:s:th")) != -1) {
     switch (opt) {
       case 'v': cfg.verbose++; break;
       case 'F': cfg.foreground=1; break;
       case 'c': cfg.file=strdup(optarg); break;
       case 't': cfg.test_only=1; cfg.foreground=1; break;
-      default: usage(argv[0]); break;
+      case 'h': default: usage(argv[0]); break;
     }
   }
   openlog("pmtr", LOG_PID | (cfg.foreground ? LOG_PERROR : 0), LOG_LOCAL0);
