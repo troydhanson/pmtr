@@ -37,6 +37,7 @@ kv ::= DISABLED.                      {set_dis(ps);  }
 kv ::= WAIT.                          {set_wait(ps); }
 kv ::= ONCE.                          {set_once(ps); }
 kv ::= BOUNCE EVERY STR(A).           {set_bounce(ps,A);}
+kv ::= DEPENDS LCURLY paths RCURLY.
 cmd ::= path(A).                      {set_cmd(ps,A);}
 cmd ::= path(A) args.                 {set_cmd(ps,A);}
 path(A) ::= STR(B).                   {A=B;}
@@ -44,3 +45,5 @@ args ::= args arg(B).                 {utarray_push_back(&ps->job->cmdv,&B);}
 args ::= arg(B).                      {utarray_push_back(&ps->job->cmdv,&B);}
 arg(A) ::= STR(B).                    {A=B;}
 arg(A) ::= QUOTEDSTR(B).              {A=unquote(B);}
+paths ::= paths path(A).              {utarray_push_back(&ps->job->depv,&A);}
+paths ::= path(A).                    {utarray_push_back(&ps->job->depv,&A);}

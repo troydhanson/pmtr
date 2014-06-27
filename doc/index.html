@@ -4,7 +4,7 @@
 <head>
 <meta http-equiv="Content-Type" content="application/xhtml+xml; charset=UTF-8" />
 <meta name="generator" content="AsciiDoc 8.6.7" />
-<title>pmtr: a process monitor</title>
+<title>pmtr: process monitor</title>
 <style type="text/css">
 /* Shared CSS for AsciiDoc xhtml11 and html5 backends */
 
@@ -771,10 +771,10 @@ asciidoc.install(2);
 </head>
 <body class="article">
 <div id="header">
-<h1>pmtr: a process monitor</h1>
+<h1>pmtr: process monitor</h1>
 <span id="author">Troy D. Hanson</span><br />
 <span id="email"><tt>&lt;<a href="mailto:tdh@tkhanson.net">tdh@tkhanson.net</a>&gt;</tt></span><br />
-<span id="revdate">v1.5 June 2014</span>
+<span id="revdate">v1.6 June 2014</span>
 <div id="toc">
   <div id="toctitle">Table of Contents</div>
   <noscript><p><b>JavaScript must be enabled in your browser to display the table of contents.</b></p></noscript>
@@ -796,55 +796,79 @@ pmtr
 </dt>
 <dd>
 <p>
-  a Linux program that can be used to start your executable binaries or scripts
-  at boot up, and restart them if they exit
+  a Linux process supervisor that can start your executables or scripts
+  (usually at system boot), then monitor them and restart jobs as needed
 </p>
 </dd>
 </dl></div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="_pmtr_runs_your_servers">pmtr runs your servers</h2>
+<h2 id="_pmtr_process_monitor">pmtr: process monitor</h2>
 <div class="sectionbody">
-<div class="paragraph"><p>Pmtr is a tool to start your programs-- the long-running processes that you want
-to have running all the time, like your node.js server, your sensor, or your
-networked applications.  It has a simple configuration file.  The config file
-can have any number of "jobs" - the programs you want pmtr to start up at boot:</p></div>
+<div class="paragraph"><p>Pmtr is a supervisor daemon that starts your programs at boot and then babysits them.
+Most "standard" system services (httpd, sshd, etc) have initscripts, which are
+the typical way to run daemons on Linux. There are a few reasons why you might
+use a process supervisor like pmtr instead of initscripts- such as, it&#8217;s your
+own program (and you don&#8217;t want to write an initscript for each Linux flavor);
+some initscripts do not restart jobs that crash (pmtr does this); and you may
+prefer a single configuration file for a whole collection of processes that
+make up your server or appliance. Pmtr has a simple configuration file. See
+the <a href="#options">full options</a> below.</p></div>
 <div class="listingblock">
 <div class="title">Example <tt>/etc/pmtr.conf</tt></div>
 <div class="content">
 <pre><tt>  job {
-    name nodejs
-    cmd /bin/node websocket.js
+    name watchdog
+    cmd /usr/bin/watchdog -c /var/watchdog
   }
 
+  # keep standard error, set working diretory
   job {
-    name ingest
-    dir /data
-    cmd /usr/sbin/tcpdump -i tap -s 0 -G 10 -w %Y%m%d%H%M%S.pcap
+    name sshd
+    dir /etc/ssh
+    cmd /usr/sbin/sshd -D -f sshd_config
+    err /var/log/sshd.err
+  }
+
+  # this one monitors dependencies
+  job {
+    name proxy
+    cmd /usr/bin/proxy -c /etc/proxy.cfg
+    depends {
+      /etc/proxy.cfg
+      /etc/proxy/inbound
+      /etc/proxy/outbound
+    }
+  }
+
+  # bounce this job every hour
+  job {
+    name thermostat
+    dir /home/temp
+    cmd /usr/bin/python temp.py
+    bounce every 1h
+    user nobody
+    env LIB=/opt/py
   }</tt></pre>
 </div></div>
-<div class="paragraph"><p>You can also specify standard output redirection, environment variables, the
-user to run the process, etc. See the <a href="#options">full options</a> below.</p></div>
-<div class="paragraph"><p>Pmtr starts these programs (jobs) at boot, and restarts them if they exit or
-crash. Pmtr is small, written in C, open-source and for Linux only.  It runs on
-Ubuntu, Debian, RHEL/CentOS, in Docker, on Raspberry Pi, and probably on your
-toaster if it runs Linux.</p></div>
+<div class="paragraph"><p>Take note of the <a href="#requirements">requirements for pmtr jobs</a>.  Pmtr applies
+changes immediately whenever the config file is edited.</p></div>
+<div class="paragraph"><p>The pmtr daemon itself is small, written in C, open-source and for Linux only.
+It runs on Ubuntu, Debian, RHEL/CentOS, in Docker containers, and others.</p></div>
 <div class="sidebarblock">
 <div class="content">
 <div class="title">Why did I write it?</div>
 <div class="paragraph"><p>I wrote pmtr because I wanted one simple configuration file where I could
 list the programs that I need to run at boot, with confidence that they&#8217;d
 be restarted if they exit or crash. I also wanted to have a few special
-features like the ability to bounce processes at a set interval, or edit
-the config file and see those changes take effect instantly.</p></div>
+features like the ability to bounce processes at a set interval, or have
+processes immediately react to configuration changes.</p></div>
 </div></div>
-<div class="paragraph"><p>Pmtr applies changes immediately whenever the config file is edited- see
-<a href="#rescan">When do configuration changes take effect?</a>.  Take note of the
-<a href="#requirements">requirements for pmtr jobs</a>.</p></div>
-<div class="paragraph"><div class="title">Does it work?</div><p>Pmtr has been used for several years in production, to run all manor of
-C, Python, Perl, Java, bash and node.js programs.</p></div>
-<div class="paragraph"><div class="title">What&#8217;s with the name?</div><p>It was once called a process manager, then a process monitor, hence pmtr.</p></div>
+<div class="paragraph"><div class="title">Does it work?</div><p>The author has used pmtr for several years in production, to run programs in C,
+Python, Perl, Java, bash and node.js. If you find a bug or have a new feature to
+suggest- please use the <a href="https://github.com/troydhanson/pmtr">pmtr Github page</a>
+to communicate that.</p></div>
 </div>
 </div>
 <div class="sect1">
@@ -878,7 +902,7 @@ Raspbian (6,7) (Raspberry Pi)
 </div>
 <div class="sect2">
 <h3 id="_download_options">Download options</h3>
-<div class="paragraph"><p>The options on the <a href="https://github.com/troydhanson/pmtr">pmtr Github page</a> include:</p></div>
+<div class="paragraph"><p>You can use the <a href="https://github.com/troydhanson/pmtr">Github page</a> to:</p></div>
 <div class="ulist"><ul>
 <li>
 <p>
@@ -947,13 +971,27 @@ config file using the <tt>-c</tt> file.</p></div>
 <div class="paragraph"><p>The configuration file contains any number of jobs. Each job is in a curly-brace
 delimited block.  Indentation is optional. Blank lines are ok.  Comments should
 be on their own line and start with <tt>#</tt>.</p></div>
-<div class="literalblock">
+<div class="listingblock">
+<div class="title">Example pmtr.conf job with many options</div>
 <div class="content">
-<pre><tt># this is a comment
-job {
-  name stock-tracker
-  cmd /usr/local/bin/node trends.js "AAPL GOOG"
-}</tt></pre>
+<pre><tt>  # trending service
+  # restarted daily to reclaim memory
+
+  job {
+    name trends
+    dir /home/services
+    cmd /usr/bin/python trends.py "AAPL GOOG"
+    out trends.out
+    err trends.err
+    bounce every 1d
+    depends {
+      trends.conf
+      /etc/py.conf
+    }
+    env LIBS=/opt/libs
+    env DEBUG=1
+    user pyuser
+  }</tt></pre>
 </div></div>
 <div class="sect3">
 <h4 id="_options">Options</h4>
@@ -1005,11 +1043,15 @@ cellspacing="0" cellpadding="4">
 </tr>
 <tr>
 <td align="left" valign="top"><p class="table"><tt>bounce every</tt></p></td>
-<td align="left" valign="top"><p class="table">a time interval like 5m (five minutes) - units are smhd</p></td>
+<td align="left" valign="top"><p class="table">a time interval like 5m (five minutes) - units are <tt>smhd</tt></p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><tt>depends</tt></p></td>
+<td align="left" valign="top"><p class="table">a curly-brace delimited list of files, one per line</p></td>
 </tr>
 <tr>
 <td align="left" valign="top"><p class="table"><tt>disable</tt></p></td>
-<td align="left" valign="top"><p class="table">disables the job if present</p></td>
+<td align="left" valign="top"><p class="table">this keyword disables the job</p></td>
 </tr>
 </tbody>
 </table>
@@ -1056,8 +1098,13 @@ The <tt>user</tt> defaults to root.
 The <tt>bounce every</tt> command is for jobs that leak memory, act up, or mis-
   behave when left running too long; it simply kills the job then restarts it.  It
   takes a number and unit, like 5m. The units are smhd- (s)econds, (m)inutes,
-  (h)ours or (d)ays. The bounce timer runs every 10s, so that much additional
-  time may elapse after the process is due to be bounced before it occurs.
+  (h)ours or (d)ays. The bounce timer runs every 10s- it&#8217;s not for short intervals.
+</p>
+</li>
+<li>
+<p>
+The <tt>depends</tt> keyword is used to specify configuration files which pmtr should
+  monitor. If the content of any of the dependencies changes, pmtr restarts the job.
 </p>
 </li>
 </ul></div>
@@ -1133,6 +1180,14 @@ terminates its jobs before exiting.</p></div>
 <div class="paragraph"><p>Hint: a nice representation of the process hierarchy can be obtained using
 <tt>pstree -p</tt> (if that utility is installed). This can be used to verify the
 process tree that&#8217;s running under pmtr matches your expectation.</p></div>
+<div class="listingblock">
+<div class="title">Example pstree output</div>
+<div class="content">
+<pre><tt>        ├─pmtr(2830)─┬─pmtr(2834)
+        │            ├─proxy(2831)
+        │            ├─sshd(2832)
+        │            └─python(2833)</tt></pre>
+</div></div>
 <div class="sect2">
 <h3 id="requirements">Is the job suitable to run under pmtr?</h3>
 <div class="paragraph"><p>In pmtr the term <em>job</em> means a daemon. For our purposes, this is just
@@ -1190,16 +1245,33 @@ pmtr log messages relating to configuration file changes and job activity.</p></
 <div class="literalblock">
 <div class="content">
 <pre><tt>Nov  7 22:01:09 ubuntu pmtr[18477]: rescanning job configuration
-Nov  7 21:38:10 ubuntu pmtr[18477]: started job websocket-server [18478]</tt></pre>
+Nov  7 21:38:10 ubuntu pmtr[18477]: started job proxy [18478]</tt></pre>
 </div></div>
 </div>
 <div class="sect2">
-<h3 id="_lesser_features">Lesser features</h3>
+<h3 id="_one_time_jobs">One-time jobs</h3>
+<div class="paragraph"><p>For "initial setup" situations, pmtr has limited support for one-time jobs. The
+<tt>wait</tt> option makes pmtr wait (for that job to exit) before starting subsequent
+jobs. To prevent pmtr from restarting it, also use the <tt>once</tt> option. (A change
+to the job configuration would cause pmtr to execute the job again, naturally).</p></div>
+<div class="literalblock">
+<div class="content">
+<pre><tt>job {
+      name create-ramdisk
+      cmd /bin/mkdir -p /dev/shm/ws/data
+      wait
+      once
+}</tt></pre>
+</div></div>
+</div>
+<div class="sect2">
+<h3 id="_experimental">Experimental</h3>
+<div class="paragraph"><p>These features are disabled by default.</p></div>
+<div class="paragraph"><p>These two experimental features provide basic reporting and control over the
+network.</p></div>
 <div class="sect3">
 <h4 id="_report_listen">Report/Listen</h4>
-<div class="paragraph"><p>These two experimental features providing limited reporting and control
-over the network are <strong>disabled by default</strong>.  To enable them, these global
-configuration options may appear in <tt>pmtr.conf</tt>.</p></div>
+<div class="paragraph"><p>These configuration options may appear in <tt>pmtr.conf</tt> at the global scope.</p></div>
 <div class="literalblock">
 <div class="content">
 <pre><tt>report to udp://127.0.0.1:9999
@@ -1229,22 +1301,6 @@ This selects the network interface from which the UDP datagrams should egress.</
 </div></div>
 </div>
 </div>
-<div class="sect3">
-<h4 id="_one_time_jobs">One-time jobs</h4>
-<div class="paragraph"><p>For "initial setup" situations, pmtr has limited support for one-time jobs. The
-<tt>wait</tt> option makes pmtr wait (for that job to exit) before starting subsequent
-jobs. To prevent pmtr from restarting it, also use the <tt>once</tt> option. (A change
-to the job configuration would cause pmtr to execute the job again, naturally).</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><tt>job {
-      name setup-ramdisk
-      cmd /bin/mkdir -p /dev/shm/ws/data
-      wait
-      once
-}</tt></pre>
-</div></div>
-</div>
 </div>
 </div>
 </div>
@@ -1254,22 +1310,22 @@ to the job configuration would cause pmtr to execute the job again, naturally).<
 <div class="ulist"><ul>
 <li>
 <p>
-the <a href="https://github.com/troydhanson/pmtr">pmtr Github page</a>- for bug reports and pull requests
+Please use the <a href="https://github.com/troydhanson/pmtr">pmtr Github page</a> for bug reports and pull requests.
 </p>
 </li>
 <li>
 <p>
-the <a href="http://troydhanson.github.io/">author&#8217;s GitHub page</a> lists my other software
+The <a href="http://troydhanson.github.io/">author&#8217;s GitHub page</a> lists my other software.
 </p>
 </li>
 <li>
 <p>
-my <a href="http://tkhanson.net/blog">blog</a>, and twitter <a href="https://twitter.com/troydhanson">@troydhanson</a>.
+My <a href="http://tkhanson.net/blog">blog</a>, and twitter <a href="https://twitter.com/troydhanson">@troydhanson</a>.
 </p>
 </li>
 <li>
 <p>
-You can email me at <a href="mailto:tdh@tkhanson.net">tdh@tkhanson.net</a>. (I may not be able to reply, sorry!)
+You can email me at <a href="mailto:tdh@tkhanson.net">tdh@tkhanson.net</a>. I may not be able to reply- sorry!
 </p>
 </li>
 </ul></div>
@@ -1283,7 +1339,7 @@ You can email me at <a href="mailto:tdh@tkhanson.net">tdh@tkhanson.net</a>. (I m
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2014-06-07 02:38:25 EDT
+Last updated 2014-06-26 23:00:22 EDT
 </div>
 </div>
 </body>

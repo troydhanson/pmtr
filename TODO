@@ -1,7 +1,14 @@
+multicast-rptserver
+web based rptserver - jp
+job sould be absolute path if present
 
+MAYBE
+======================================
+2. bring fork monitor into pmtr
 
+DONE
+======================================
 x bounce every 5m
 x report to @eth2 
-
-multicast-rptserver
-reliable handling of unlink/mv
+x document more complex config file
+x depends {} for each job

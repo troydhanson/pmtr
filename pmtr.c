@@ -42,19 +42,33 @@ void sighandler(int signo) {
   siglongjmp(jmp,signo);
 }
 
-/* fork a process that signals us if the config file changes */
+/* fork a process that signals us if the config or deps change */
 pid_t dep_monitor(char *file) {
   size_t eblen = sizeof(struct inotify_event)+PATH_MAX;
   char *eb;
-  int rc,fd,wd, events = IN_MODIFY/*|IN_DELETE_SELF*/;
+  int rc,fd,wd, events = IN_MODIFY;
   pid_t dm_pid = fork();
   if (dm_pid > 0) return dm_pid;
   if ((dm_pid == (pid_t)-1)                              ||
       ( (fd=inotify_init()) == -1)                       ||
       ( (wd=inotify_add_watch(fd,file, events )) == -1)) {
-    syslog(LOG_ERR,"error: %s\n", strerror(errno)); 
+    syslog(LOG_ERR,"error: %s", strerror(errno)); 
     exit(-1);
   }
+
+  /* add all jobs' deps to inotify watch */
+  job_t *job=NULL;
+  while ( (job=(job_t*)utarray_next(cfg.jobs,job))) {
+    if (job->disabled) continue;
+    char **dep=NULL;
+    while ( (dep=(char**)utarray_next(&job->depv,dep))) {
+      if (inotify_add_watch(fd, fpath(job,*dep), IN_MODIFY) == -1) {
+        // proceed despite error, pmtr disables job if dep missing
+        syslog(LOG_ERR,"can't watch %s: %s", *dep, strerror(errno));
+      }
+    }
+  }
+
   close_sockets(&cfg);
 
   /* request HUP if parent exits, unblock, action terminate */
@@ -84,7 +98,7 @@ void rescan_config(void) {
 
   if (parse_jobs(&cfg, em) == -1) {
     syslog(LOG_CRIT,"FAILED to parse %s", cfg.file);
-    syslog(LOG_CRIT,"ERROR: %s\n", utstring_body(em));
+    syslog(LOG_CRIT,"ERROR: %s", utstring_body(em));
     syslog(LOG_CRIT,"NOTE: using PREVIOUS job config");
     cfg.jobs = previous_jobs;
     goto done;
@@ -168,12 +182,12 @@ int main (int argc, char *argv[]) {
   /* parse config file. we blocked signals above because we can get SIGIO 
    * during parsing if we open UDP listeners and get any datagrams */
   if (parse_jobs(&cfg, em) == -1) {
-    syslog(LOG_ERR,"parse failed: %s\n", utstring_body(em));
+    syslog(LOG_ERR,"parse failed: %s", utstring_body(em));
     goto final;
   }
 
   if (cfg.test_only) goto final;
-  syslog(LOG_INFO,"pmtr: starting\n");
+  syslog(LOG_INFO,"pmtr: starting");
 
   /* define a smaller set of signals to block within sigsuspend. */
   sigset_t ss;
@@ -215,7 +229,7 @@ int main (int argc, char *argv[]) {
       do_jobs(&cfg);
       break;
     default:
-      syslog(LOG_INFO,"pmtr: exiting on signal %d\n", signo);
+      syslog(LOG_INFO,"pmtr: exiting on signal %d", signo);
       goto done;
       break;
   }

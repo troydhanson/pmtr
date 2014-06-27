@@ -1,65 +1,87 @@
-pmtr: a process monitor
-=======================
+pmtr: process monitor
+=====================
 Troy D. Hanson <tdh@tkhanson.net>
-v1.5 June 2014
+v1.6 June 2014
 
 include::twitter.txt[]
 
 Back to the https://github.com/troydhanson/pmtr[pmtr Github page].
 
 pmtr::
-  a Linux program that can be used to start your executable binaries or scripts
-  at boot up, and restart them if they exit
+  a Linux process supervisor that can start your executables or scripts
+  (usually at system boot), then monitor them and restart jobs as needed
 
-pmtr runs your servers
-----------------------
-Pmtr is a tool to start your programs-- the long-running processes that you want
-to have running all the time, like your node.js server, your sensor, or your
-networked applications.  It has a simple configuration file.  The config file
-can have any number of "jobs" - the programs you want pmtr to start up at boot:
+pmtr: process monitor
+---------------------
+Pmtr is a supervisor daemon that starts your programs at boot and then babysits them.
+Most "standard" system services (httpd, sshd, etc) have initscripts, which are
+the typical way to run daemons on Linux. There are a few reasons why you might
+use a process supervisor like pmtr instead of initscripts- such as, it's your
+own program (and you don't want to write an initscript for each Linux flavor);
+some initscripts do not restart jobs that crash (pmtr does this); and you may
+prefer a single configuration file for a whole collection of processes that
+make up your server or appliance. Pmtr has a simple configuration file. See
+the <<options,full options>> below. 
 
 .Example `/etc/pmtr.conf`
 --------------------------------------------------------
-  job {
-    name nodejs
-    cmd /bin/node websocket.js
-  }
 
   job {
-    name ingest
-    dir /data
-    cmd /usr/sbin/tcpdump -i tap -s 0 -G 10 -w %Y%m%d%H%M%S.pcap
+    name watchdog
+    cmd /usr/bin/watchdog -c /var/watchdog
+  }
+
+  # keep standard error, set working diretory
+  job {
+    name sshd
+    dir /etc/ssh
+    cmd /usr/sbin/sshd -D -f sshd_config
+    err /var/log/sshd.err
+  }
+
+  # this one monitors dependencies
+  job {
+    name proxy
+    cmd /usr/bin/proxy -c /etc/proxy.cfg
+    depends {
+      /etc/proxy.cfg
+      /etc/proxy/inbound
+      /etc/proxy/outbound
+    }
+  }
+  
+  # bounce this job every hour
+  job {
+    name thermostat
+    dir /home/temp
+    cmd /usr/bin/python temp.py
+    bounce every 1h
+    user nobody
+    env LIB=/opt/py
   }
 
 --------------------------------------------------------
 
-You can also specify standard output redirection, environment variables, the
-user to run the process, etc. See the <<options,full options>> below. 
+Take note of the <<requirements,requirements for pmtr jobs>>.  Pmtr applies
+changes immediately whenever the config file is edited.
 
-Pmtr starts these programs (jobs) at boot, and restarts them if they exit or
-crash. Pmtr is small, written in C, open-source and for Linux only.  It runs on
-Ubuntu, Debian, RHEL/CentOS, in Docker, on Raspberry Pi, and probably on your
-toaster if it runs Linux.
+The pmtr daemon itself is small, written in C, open-source and for Linux only.
+It runs on Ubuntu, Debian, RHEL/CentOS, in Docker containers, and others.
 
 .Why did I write it?
 **************************************************************************
 I wrote pmtr because I wanted one simple configuration file where I could
 list the programs that I need to run at boot, with confidence that they'd
 be restarted if they exit or crash. I also wanted to have a few special
-features like the ability to bounce processes at a set interval, or edit
-the config file and see those changes take effect instantly.
+features like the ability to bounce processes at a set interval, or have
+processes immediately react to configuration changes.
 **************************************************************************
 
-Pmtr applies changes immediately whenever the config file is edited- see
-<<rescan,When do configuration changes take effect?>>.  Take note of the
-<<requirements,requirements for pmtr jobs>>.
-
 .Does it work?
-Pmtr has been used for several years in production, to run all manor of 
-C, Python, Perl, Java, bash and node.js programs.
-
-.What's with the name?
-It was once called a process manager, then a process monitor, hence pmtr.
+The author has used pmtr for several years in production, to run programs in C,
+Python, Perl, Java, bash and node.js. If you find a bug or have a new feature to
+suggest- please use the https://github.com/troydhanson/pmtr[pmtr Github page]
+to communicate that.
 
 Download & Install
 ------------------
@@ -76,7 +98,7 @@ Pmtr is for Linux only. It's been tested on:
 Download options
 ~~~~~~~~~~~~~~~~
 
-The options on the https://github.com/troydhanson/pmtr[pmtr Github page] include:
+You can use the https://github.com/troydhanson/pmtr[Github page] to:
 
  * download a https://github.com/troydhanson/pmtr/archive/master.zip[zipfile]. 
  * clone it: 
@@ -117,11 +139,27 @@ The configuration file contains any number of jobs. Each job is in a curly-brace
 delimited block.  Indentation is optional. Blank lines are ok.  Comments should
 be on their own line and start with `#`.
 
-  # this is a comment
+.Example pmtr.conf job with many options 
+---------------------------------------------------
+  # trending service
+  # restarted daily to reclaim memory
+
   job {
-    name stock-tracker
-    cmd /usr/local/bin/node trends.js "AAPL GOOG"
+    name trends
+    dir /home/services
+    cmd /usr/bin/python trends.py "AAPL GOOG"
+    out trends.out
+    err trends.err
+    bounce every 1d
+    depends {
+      trends.conf
+      /etc/py.conf
+    }
+    env LIBS=/opt/libs
+    env DEBUG=1
+    user pyuser
   }
+---------------------------------------------------
 
 
 Options
@@ -138,8 +176,9 @@ Options
 |in             | hook stdin to this file
 |env            | environment variable setting `VAR=VALUE` (repeatable)
 |user           | unix username under whose id to run the process 
-|bounce every   | a time interval like 5m (five minutes) - units are smhd
-|disable        | disables the job if present
+|bounce every   | a time interval like 5m (five minutes) - units are `smhd`
+|depends        | a curly-brace delimited list of files, one per line
+|disable        | this keyword disables the job 
 |===============================================================================
 
 Notes:
@@ -158,8 +197,9 @@ Notes:
 * The `bounce every` command is for jobs that leak memory, act up, or mis-
   behave when left running too long; it simply kills the job then restarts it.  It
   takes a number and unit, like 5m. The units are smhd- (s)econds, (m)inutes,
-  (h)ours or (d)ays. The bounce timer runs every 10s, so that much additional
-  time may elapse after the process is due to be bounced before it occurs.
+  (h)ours or (d)ays. The bounce timer runs every 10s- it's not for short intervals.
+* The `depends` keyword is used to specify configuration files which pmtr should
+  monitor. If the content of any of the dependencies changes, pmtr restarts the job.
 
 Tips
 ^^^^
@@ -204,6 +244,15 @@ Hint: a nice representation of the process hierarchy can be obtained using
 `pstree -p` (if that utility is installed). This can be used to verify the
 process tree that's running under pmtr matches your expectation.
 
+.Example pstree output
+----------------------------------------
+        ├─pmtr(2830)─┬─pmtr(2834)
+        │            ├─proxy(2831)
+        │            ├─sshd(2832)
+        │            └─python(2833)
+----------------------------------------
+
+
 [[requirements]]
 Is the job suitable to run under pmtr?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -240,16 +289,32 @@ Look in syslog (typically `/var/log/messages` or `/var/log/syslog`) to see
 pmtr log messages relating to configuration file changes and job activity.
 
   Nov  7 22:01:09 ubuntu pmtr[18477]: rescanning job configuration
-  Nov  7 21:38:10 ubuntu pmtr[18477]: started job websocket-server [18478]
+  Nov  7 21:38:10 ubuntu pmtr[18477]: started job proxy [18478]
 
-Lesser features
-~~~~~~~~~~~~~~~
+One-time jobs
+~~~~~~~~~~~~~
+For "initial setup" situations, pmtr has limited support for one-time jobs. The
+`wait` option makes pmtr wait (for that job to exit) before starting subsequent
+jobs. To prevent pmtr from restarting it, also use the `once` option. (A change
+to the job configuration would cause pmtr to execute the job again, naturally).
+
+  job {
+        name create-ramdisk
+        cmd /bin/mkdir -p /dev/shm/ws/data
+        wait
+        once
+  }
+
+Experimental 
+~~~~~~~~~~~~
+These features are disabled by default.
+
+These two experimental features provide basic reporting and control over the
+network.
 
 Report/Listen
 ^^^^^^^^^^^^^
-These two experimental features providing limited reporting and control
-over the network are *disabled by default*.  To enable them, these global
-configuration options may appear in `pmtr.conf`.
+These configuration options may appear in `pmtr.conf` at the global scope.
 
   report to udp://127.0.0.1:9999
   listen on udp://0.0.0.0:10000
@@ -277,26 +342,12 @@ This selects the network interface from which the UDP datagrams should egress.
 
   report to udp://239.0.0.1:9999@eth2
 
-One-time jobs
-^^^^^^^^^^^^^
-For "initial setup" situations, pmtr has limited support for one-time jobs. The
-`wait` option makes pmtr wait (for that job to exit) before starting subsequent
-jobs. To prevent pmtr from restarting it, also use the `once` option. (A change
-to the job configuration would cause pmtr to execute the job again, naturally).
-
-  job {
-        name setup-ramdisk
-        cmd /bin/mkdir -p /dev/shm/ws/data
-        wait
-        once
-  }
-
 Resources
 ---------
-* the https://github.com/troydhanson/pmtr[pmtr Github page]- for bug reports and pull requests
-* the http://troydhanson.github.io/[author's GitHub page] lists my other software
-* my http://tkhanson.net/blog[blog], and twitter https://twitter.com/troydhanson[@troydhanson].
-* You can email me at tdh@tkhanson.net. (I may not be able to reply, sorry!)
+* Please use the https://github.com/troydhanson/pmtr[pmtr Github page] for bug reports and pull requests.
+* The http://troydhanson.github.io/[author's GitHub page] lists my other software.
+* My http://tkhanson.net/blog[blog], and twitter https://twitter.com/troydhanson[@troydhanson].
+* You can email me at tdh@tkhanson.net. I may not be able to reply- sorry!
 
 License
 ~~~~~~~

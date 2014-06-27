@@ -10,6 +10,7 @@
 #include <errno.h>
 #include <assert.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <pwd.h>
 
 //#define DEBUG 1
@@ -28,6 +29,7 @@ void job_ini(job_t *job) {
   memset(job,0,sizeof(*job));
   utarray_init(&job->cmdv, &ut_str_icd); 
   utarray_init(&job->envv, &ut_str_icd); 
+  utarray_init(&job->depv, &ut_str_icd); 
   job->respawn=1;
   job->uid=-1;
 }
@@ -35,6 +37,7 @@ void job_fin(job_t *job) {
   if (job->name) free(job->name);
   utarray_done(&job->cmdv); 
   utarray_done(&job->envv); 
+  utarray_done(&job->depv); 
   if (job->dir) free(job->dir);
   if (job->out) free(job->out);
   if (job->err) free(job->err);
@@ -44,6 +47,7 @@ void job_cpy(job_t *dst, const job_t *src) {
   dst->name = src->name ? strdup(src->name) : NULL;
   utarray_init(&dst->cmdv, &ut_str_icd); utarray_concat(&dst->cmdv, &src->cmdv);
   utarray_init(&dst->envv, &ut_str_icd); utarray_concat(&dst->envv, &src->envv);
+  utarray_init(&dst->depv, &ut_str_icd); utarray_concat(&dst->depv, &src->depv);
   dst->dir = src->dir ? strdup(src->dir) : NULL;
   dst->out = src->out ? strdup(src->out) : NULL;
   dst->err = src->err ? strdup(src->err) : NULL;
@@ -60,6 +64,7 @@ void job_cpy(job_t *dst, const job_t *src) {
   dst->wait = src->wait;
   dst->once = src->once;
   dst->bounce_interval = src->bounce_interval;
+  dst->deps_hash = src->deps_hash;
 }
 const UT_icd job_mm={sizeof(job_t), (init_f*)job_ini, 
                     (ctor_f*)job_cpy, (dtor_f*)job_fin };
@@ -172,29 +177,79 @@ char *unquote(char *str) {
   return str+1;
 }
 
+/* prefix a relative filename with the job directory, if set.
+ * uses static storage, overwritten from call to call! */
+char *fpath(job_t *job, char *file) {
+  static char path[PATH_MAX];
+  if (*file == '/') return file;
+  if (!job->dir   ) return file;
+  size_t dlen = strlen(job->dir);
+  size_t flen = strlen(file);
+  if (dlen + flen + 2 > sizeof(path)) return NULL;
+  strcpy(path, job->dir);
+  strcat(path, "/");
+  strcat(path, file);
+  return path;
+}
+
 /* this function reads a whole file into a malloc'd buffer */
-char *slurp(char *file, size_t *len) {
+int slurp(char *file, char **text, size_t *len) {
   struct stat s;
   char *buf;
-  int fd;
+  int fd = -1, rc=-1;
+  *text=NULL; *len = 0;
+
   if (stat(file, &s) == -1) {
-      fprintf(stderr,"can't stat %s: %s\n", file, strerror(errno));
-      exit(-1);
+    syslog(LOG_ERR,"can't stat %s: %s", file, strerror(errno));
+    goto done;
   }
   *len = s.st_size;
+  if (*len == 0) {rc=0; goto done;} // special case, empty file
   if ( (fd = open(file, O_RDONLY)) == -1) {
-      fprintf(stderr,"can't open %s: %s\n", file, strerror(errno));
-      exit(-1);
+    syslog(LOG_ERR,"can't open %s: %s", file, strerror(errno));
+    goto done;
   }
-  buf = malloc(*len);
-  if (buf) {
-    if (read(fd, buf,*len) != *len) {
-       fprintf(stderr,"incomplete read\n");
-       exit(-1);
+  if ( (*text = malloc(*len)) == NULL) goto done;
+  if (read(fd, *text, *len) != *len) {
+   syslog(LOG_ERR,"incomplete read");
+   goto done;
+  }
+  rc = 0;
+
+ done:
+  if ((rc < 0) && *text) free(*text);
+  if (fd != -1) close(fd);
+  return rc;
+}
+
+// record a hash of each job's dependencies; rehash later to detect changes
+int hash_deps(UT_array *jobs) {
+  char *text, *t;
+  size_t len, l;
+  int rc = -1;
+
+  job_t *job=NULL;
+  while ( (job=(job_t*)utarray_next(jobs,job))) {
+    job->deps_hash=0;
+    char **dep=NULL;
+    while( (dep=(char**)utarray_next(&job->depv,dep))) {
+      if (slurp(fpath(job,*dep), &text, &len) < 0) {
+        syslog(LOG_ERR,"job %s: can't open dependency %s", job->name, *dep);
+        job->disabled = 1; /* they need to fix pmtr.conf to trigger rescan */
+        if (job->pid) job->terminate=1;
+        continue;
+      }
+      t=text; l=len;
+      while (l--) job->deps_hash = (job->deps_hash * 33) + *t++;
+      memset(text,0,len); // keep our address space free of random files :-)
+      free(text);
     }
   }
-  close(fd);
-  return buf;
+
+  rc=0;
+
+ done:
+  return rc;
 }
 
 static int order_sort(const void *_a, const void *_b) {
@@ -221,7 +276,7 @@ int parse_jobs(pmtr_t *cfg, UT_string *em) {
 
   p = ParseAlloc(malloc);
 
-  buf = slurp(ps.cfg->file, &len);
+  if (slurp(ps.cfg->file, &buf, &len) < 0) {ps.rc=-1; goto done;}
   c = buf;
   while ( (id=get_tok(buf,&c,&len,&toklen,&ps.line)) > 0) {
     tok = strndup(c,toklen); utarray_push_back(toks,&tok); free(tok); 
@@ -242,11 +297,12 @@ int parse_jobs(pmtr_t *cfg, UT_string *em) {
 
   /* parsing succeeded */
   utarray_sort(cfg->jobs, order_sort);
+  hash_deps(cfg->jobs);
 
  done:
   utarray_free(toks);
   ParseFree(p, free);
-  free(buf);
+  if (buf) free(buf);
   job_fin(&job);
   return ps.rc;
 }
@@ -471,6 +527,15 @@ int job_cmp(job_t *a, job_t *b) {
     bc = (char**)utarray_next(&b->envv,bc);
     if ((*ac && *bc) && ((rc=strcmp(*ac,*bc)) != 0)) return rc;
   }
+  /* compare depv and the hash of the dependencies */
+  alen = utarray_len(&a->depv); blen = utarray_len(&b->depv); 
+  if (alen != blen) return alen-blen;
+  ac=NULL; bc=NULL;
+  while ( (ac=(char**)utarray_next(&a->depv,ac))) {
+    bc = (char**)utarray_next(&b->depv,bc);
+    if ((*ac && *bc) && ((rc=strcmp(*ac,*bc)) != 0)) return rc;
+  }
+  if ( (rc = (a->deps_hash-b->deps_hash))) return rc;
   /* dir */
   if ((!a->dir && b->dir) || (a->dir && !b->dir) ) return a->dir-b->dir;
   if ((a->dir && b->dir) && (rc = strcmp(a->dir,b->dir))) return rc;

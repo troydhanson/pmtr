@@ -28,6 +28,7 @@ static struct {
  {"to",      2, TOK_TO},
  {"bounce",  6, TOK_BOUNCE},
  {"every",   5, TOK_EVERY},
+ {"depends", 7, TOK_DEPENDS},
 };
 static const int ws[256] = { ['\r']=1, ['\n']=1, ['\t']=1, [' ']=1 };
 
@@ -95,7 +96,7 @@ int get_tok(char *c_orig, char **c, size_t *bsz, size_t *toksz, int *line) {
   /* otherwise its a string ending with end-of-buffer or whitespace */
   *toksz=0; 
   while ((*toksz < *bsz) && (!ws[(int)*(*c+*toksz)])) (*toksz)++;
-  if ((*toksz) && (!leading_nl)) return TOK_STR; 
+  if (*toksz) return TOK_STR; 
 
   return -1;
 }

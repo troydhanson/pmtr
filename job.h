@@ -21,6 +21,8 @@ typedef struct {
   char *name;
   UT_array cmdv;
   UT_array envv;
+  UT_array depv;
+  int deps_hash;
   char *dir;
   char *out;
   char *err;
@@ -74,6 +76,7 @@ void set_dis(parse_t *ps);
 void set_wait(parse_t *ps);
 void set_once(parse_t *ps);
 void set_cmd(parse_t *ps, char *s);
+char *fpath(job_t *job, char *file);
 
 
 
