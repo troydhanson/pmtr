@@ -52,7 +52,8 @@ pid_t dep_monitor(char *file) {
   if ((dm_pid == (pid_t)-1)                              ||
       ( (fd=inotify_init()) == -1)                       ||
       ( (wd=inotify_add_watch(fd,file, events )) == -1)) {
-    syslog(LOG_ERR,"error: %s", strerror(errno)); 
+    syslog(LOG_ERR,"can't watch %s: %s", file, strerror(errno)); 
+    sleep(SHORT_DELAY); // pmtr.conf deleted, let pmtr respawn us 
     exit(-1);
   }
 
