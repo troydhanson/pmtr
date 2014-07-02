@@ -1,6 +1,7 @@
 multicast-rptserver
 web based rptserver - jp
 job sould be absolute path if present
+ulimit -n etc
 
 MAYBE
 ======================================
