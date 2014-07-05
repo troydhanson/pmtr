@@ -29,6 +29,7 @@ static struct {
  {"bounce",  6, TOK_BOUNCE},
  {"every",   5, TOK_EVERY},
  {"depends", 7, TOK_DEPENDS},
+ {"ulimit",  6, TOK_ULIMIT},
 };
 static const int ws[256] = { ['\r']=1, ['\n']=1, ['\t']=1, [' ']=1 };
 

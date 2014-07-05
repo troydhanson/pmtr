@@ -2,6 +2,7 @@
 #define _JOB_H_
 
 #include <sys/types.h>
+#include <inttypes.h>
 #include <unistd.h>
 #include <time.h>
 #include <signal.h>
@@ -17,11 +18,14 @@
 static const int sigs[] = {SIGHUP,SIGCHLD,SIGTERM,SIGINT,SIGQUIT,
                            SIGALRM,SIGUSR1,SIGIO};
 
+static const UT_icd uint64_icd={.sz=sizeof(uint64_t)};
+
 typedef struct {
   char *name;
-  UT_array cmdv;
-  UT_array envv;
-  UT_array depv;
+  UT_array cmdv; // cmd and args
+  UT_array envv; // environment variables
+  UT_array depv; // monitored dependencies
+  UT_array ulim; // ulimits
   int deps_hash;
   char *dir;
   char *out;

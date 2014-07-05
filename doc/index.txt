@@ -1,121 +1,98 @@
 pmtr: process monitor
 =====================
 Troy D. Hanson <tdh@tkhanson.net>
-v1.6 June 2014
+v1.7 July 2014
 
 include::twitter.txt[]
 
 Back to the https://github.com/troydhanson/pmtr[pmtr Github page].
 
 pmtr::
-  a Linux process supervisor that can start your executables or scripts
-  (usually at system boot), then monitor them and restart jobs as needed
+  a Linux process supervisor that can start your executables or scripts,
+  usually at system boot, then monitor and restart them as needed
 
 pmtr: process monitor
 ---------------------
-Pmtr is a supervisor daemon that starts your programs at boot and then babysits them.
+Pmtr is a supervisor daemon that starts your programs and then babysits them.
 Most "standard" system services (httpd, sshd, etc) have initscripts, which are
-the typical way to run daemons on Linux. There are a few reasons why you might
-use a process supervisor like pmtr instead of initscripts- such as, it's your
-own program (and you don't want to write an initscript for each Linux flavor);
-some initscripts do not restart jobs that crash (pmtr does this); and you may
-prefer a single configuration file for a whole collection of processes that
-make up your server or appliance. Pmtr has a simple configuration file. See
-the <<options,full options>> below. 
+the typical way to run daemons on Linux. For programs you wrote yourself, or
+your local application servers that don't have initscripts, you might find
+pmtr easier to use or its features beneficial. Your jobs go in pmtr.conf:
 
 .Example `/etc/pmtr.conf`
 --------------------------------------------------------
 
   job {
-    name watchdog
-    cmd /usr/bin/watchdog -c /var/watchdog
+    name rest_server
+    cmd /usr/bin/python rest.py
   }
 
-  # keep standard error, set working diretory
+  # set working directory, keep errors
   job {
-    name sshd
-    dir /etc/ssh
-    cmd /usr/sbin/sshd -D -f sshd_config
-    err /var/log/sshd.err
+    name ws-server
+    dir /home/maps
+    cmd /usr/bin/node maps.js
+    err /tmp/maps.err
   }
 
-  # this one monitors dependencies
+  # restart if dependencies change
   job {
     name proxy
     cmd /usr/bin/proxy -c /etc/proxy.cfg
     depends {
       /etc/proxy.cfg
-      /etc/proxy/inbound
-      /etc/proxy/outbound
     }
   }
   
-  # bounce this job every hour
+  # bounce this job every hour, set ulimits
   job {
     name thermostat
-    dir /home/temp
-    cmd /usr/bin/python temp.py
+    dir /home/thermo
+    cmd /usr/bin/python therm.py
     bounce every 1h
+    ulimit -n 10
     user nobody
-    env LIB=/opt/py
   }
 
 --------------------------------------------------------
 
-Take note of the <<requirements,requirements for pmtr jobs>>.  Pmtr applies
-changes immediately whenever the config file is edited.
-
+See the <<options,full options>> below, and the <<requirements,requirements>>
+for pmtr jobs. Pmtr applies changes immediately when the config file is edited.
 The pmtr daemon itself is small, written in C, open-source and for Linux only.
 It runs on Ubuntu, Debian, RHEL/CentOS, in Docker containers, and others.
 
 .Why did I write it?
 **************************************************************************
 I wrote pmtr because I wanted one simple configuration file where I could
-list the programs that I need to run at boot, with confidence that they'd
-be restarted if they exit or crash. I also wanted to have a few special
-features like the ability to bounce processes at a set interval, or have
-processes immediately react to configuration changes.
+list all my programs, knowing that they'd be run at boot, get restarted if 
+they exit, and they'd react immediately to configuration files changes.
 **************************************************************************
 
 .Does it work?
-The author has used pmtr for several years in production, to run programs in C,
-Python, Perl, Java, bash and node.js. If you find a bug or have a new feature to
-suggest- please use the https://github.com/troydhanson/pmtr[pmtr Github page]
-to communicate that.
+The author has used pmtr for several years in production on hundreds of systems
+having dozens of jobs each.  If you find a bug or have a new feature to suggest-
+please use the https://github.com/troydhanson/pmtr[pmtr Github page].
 
 Download & Install
 ------------------
 
-Platforms
-~~~~~~~~~
-Pmtr is for Linux only. It's been tested on:
-
-* Ubuntu (10,11,12,13)
-* CentOS/RHEL (6+)
-* Debian (6+)
-* Raspbian (6,7) (Raspberry Pi)
-
-Download options
-~~~~~~~~~~~~~~~~
-
 You can use the https://github.com/troydhanson/pmtr[Github page] to:
 
  * download a https://github.com/troydhanson/pmtr/archive/master.zip[zipfile]. 
- * clone it: 
- 
-  git clone https://github.com/troydhanson/pmtr.git
+ * or, git clone https://github.com/troydhanson/pmtr.git
 
-Build and install
-~~~~~~~~~~~~~~~~~
-To build and install:
+Pmtr is for Linux only. It's been used on Ubuntu (10+), CentOS/RHEL (6+),
+Debian (6+), and Raspbian (6+).  To build and install:
 
   cd pmtr
   make
   sudo make install
 
-It should be running at this point.  Verify using:
+Verify pmtr is running using `service pmtr status`.  If you need to, you can
+manually stop and start pmtr the usual way:
 
-  service pmtr status
+  service pmtr stop
+  service pmtr start
 
 The result of installation is:
 
@@ -123,34 +100,43 @@ The result of installation is:
  * the configuration file: `/etc/pmtr.conf` 
  * an OS-specific initscript to run pmtr at boot 
 
-If you need to, you can manually stop and start pmtr the usual way:
+Command line options
+--------------------
+While pmtr is normally run as a background service, you can run it manually on
+the command line, in which case you can specify these flags:
 
-  service pmtr stop
-  service pmtr start
+[width="60%",cols="10m,50",grid="none",options="none"]
+|==========================================================================
+| -c <file> | specify alternate configuration file
+| -t        | test only- parse config file and exit (implies -F)
+| -F        | Foreground (stay in foreground instead of detaching)
+| -v        | verbose (use -vv to see token parsing)
+|==========================================================================
+
 
 Configuration file 
 ------------------
-The pmtr configuration file is `/etc/pmtr.conf`. You can specify a different
-config file using the `-c` file.
+The default pmtr configuration file is `/etc/pmtr.conf`. 
 
 Syntax
 ~~~~~~
 The configuration file contains any number of jobs. Each job is in a curly-brace
-delimited block.  Indentation is optional. Blank lines are ok.  Comments should
-be on their own line and start with `#`.
+delimited block.  Indentation is optional. Blank lines are ok.  Comments start
+with `#' and must be on their own line.
 
-.Example pmtr.conf job with many options 
+.A job with many options 
 ---------------------------------------------------
   # trending service
-  # restarted daily to reclaim memory
+  # restarted daily 
 
   job {
     name trends
-    dir /home/services
-    cmd /usr/bin/python trends.py "AAPL GOOG"
+    dir /home/trends
+    cmd /usr/bin/python trends.py "Hourly Trends"
     out trends.out
     err trends.err
     bounce every 1d
+    ulimit -n 30
     depends {
       trends.conf
       /etc/py.conf
@@ -176,57 +162,63 @@ Options
 |in             | hook stdin to this file
 |env            | environment variable setting `VAR=VALUE` (repeatable)
 |user           | unix username under whose id to run the process 
+|ulimit         | an option and a numeric value, like `-n 30`      
 |bounce every   | a time interval like 5m (five minutes) - units are `smhd`
 |depends        | a curly-brace delimited list of files, one per line
 |disable        | this keyword disables the job 
 |===============================================================================
 
-Notes:
+Further details:
 
-* the required entries are `name` and `cmd`
-* The `cmd` executable must have its executable-bit set. The `cmd` specification
-  may include trailing arguments e.g. `cmd /bin/node server.js`.  Double-quote
-  the arguments if they contain spaces.
-* An environment variable is specified like, `env LD_LIBRARY_PATH=/usr/local/lib`.
-  It can be repeated on multiple lines to set several variables.
-* The `disable` option is a quick way to stop a job. It's equivalent to commenting
-  the job out. 
-* The standard output, error and input channels (`out`, `err`, and `in`) default
-  to `/dev/null`.
-* The `user` defaults to root.
-* The `bounce every` command is for jobs that leak memory, act up, or mis-
-  behave when left running too long; it simply kills the job then restarts it.  It
-  takes a number and unit, like 5m. The units are smhd- (s)econds, (m)inutes,
-  (h)ours or (d)ays. The bounce timer runs every 10s- it's not for short intervals.
-* The `depends` keyword is used to specify configuration files which pmtr should
-  monitor. If the content of any of the dependencies changes, pmtr restarts the job.
+* The required entries are `name` and `cmd`.
+* The executable named in the `cmd` must have its executable-bit set. 
+* The `cmd` may include trailing arguments e.g. `cmd /bin/node server.js`.  
+* The `cmd` may contain double-quoted arguments.
+* The `cmd` does no shell expansion: no wildcards, backticks, environment
+  variables, etc. To use such features, write a script to wrap your executable
+  or invoke the shell inline like `cmd /bin/bash -c "/bin/node `date` -f $DIR"`.
+* Use `env` to push an environment variable into a job, e.g. `env TMPDIR=/tmp`.
+* Use `env` repeatedly to set multiple environment variables.
+* Use `disable` to stop a job, without having to comment it out.
+* Use `out`, `err`, and `in` to attach stdout, stderr or stdin to a file.
+* The stdout, stderr and stdin default to `/dev/null`.
+* Use `user` to specify the unix user to run the job as; defaults to root.
+* Use `ulimit` to modify the kernel-enforced resource limits for the job.
+  It takes a flag denoting which limit to set, and a value, e.g., `ulimit -n
+  30`. Only the `-n` flag (maximum file descriptors) has been implemented. The
+  flag names are (planned to be) identical with those used by the `bash` shell-
+  type `ulimit -a` in bash to list them. Also see the `setrlimit(2)` man page.
+* The `bounce every` option kills and restarts the job every so often. It
+  is intended for jobs that don't behave well as long-running processes. It
+  takes a number and unit, like `5m` to restart a job every five minutes. The
+  units are `smhd`- (s)econds, (m)inutes, (h)ours or (d)ays. The bounce timer
+  runs every 10s- it's not for short intervals.
+* Use `depends` to specify files that, if their content changes, should cause
+  pmtr to restart the job. 
 
-Tips
-^^^^
-1. Make sure the process stays in the foreground. 
-2. If your job is a shell script, and you later disable it while it's running,
-   the shell script may or may not convey the signal to its own sub-processes.
-   You have to be a little more careful with shell scripts to prevent orphaned
-   child processes of the script from lingering around in that situation.
-3. There is no shell expansion in the `cmd`: things like wildcards and backticks
-   do not work, nor do environment variables like `$PWD`. If you need shell
-   features, write a shell wrapper around your executable (but note #2 above), 
-   or invoke the shell "inline" to build and run your command, like:
+[[requirements]]
+Job requirements
+~~~~~~~~~~~~~~~~
+In pmtr the term 'job' means a daemon. For our purposes, this is just
+some executable- a binary or script- that you want to keep running. It must:
 
-   cmd /bin/bash -c "DATE=`date`; /bin/node -d $DATE"
+ * stay in the foreground
+ * exit on SIGTERM or SIGKILL 
+ * clean up any sub-processes when it exits
 
 Checking config syntax
 ~~~~~~~~~~~~~~~~~~~~~~
-Syntax errors- like other pmtr messages- get reported via syslog. Typically
-this goes to `/var/log/messages` (RHEL/CentOS) or `/var/log/syslog` (Ubuntu).
-To check the syntax of a configuration file manually, you can use the test flag
-`-t` like: `pmtr -tc /etc/pmtr.conf`.
+To check the syntax of a configuration file, use the `-t` (test) flag:
+  
+  pmtr -tc /etc/pmtr.conf
 
-[[rescan]]
+This displays any syntax errors. Otherwise, if syntax errors are encountered at
+runtime, when pmtr is running as a background service, pmtr logs them to syslog.
+
 When do configuration changes take effect?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 When you edit and save `pmtr.conf`, the changes get applied immediately. There
-is no need to signal pmtr because it watches the config file for changes. 
+is no need to signal pmtr, because it already watches for config file changes. 
 
  * A newly-added job gets started.
  * A deleted job is terminated.
@@ -237,66 +229,11 @@ To terminate a job, pmtr sends SIGTERM to it, then SIGKILL shortly afterward.
 If you stop pmtr itself (for example, by running `service pmtr stop`), it
 terminates its jobs before exiting.  
 
-Jobs
-----
-
-Hint: a nice representation of the process hierarchy can be obtained using
-`pstree -p` (if that utility is installed). This can be used to verify the
-process tree that's running under pmtr matches your expectation.
-
-.Example pstree output
-----------------------------------------
-        ├─pmtr(2830)─┬─pmtr(2834)
-        │            ├─proxy(2831)
-        │            ├─sshd(2832)
-        │            └─python(2833)
-----------------------------------------
-
-
-[[requirements]]
-Is the job suitable to run under pmtr?
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-In pmtr the term 'job' means a daemon. For our purposes, this is just
-some executable- a binary or script- that you want to keep running. It must:
-
- * stay in the foreground
- * exit on SIGTERM or SIGKILL 
- * clean up any of its own own sub-processes when it exits
-
-.Not for background daemons 
-*********************************************************************************
-In ye olden days a daemon usually had to put itself in the background- but don't
-try to run one of those forking/detaching, background-style daemons under pmtr.
-Pmtr wants its jobs to stay in the foreground. This makes it easy for pmtr to
-notice if the job exited, and to send it a signal when pmtr wants it to exit. 
-*********************************************************************************
-
-Restart handling
-~~~~~~~~~~~~~~~~
-Pmtr is designed for daemon-style processes that run for a long time, or
-forever. So, if a job exits, pmtr restarts it.
-
-There are two caveats:
-
-* If a job exits within ten seconds of when it started, pmtr waits waits ten
-  seconds before restarting it. This avoids rapid restart cycles.  A quick exit
-  often means the job has some sort of configuration problem.
-* Exit code 33 can be issued from a process to tell pmtr not to restart it.
-
-Logging
-~~~~~~~
-Look in syslog (typically `/var/log/messages` or `/var/log/syslog`) to see
-pmtr log messages relating to configuration file changes and job activity.
-
-  Nov  7 22:01:09 ubuntu pmtr[18477]: rescanning job configuration
-  Nov  7 21:38:10 ubuntu pmtr[18477]: started job proxy [18478]
-
 One-time jobs
 ~~~~~~~~~~~~~
-For "initial setup" situations, pmtr has limited support for one-time jobs. The
-`wait` option makes pmtr wait (for that job to exit) before starting subsequent
-jobs. To prevent pmtr from restarting it, also use the `once` option. (A change
-to the job configuration would cause pmtr to execute the job again, naturally).
+For "initial setup" situations, pmtr has basic support for one-time jobs. The
+`wait` option makes pmtr wait for the job to exit before starting subsequent
+jobs. To keep pmtr from restarting it, use the `once` option. 
 
   job {
         name create-ramdisk
@@ -309,38 +246,67 @@ Experimental
 ~~~~~~~~~~~~
 These features are disabled by default.
 
-These two experimental features provide basic reporting and control over the
-network.
-
-Report/Listen
-^^^^^^^^^^^^^
 These configuration options may appear in `pmtr.conf` at the global scope.
 
   report to udp://127.0.0.1:9999
   listen on udp://0.0.0.0:10000
 
-The `report to` option designates a remote endpoint to receive updates from
-pmtr, via a UDP packet sent by pmtr to the remote endpoint every ten seconds. 
-It lists the jobs and their elapsed runtime in a simple text format. A script
-included with pmtr can be run to receive the reports from one, or many, pmtr
-instances. It maintains a simple text file summarizing the pmtr states. This
-script in `pmtr/utils` is invoked like `pmtr-rptserver -p 9999 -f status.txt`.
+The `report to` option designates a remote address and port to which pmtr should
+send a a UDP packet every ten seconds.  The packet payload lists the job names,
+enabled or disabled status, and elapsed runtimes in simple text. (An included
+script `pmtr/utils/pmtr-rptserver` can receive these reports and write updates
+to a text file summarizing the received status messages. This script is invoked
+like `pmtr-rptserver -p 9999 -f status.txt`).  If the `report to` address falls
+in the multicast UDP range (e.g.  239.0.0.1, etc), the specification may include
+a trailing interface, e.g., `report to udp://239.0.0.1:9999@eth2` to explicitly
+designate the interface from which the multicast UDP datagrams should egress. 
 
-The `listen on` option makes pmtr listen on the specified address and UDP port 
-for messages of the form "enable xyz" or "disable xyz" ('xyz' is a job name). An
-example script in `pmtr/utils` can send these messages using a command line like 
-`pmtr-ctl -s 192.168.0.22 -p 10000 enable xyz`.  This temporarily enables or
-disables a job. When pmtr.conf is edited or pmtr is restarted, the settings
-in pmtr.conf once again take precedence.  There is no authentication with the
-`listen on` feature- use it only on trusted internal networks. 
+The `listen on` option allows jobs to be remotely enabled or disabled. It
+specifies a UDP address and port that pmtr should listen on for datagrams of
+form `enable abc` or `disable abc`, where 'abc' is a job name.  The address
+0.0.0.0 can be used as a shortcut to denote "any address" on this system. (A
+script in `pmtr/utils/pmtr-ctl` may be used to send the datagrams, for example 
+`pmtr-ctl -s 192.168.0.22 -p 10000 enable abc`). The effect is temporary; when
+pmtr.conf is edited or pmtr is restarted, the pmtr.conf settings apply.  
 
-Multicast interface selection
-+++++++++++++++++++++++++++++
-A `report to` address may be in the multicast UDP range (e.g. 239.0.0.1, etc).
-If it is, the specification may optionally include a trailing interface name.
-This selects the network interface from which the UDP datagrams should egress.
+pstree
+------
+To get a nice visual confirmation of the jobs you have running under pmtr, you
+can use the `pstree` utility, if you have it installed.  Here is the output of
+`pstree -p` with the PID's.
 
-  report to udp://239.0.0.1:9999@eth2
+.Example pstree output
+----------------------------------------
+        ├─pmtr(2830)─┬─pmtr(2834)
+        │            ├─proxy(2831)
+        │            ├─sshd(2832)
+        │            └─python(2833)
+----------------------------------------
+
+The rest of the system processes have been omitted. Note that pmtr has its
+own child process. This is the dependency monitor that watches the config file.
+
+Restarts
+--------
+Since pmtr is designed to keep things running, if a job exits, pmtr restarts it.
+
+* If a job exits quickly- within ten seconds of when it started- pmtr 
+  waits ten seconds to restart it. This avoids rapid restart cycles. The
+  job probably has some sort of configuration problem if it exits quickly.
+* Exit status 33 can be returned from a process to tell pmtr not to restart it.
+
+Logging
+-------
+Look in syslog (typically `/var/log/messages` or `/var/log/syslog`) to see
+pmtr log messages relating to configuration file changes and job activity.
+
+  Nov  7 21:38:09 ubuntu pmtr[18477]: rescanning job configuration
+  Nov  7 21:38:10 ubuntu pmtr[18477]: started job proxy [18478]
+  Nov  7 21:38:20 ubuntu pmtr[18477]: job proxy [18478] exited after 10 sec: exit status 0
+
+
+If your job isn't running, this is the first place to look. Pmtr is verbose
+about restarting jobs, or indicating if they are exiting for some reason.
 
 Resources
 ---------

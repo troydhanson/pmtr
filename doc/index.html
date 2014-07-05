@@ -774,7 +774,7 @@ asciidoc.install(2);
 <h1>pmtr: process monitor</h1>
 <span id="author">Troy D. Hanson</span><br />
 <span id="email"><tt>&lt;<a href="mailto:tdh@tkhanson.net">tdh@tkhanson.net</a>&gt;</tt></span><br />
-<span id="revdate">v1.6 June 2014</span>
+<span id="revdate">v1.7 July 2014</span>
 <div id="toc">
   <div id="toctitle">Table of Contents</div>
   <noscript><p><b>JavaScript must be enabled in your browser to display the table of contents.</b></p></noscript>
@@ -796,8 +796,8 @@ pmtr
 </dt>
 <dd>
 <p>
-  a Linux process supervisor that can start your executables or scripts
-  (usually at system boot), then monitor them and restart jobs as needed
+  a Linux process supervisor that can start your executables or scripts,
+  usually at system boot, then monitor and restart them as needed
 </p>
 </dd>
 </dl></div>
@@ -806,102 +806,65 @@ pmtr
 <div class="sect1">
 <h2 id="_pmtr_process_monitor">pmtr: process monitor</h2>
 <div class="sectionbody">
-<div class="paragraph"><p>Pmtr is a supervisor daemon that starts your programs at boot and then babysits them.
+<div class="paragraph"><p>Pmtr is a supervisor daemon that starts your programs and then babysits them.
 Most "standard" system services (httpd, sshd, etc) have initscripts, which are
-the typical way to run daemons on Linux. There are a few reasons why you might
-use a process supervisor like pmtr instead of initscripts- such as, it&#8217;s your
-own program (and you don&#8217;t want to write an initscript for each Linux flavor);
-some initscripts do not restart jobs that crash (pmtr does this); and you may
-prefer a single configuration file for a whole collection of processes that
-make up your server or appliance. Pmtr has a simple configuration file. See
-the <a href="#options">full options</a> below.</p></div>
+the typical way to run daemons on Linux. For programs you wrote yourself, or
+your local application servers that don&#8217;t have initscripts, you might find
+pmtr easier to use or its features beneficial. Your jobs go in pmtr.conf:</p></div>
 <div class="listingblock">
 <div class="title">Example <tt>/etc/pmtr.conf</tt></div>
 <div class="content">
 <pre><tt>  job {
-    name watchdog
-    cmd /usr/bin/watchdog -c /var/watchdog
+    name rest_server
+    cmd /usr/bin/python rest.py
   }
 
-  # keep standard error, set working diretory
+  # set working directory, keep errors
   job {
-    name sshd
-    dir /etc/ssh
-    cmd /usr/sbin/sshd -D -f sshd_config
-    err /var/log/sshd.err
+    name ws-server
+    dir /home/maps
+    cmd /usr/bin/node maps.js
+    err /tmp/maps.err
   }
 
-  # this one monitors dependencies
+  # restart if dependencies change
   job {
     name proxy
     cmd /usr/bin/proxy -c /etc/proxy.cfg
     depends {
       /etc/proxy.cfg
-      /etc/proxy/inbound
-      /etc/proxy/outbound
     }
   }
 
-  # bounce this job every hour
+  # bounce this job every hour, set ulimits
   job {
     name thermostat
-    dir /home/temp
-    cmd /usr/bin/python temp.py
+    dir /home/thermo
+    cmd /usr/bin/python therm.py
     bounce every 1h
+    ulimit -n 10
     user nobody
-    env LIB=/opt/py
   }</tt></pre>
 </div></div>
-<div class="paragraph"><p>Take note of the <a href="#requirements">requirements for pmtr jobs</a>.  Pmtr applies
-changes immediately whenever the config file is edited.</p></div>
-<div class="paragraph"><p>The pmtr daemon itself is small, written in C, open-source and for Linux only.
+<div class="paragraph"><p>See the <a href="#options">full options</a> below, and the <a href="#requirements">requirements</a>
+for pmtr jobs. Pmtr applies changes immediately when the config file is edited.
+The pmtr daemon itself is small, written in C, open-source and for Linux only.
 It runs on Ubuntu, Debian, RHEL/CentOS, in Docker containers, and others.</p></div>
 <div class="sidebarblock">
 <div class="content">
 <div class="title">Why did I write it?</div>
 <div class="paragraph"><p>I wrote pmtr because I wanted one simple configuration file where I could
-list the programs that I need to run at boot, with confidence that they&#8217;d
-be restarted if they exit or crash. I also wanted to have a few special
-features like the ability to bounce processes at a set interval, or have
-processes immediately react to configuration changes.</p></div>
+list all my programs, knowing that they&#8217;d be run at boot, get restarted if
+they exit, and they&#8217;d react immediately to configuration files changes.</p></div>
 </div></div>
-<div class="paragraph"><div class="title">Does it work?</div><p>The author has used pmtr for several years in production, to run programs in C,
-Python, Perl, Java, bash and node.js. If you find a bug or have a new feature to
-suggest- please use the <a href="https://github.com/troydhanson/pmtr">pmtr Github page</a>
-to communicate that.</p></div>
+<div class="paragraph"><div class="title">Does it work?</div><p>The author has used pmtr for several years in production on hundreds of systems
+having dozens of jobs each.  If you find a bug or have a new feature to suggest-
+please use the <a href="https://github.com/troydhanson/pmtr">pmtr Github page</a>.</p></div>
 </div>
 </div>
 <div class="sect1">
 <h2 id="_download_amp_install">Download &amp; Install</h2>
 <div class="sectionbody">
-<div class="sect2">
-<h3 id="_platforms">Platforms</h3>
-<div class="paragraph"><p>Pmtr is for Linux only. It&#8217;s been tested on:</p></div>
-<div class="ulist"><ul>
-<li>
-<p>
-Ubuntu (10,11,12,13)
-</p>
-</li>
-<li>
-<p>
-CentOS/RHEL (6+)
-</p>
-</li>
-<li>
-<p>
-Debian (6+)
-</p>
-</li>
-<li>
-<p>
-Raspbian (6,7) (Raspberry Pi)
-</p>
-</li>
-</ul></div>
-</div>
-<div class="sect2">
-<h3 id="_download_options">Download options</h3>
 <div class="paragraph"><p>You can use the <a href="https://github.com/troydhanson/pmtr">Github page</a> to:</p></div>
 <div class="ulist"><ul>
 <li>
@@ -911,28 +874,24 @@ download a <a href="https://github.com/troydhanson/pmtr/archive/master.zip">zipf
 </li>
 <li>
 <p>
-clone it:
+or, git clone <a href="https://github.com/troydhanson/pmtr.git">https://github.com/troydhanson/pmtr.git</a>
 </p>
-<div class="literalblock">
-<div class="content">
-<pre><tt>git clone https://github.com/troydhanson/pmtr.git</tt></pre>
-</div></div>
 </li>
 </ul></div>
-</div>
-<div class="sect2">
-<h3 id="_build_and_install">Build and install</h3>
-<div class="paragraph"><p>To build and install:</p></div>
+<div class="paragraph"><p>Pmtr is for Linux only. It&#8217;s been used on Ubuntu (10+), CentOS/RHEL (6+),
+Debian (6+), and Raspbian (6+).  To build and install:</p></div>
 <div class="literalblock">
 <div class="content">
 <pre><tt>cd pmtr
 make
 sudo make install</tt></pre>
 </div></div>
-<div class="paragraph"><p>It should be running at this point.  Verify using:</p></div>
+<div class="paragraph"><p>Verify pmtr is running using <tt>service pmtr status</tt>.  If you need to, you can
+manually stop and start pmtr the usual way:</p></div>
 <div class="literalblock">
 <div class="content">
-<pre><tt>service pmtr status</tt></pre>
+<pre><tt>service pmtr stop
+service pmtr start</tt></pre>
 </div></div>
 <div class="paragraph"><p>The result of installation is:</p></div>
 <div class="ulist"><ul>
@@ -952,38 +911,65 @@ an OS-specific initscript to run pmtr at boot
 </p>
 </li>
 </ul></div>
-<div class="paragraph"><p>If you need to, you can manually stop and start pmtr the usual way:</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><tt>service pmtr stop
-service pmtr start</tt></pre>
-</div></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_command_line_options">Command line options</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>While pmtr is normally run as a background service, you can run it manually on
+the command line, in which case you can specify these flags:</p></div>
+<div class="tableblock">
+<table rules="none"
+width="60%"
+frame="border"
+cellspacing="0" cellpadding="4">
+<col width="16%" />
+<col width="83%" />
+<tbody>
+<tr>
+<td align="left" valign="top"><p class="table"><tt>-c &lt;file&gt;</tt></p></td>
+<td align="left" valign="top"><p class="table">specify alternate configuration file</p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><tt>-t</tt></p></td>
+<td align="left" valign="top"><p class="table">test only- parse config file and exit (implies -F)</p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><tt>-F</tt></p></td>
+<td align="left" valign="top"><p class="table">Foreground (stay in foreground instead of detaching)</p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><tt>-v</tt></p></td>
+<td align="left" valign="top"><p class="table">verbose (use -vv to see token parsing)</p></td>
+</tr>
+</tbody>
+</table>
 </div>
 </div>
 </div>
 <div class="sect1">
 <h2 id="_configuration_file">Configuration file</h2>
 <div class="sectionbody">
-<div class="paragraph"><p>The pmtr configuration file is <tt>/etc/pmtr.conf</tt>. You can specify a different
-config file using the <tt>-c</tt> file.</p></div>
+<div class="paragraph"><p>The default pmtr configuration file is <tt>/etc/pmtr.conf</tt>.</p></div>
 <div class="sect2">
 <h3 id="_syntax">Syntax</h3>
 <div class="paragraph"><p>The configuration file contains any number of jobs. Each job is in a curly-brace
-delimited block.  Indentation is optional. Blank lines are ok.  Comments should
-be on their own line and start with <tt>#</tt>.</p></div>
+delimited block.  Indentation is optional. Blank lines are ok.  Comments start
+with &8216;&#8217; and must be on their own line.</p></div>
 <div class="listingblock">
-<div class="title">Example pmtr.conf job with many options</div>
+<div class="title">A job with many options</div>
 <div class="content">
 <pre><tt>  # trending service
-  # restarted daily to reclaim memory
+  # restarted daily
 
   job {
     name trends
-    dir /home/services
-    cmd /usr/bin/python trends.py "AAPL GOOG"
+    dir /home/trends
+    cmd /usr/bin/python trends.py "Hourly Trends"
     out trends.out
     err trends.err
     bounce every 1d
+    ulimit -n 30
     depends {
       trends.conf
       /etc/py.conf
@@ -1042,6 +1028,10 @@ cellspacing="0" cellpadding="4">
 <td align="left" valign="top"><p class="table">unix username under whose id to run the process</p></td>
 </tr>
 <tr>
+<td align="left" valign="top"><p class="table"><tt>ulimit</tt></p></td>
+<td align="left" valign="top"><p class="table">an option and a numeric value, like <tt>-n 30</tt></p></td>
+</tr>
+<tr>
 <td align="left" valign="top"><p class="table"><tt>bounce every</tt></p></td>
 <td align="left" valign="top"><p class="table">a time interval like 5m (five minutes) - units are <tt>smhd</tt></p></td>
 </tr>
@@ -1056,101 +1046,128 @@ cellspacing="0" cellpadding="4">
 </tbody>
 </table>
 </div>
-<div class="paragraph"><p>Notes:</p></div>
+<div class="paragraph"><p>Further details:</p></div>
 <div class="ulist"><ul>
 <li>
 <p>
-the required entries are <tt>name</tt> and <tt>cmd</tt>
+The required entries are <tt>name</tt> and <tt>cmd</tt>.
 </p>
 </li>
 <li>
 <p>
-The <tt>cmd</tt> executable must have its executable-bit set. The <tt>cmd</tt> specification
-  may include trailing arguments e.g. <tt>cmd /bin/node server.js</tt>.  Double-quote
-  the arguments if they contain spaces.
+The executable named in the <tt>cmd</tt> must have its executable-bit set.
 </p>
 </li>
 <li>
 <p>
-An environment variable is specified like, <tt>env LD_LIBRARY_PATH=/usr/local/lib</tt>.
-  It can be repeated on multiple lines to set several variables.
+The <tt>cmd</tt> may include trailing arguments e.g. <tt>cmd /bin/node server.js</tt>.
 </p>
 </li>
 <li>
 <p>
-The <tt>disable</tt> option is a quick way to stop a job. It&#8217;s equivalent to commenting
-  the job out.
+The <tt>cmd</tt> may contain double-quoted arguments.
 </p>
 </li>
 <li>
 <p>
-The standard output, error and input channels (<tt>out</tt>, <tt>err</tt>, and <tt>in</tt>) default
-  to <tt>/dev/null</tt>.
+The <tt>cmd</tt> does no shell expansion: no wildcards, backticks, environment
+  variables, etc. To use such features, write a script to wrap your executable
+  or invoke the shell inline like <tt>cmd /bin/bash -c "/bin/node `date</tt> -f $DIR"`.
 </p>
 </li>
 <li>
 <p>
-The <tt>user</tt> defaults to root.
+Use <tt>env</tt> to push an environment variable into a job, e.g. <tt>env TMPDIR=/tmp</tt>.
 </p>
 </li>
 <li>
 <p>
-The <tt>bounce every</tt> command is for jobs that leak memory, act up, or mis-
-  behave when left running too long; it simply kills the job then restarts it.  It
-  takes a number and unit, like 5m. The units are smhd- (s)econds, (m)inutes,
-  (h)ours or (d)ays. The bounce timer runs every 10s- it&#8217;s not for short intervals.
+Use <tt>env</tt> repeatedly to set multiple environment variables.
 </p>
 </li>
 <li>
 <p>
-The <tt>depends</tt> keyword is used to specify configuration files which pmtr should
-  monitor. If the content of any of the dependencies changes, pmtr restarts the job.
+Use <tt>disable</tt> to stop a job, without having to comment it out.
+</p>
+</li>
+<li>
+<p>
+Use <tt>out</tt>, <tt>err</tt>, and <tt>in</tt> to attach stdout, stderr or stdin to a file.
+</p>
+</li>
+<li>
+<p>
+The stdout, stderr and stdin default to <tt>/dev/null</tt>.
+</p>
+</li>
+<li>
+<p>
+Use <tt>user</tt> to specify the unix user to run the job as; defaults to root.
+</p>
+</li>
+<li>
+<p>
+Use <tt>ulimit</tt> to modify the kernel-enforced resource limits for the job.
+  It takes a flag denoting which limit to set, and a value, e.g., <tt>ulimit -n
+  30</tt>. Only the <tt>-n</tt> flag (maximum file descriptors) has been implemented. The
+  flag names are (planned to be) identical with those used by the <tt>bash</tt> shell-
+  type <tt>ulimit -a</tt> in bash to list them. Also see the <tt>setrlimit(2)</tt> man page.
+</p>
+</li>
+<li>
+<p>
+The <tt>bounce every</tt> option kills and restarts the job every so often. It
+  is intended for jobs that don&#8217;t behave well as long-running processes. It
+  takes a number and unit, like <tt>5m</tt> to restart a job every five minutes. The
+  units are <tt>smhd</tt>- (s)econds, (m)inutes, (h)ours or (d)ays. The bounce timer
+  runs every 10s- it&#8217;s not for short intervals.
+</p>
+</li>
+<li>
+<p>
+Use <tt>depends</tt> to specify files that, if their content changes, should cause
+  pmtr to restart the job.
 </p>
 </li>
 </ul></div>
 </div>
-<div class="sect3">
-<h4 id="_tips">Tips</h4>
-<div class="olist arabic"><ol class="arabic">
-<li>
-<p>
-Make sure the process stays in the foreground.
-</p>
-</li>
-<li>
-<p>
-If your job is a shell script, and you later disable it while it&#8217;s running,
-   the shell script may or may not convey the signal to its own sub-processes.
-   You have to be a little more careful with shell scripts to prevent orphaned
-   child processes of the script from lingering around in that situation.
-</p>
-</li>
-<li>
-<p>
-There is no shell expansion in the <tt>cmd</tt>: things like wildcards and backticks
-   do not work, nor do environment variables like <tt>$PWD</tt>. If you need shell
-   features, write a shell wrapper around your executable (but note #2 above),
-   or invoke the shell "inline" to build and run your command, like:
-</p>
-<div class="literalblock">
-<div class="content">
-<pre><tt>cmd /bin/bash -c "DATE=`date`; /bin/node -d $DATE"</tt></pre>
-</div></div>
-</li>
-</ol></div>
 </div>
+<div class="sect2">
+<h3 id="requirements">Job requirements</h3>
+<div class="paragraph"><p>In pmtr the term <em>job</em> means a daemon. For our purposes, this is just
+some executable- a binary or script- that you want to keep running. It must:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+stay in the foreground
+</p>
+</li>
+<li>
+<p>
+exit on SIGTERM or SIGKILL
+</p>
+</li>
+<li>
+<p>
+clean up any sub-processes when it exits
+</p>
+</li>
+</ul></div>
 </div>
 <div class="sect2">
 <h3 id="_checking_config_syntax">Checking config syntax</h3>
-<div class="paragraph"><p>Syntax errors- like other pmtr messages- get reported via syslog. Typically
-this goes to <tt>/var/log/messages</tt> (RHEL/CentOS) or <tt>/var/log/syslog</tt> (Ubuntu).
-To check the syntax of a configuration file manually, you can use the test flag
-<tt>-t</tt> like: <tt>pmtr -tc /etc/pmtr.conf</tt>.</p></div>
+<div class="paragraph"><p>To check the syntax of a configuration file, use the <tt>-t</tt> (test) flag:</p></div>
+<div class="literalblock">
+<div class="content">
+<pre><tt>pmtr -tc /etc/pmtr.conf</tt></pre>
+</div></div>
+<div class="paragraph"><p>This displays any syntax errors. Otherwise, if syntax errors are encountered at
+runtime, when pmtr is running as a background service, pmtr logs them to syslog.</p></div>
 </div>
 <div class="sect2">
-<h3 id="rescan">When do configuration changes take effect?</h3>
+<h3 id="_when_do_configuration_changes_take_effect">When do configuration changes take effect?</h3>
 <div class="paragraph"><p>When you edit and save <tt>pmtr.conf</tt>, the changes get applied immediately. There
-is no need to signal pmtr because it watches the config file for changes.</p></div>
+is no need to signal pmtr, because it already watches for config file changes.</p></div>
 <div class="ulist"><ul>
 <li>
 <p>
@@ -1172,88 +1189,11 @@ A changed job is restarted with its new configuration.
 <div class="paragraph"><p>If you stop pmtr itself (for example, by running <tt>service pmtr stop</tt>), it
 terminates its jobs before exiting.</p></div>
 </div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="_jobs">Jobs</h2>
-<div class="sectionbody">
-<div class="paragraph"><p>Hint: a nice representation of the process hierarchy can be obtained using
-<tt>pstree -p</tt> (if that utility is installed). This can be used to verify the
-process tree that&#8217;s running under pmtr matches your expectation.</p></div>
-<div class="listingblock">
-<div class="title">Example pstree output</div>
-<div class="content">
-<pre><tt>        ├─pmtr(2830)─┬─pmtr(2834)
-        │            ├─proxy(2831)
-        │            ├─sshd(2832)
-        │            └─python(2833)</tt></pre>
-</div></div>
-<div class="sect2">
-<h3 id="requirements">Is the job suitable to run under pmtr?</h3>
-<div class="paragraph"><p>In pmtr the term <em>job</em> means a daemon. For our purposes, this is just
-some executable- a binary or script- that you want to keep running. It must:</p></div>
-<div class="ulist"><ul>
-<li>
-<p>
-stay in the foreground
-</p>
-</li>
-<li>
-<p>
-exit on SIGTERM or SIGKILL
-</p>
-</li>
-<li>
-<p>
-clean up any of its own own sub-processes when it exits
-</p>
-</li>
-</ul></div>
-<div class="sidebarblock">
-<div class="content">
-<div class="title">Not for background daemons</div>
-<div class="paragraph"><p>In ye olden days a daemon usually had to put itself in the background- but don&#8217;t
-try to run one of those forking/detaching, background-style daemons under pmtr.
-Pmtr wants its jobs to stay in the foreground. This makes it easy for pmtr to
-notice if the job exited, and to send it a signal when pmtr wants it to exit.</p></div>
-</div></div>
-</div>
-<div class="sect2">
-<h3 id="_restart_handling">Restart handling</h3>
-<div class="paragraph"><p>Pmtr is designed for daemon-style processes that run for a long time, or
-forever. So, if a job exits, pmtr restarts it.</p></div>
-<div class="paragraph"><p>There are two caveats:</p></div>
-<div class="ulist"><ul>
-<li>
-<p>
-If a job exits within ten seconds of when it started, pmtr waits waits ten
-  seconds before restarting it. This avoids rapid restart cycles.  A quick exit
-  often means the job has some sort of configuration problem.
-</p>
-</li>
-<li>
-<p>
-Exit code 33 can be issued from a process to tell pmtr not to restart it.
-</p>
-</li>
-</ul></div>
-</div>
-<div class="sect2">
-<h3 id="_logging">Logging</h3>
-<div class="paragraph"><p>Look in syslog (typically <tt>/var/log/messages</tt> or <tt>/var/log/syslog</tt>) to see
-pmtr log messages relating to configuration file changes and job activity.</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><tt>Nov  7 22:01:09 ubuntu pmtr[18477]: rescanning job configuration
-Nov  7 21:38:10 ubuntu pmtr[18477]: started job proxy [18478]</tt></pre>
-</div></div>
-</div>
 <div class="sect2">
 <h3 id="_one_time_jobs">One-time jobs</h3>
-<div class="paragraph"><p>For "initial setup" situations, pmtr has limited support for one-time jobs. The
-<tt>wait</tt> option makes pmtr wait (for that job to exit) before starting subsequent
-jobs. To prevent pmtr from restarting it, also use the <tt>once</tt> option. (A change
-to the job configuration would cause pmtr to execute the job again, naturally).</p></div>
+<div class="paragraph"><p>For "initial setup" situations, pmtr has basic support for one-time jobs. The
+<tt>wait</tt> option makes pmtr wait for the job to exit before starting subsequent
+jobs. To keep pmtr from restarting it, use the <tt>once</tt> option.</p></div>
 <div class="literalblock">
 <div class="content">
 <pre><tt>job {
@@ -1267,41 +1207,82 @@ to the job configuration would cause pmtr to execute the job again, naturally).<
 <div class="sect2">
 <h3 id="_experimental">Experimental</h3>
 <div class="paragraph"><p>These features are disabled by default.</p></div>
-<div class="paragraph"><p>These two experimental features provide basic reporting and control over the
-network.</p></div>
-<div class="sect3">
-<h4 id="_report_listen">Report/Listen</h4>
 <div class="paragraph"><p>These configuration options may appear in <tt>pmtr.conf</tt> at the global scope.</p></div>
 <div class="literalblock">
 <div class="content">
 <pre><tt>report to udp://127.0.0.1:9999
 listen on udp://0.0.0.0:10000</tt></pre>
 </div></div>
-<div class="paragraph"><p>The <tt>report to</tt> option designates a remote endpoint to receive updates from
-pmtr, via a UDP packet sent by pmtr to the remote endpoint every ten seconds.
-It lists the jobs and their elapsed runtime in a simple text format. A script
-included with pmtr can be run to receive the reports from one, or many, pmtr
-instances. It maintains a simple text file summarizing the pmtr states. This
-script in <tt>pmtr/utils</tt> is invoked like <tt>pmtr-rptserver -p 9999 -f status.txt</tt>.</p></div>
-<div class="paragraph"><p>The <tt>listen on</tt> option makes pmtr listen on the specified address and UDP port
-for messages of the form "enable xyz" or "disable xyz" (<em>xyz</em> is a job name). An
-example script in <tt>pmtr/utils</tt> can send these messages using a command line like
-<tt>pmtr-ctl -s 192.168.0.22 -p 10000 enable xyz</tt>.  This temporarily enables or
-disables a job. When pmtr.conf is edited or pmtr is restarted, the settings
-in pmtr.conf once again take precedence.  There is no authentication with the
-<tt>listen on</tt> feature- use it only on trusted internal networks.</p></div>
-<div class="sect4">
-<h5 id="_multicast_interface_selection">Multicast interface selection</h5>
-<div class="paragraph"><p>A <tt>report to</tt> address may be in the multicast UDP range (e.g. 239.0.0.1, etc).
-If it is, the specification may optionally include a trailing interface name.
-This selects the network interface from which the UDP datagrams should egress.</p></div>
+<div class="paragraph"><p>The <tt>report to</tt> option designates a remote address and port to which pmtr should
+send a a UDP packet every ten seconds.  The packet payload lists the job names,
+enabled or disabled status, and elapsed runtimes in simple text. (An included
+script <tt>pmtr/utils/pmtr-rptserver</tt> can receive these reports and write updates
+to a text file summarizing the received status messages. This script is invoked
+like <tt>pmtr-rptserver -p 9999 -f status.txt</tt>).  If the <tt>report to</tt> address falls
+in the multicast UDP range (e.g.  239.0.0.1, etc), the specification may include
+a trailing interface, e.g., <tt>report to udp://239.0.0.1:9999@eth2</tt> to explicitly
+designate the interface from which the multicast UDP datagrams should egress.</p></div>
+<div class="paragraph"><p>The <tt>listen on</tt> option allows jobs to be remotely enabled or disabled. It
+specifies a UDP address and port that pmtr should listen on for datagrams of
+form <tt>enable abc</tt> or <tt>disable abc</tt>, where <em>abc</em> is a job name.  The address
+0.0.0.0 can be used as a shortcut to denote "any address" on this system. (A
+script in <tt>pmtr/utils/pmtr-ctl</tt> may be used to send the datagrams, for example
+<tt>pmtr-ctl -s 192.168.0.22 -p 10000 enable abc</tt>). The effect is temporary; when
+pmtr.conf is edited or pmtr is restarted, the pmtr.conf settings apply.</p></div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_pstree">pstree</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>To get a nice visual confirmation of the jobs you have running under pmtr, you
+can use the <tt>pstree</tt> utility, if you have it installed.  Here is the output of
+<tt>pstree -p</tt> with the PID&#8217;s.</p></div>
+<div class="listingblock">
+<div class="title">Example pstree output</div>
+<div class="content">
+<pre><tt>        ├─pmtr(2830)─┬─pmtr(2834)
+        │            ├─proxy(2831)
+        │            ├─sshd(2832)
+        │            └─python(2833)</tt></pre>
+</div></div>
+<div class="paragraph"><p>The rest of the system processes have been omitted. Note that pmtr has its
+own child process. This is the dependency monitor that watches the config file.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_restarts">Restarts</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Since pmtr is designed to keep things running, if a job exits, pmtr restarts it.</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+If a job exits quickly- within ten seconds of when it started- pmtr
+  waits ten seconds to restart it. This avoids rapid restart cycles. The
+  job probably has some sort of configuration problem if it exits quickly.
+</p>
+</li>
+<li>
+<p>
+Exit status 33 can be returned from a process to tell pmtr not to restart it.
+</p>
+</li>
+</ul></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_logging">Logging</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Look in syslog (typically <tt>/var/log/messages</tt> or <tt>/var/log/syslog</tt>) to see
+pmtr log messages relating to configuration file changes and job activity.</p></div>
 <div class="literalblock">
 <div class="content">
-<pre><tt>report to udp://239.0.0.1:9999@eth2</tt></pre>
+<pre><tt>Nov  7 21:38:09 ubuntu pmtr[18477]: rescanning job configuration
+Nov  7 21:38:10 ubuntu pmtr[18477]: started job proxy [18478]
+Nov  7 21:38:20 ubuntu pmtr[18477]: job proxy [18478] exited after 10 sec: exit status 0</tt></pre>
 </div></div>
-</div>
-</div>
-</div>
+<div class="paragraph"><p>If your job isn&#8217;t running, this is the first place to look. Pmtr is verbose
+about restarting jobs, or indicating if they are exiting for some reason.</p></div>
 </div>
 </div>
 <div class="sect1">
@@ -1339,7 +1320,7 @@ You can email me at <a href="mailto:tdh@tkhanson.net">tdh@tkhanson.net</a>. I ma
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2014-06-26 23:00:22 EDT
+Last updated 2014-07-05 02:51:30 EDT
 </div>
 </div>
 </body>

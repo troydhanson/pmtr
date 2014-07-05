@@ -7,6 +7,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <sys/resource.h>
 #include <errno.h>
 #include <assert.h>
 #include <fcntl.h>
@@ -19,7 +20,6 @@
 #include "pmtr.h"
 #include "job.h"
 
-
 /* lemon prototypes */
 void *ParseAlloc();
 void Parse();
@@ -30,6 +30,7 @@ void job_ini(job_t *job) {
   utarray_init(&job->cmdv, &ut_str_icd); 
   utarray_init(&job->envv, &ut_str_icd); 
   utarray_init(&job->depv, &ut_str_icd); 
+  utarray_init(&job->ulim, &uint64_icd); 
   job->respawn=1;
   job->uid=-1;
 }
@@ -38,6 +39,7 @@ void job_fin(job_t *job) {
   utarray_done(&job->cmdv); 
   utarray_done(&job->envv); 
   utarray_done(&job->depv); 
+  utarray_done(&job->ulim); 
   if (job->dir) free(job->dir);
   if (job->out) free(job->out);
   if (job->err) free(job->err);
@@ -48,6 +50,7 @@ void job_cpy(job_t *dst, const job_t *src) {
   utarray_init(&dst->cmdv, &ut_str_icd); utarray_concat(&dst->cmdv, &src->cmdv);
   utarray_init(&dst->envv, &ut_str_icd); utarray_concat(&dst->envv, &src->envv);
   utarray_init(&dst->depv, &ut_str_icd); utarray_concat(&dst->depv, &src->depv);
+  utarray_init(&dst->ulim, &uint64_icd); utarray_concat(&dst->ulim, &src->ulim);
   dst->dir = src->dir ? strdup(src->dir) : NULL;
   dst->out = src->out ? strdup(src->out) : NULL;
   dst->err = src->err ? strdup(src->err) : NULL;
@@ -150,6 +153,24 @@ void set_user(parse_t *ps, char *user) {
     return;
   }
   ps->job->uid = p->pw_uid;
+}
+
+#define adim(x) (sizeof(x)/sizeof(*x))
+struct { char *name;  unsigned id; } resources[] =  {
+              { "-n", RLIMIT_NOFILE },
+};
+void set_ulimit(parse_t *ps, char *resource, char *value_a) { 
+  int i;
+  for(i=0; i<adim(resources); i++) {
+    if (strcmp(resources[i].name, resource)) continue;
+    uint64_t rid = resources[i].id;
+    uint64_t val = atoi(value_a);
+    uint64_t rval = (rid << 32) | val;
+    utarray_push_back(&ps->job->ulim, &rval);
+    return;
+  }
+  ps->rc = -1;
+  utstring_printf(ps->em, "unsupported ulimit '%s'", resource);
 }
 
 void push_job(parse_t *ps) {
@@ -332,6 +353,7 @@ void do_jobs(pmtr_t *cfg) {
   time_t now, elapsed;
   int es, n, fo, fe, fi, rc=-1, sig, kr;
   char *pathname, *o, *e, *i, **argv, **env;
+  uint64_t *ulim;
 
   job_t *job = NULL;
   while ( (job = (job_t*)utarray_next(cfg->jobs,job))) {
@@ -405,6 +427,15 @@ void do_jobs(pmtr_t *cfg) {
     env=NULL;
     while ( (env=(char**)utarray_next(&job->envv,env))) putenv(*env);
 
+    /* set ulimits */
+    ulim=NULL;
+    while ( (ulim=(uint64_t*)utarray_next(&job->ulim,ulim))) {
+      uint32_t id   = (uint32_t)((*ulim & 0xffffffff00000000) >> 32);
+      uint32_t val  = (uint32_t) (*ulim & 0x00000000ffffffff);
+      struct rlimit rlim = {.rlim_cur=val, .rlim_max=val};
+      if (setrlimit(id, &rlim))                             {rc=-6; goto fail;}
+    }
+
     /* restore/unblock default handlers so they're unblocked after exec */
     for(n=0; n < sizeof(sigs)/sizeof(*sigs); n++) signal(sigs[n], SIG_DFL);
     sigset_t none;
@@ -412,12 +443,12 @@ void do_jobs(pmtr_t *cfg) {
     sigprocmask(SIG_SETMASK,&none,NULL);
 
     /* change the real and effective user ids */
-    if ((job->uid != -1) && (setuid(job->uid) == -1))        {rc=-6; goto fail;}
+    if ((job->uid != -1) && (setuid(job->uid) == -1))        {rc=-7; goto fail;}
 
     /* at last. we're ready to run the child process */
     argv = (char**)utarray_front(&job->cmdv);
     pathname = *argv;
-    if (execv(pathname, argv) == -1)                         {rc=-7; goto fail;}
+    if (execv(pathname, argv) == -1)                         {rc=-8; goto fail;}
 
     /* not reached - child has exec'd */
     assert(0); 
@@ -428,8 +459,9 @@ void do_jobs(pmtr_t *cfg) {
     if (rc==-3) syslog(LOG_ERR,"can't open %s: %s", o, strerror(errno));
     if (rc==-4) syslog(LOG_ERR,"can't open %s: %s", e, strerror(errno));
     if (rc==-5) syslog(LOG_ERR,"can't dup: %s", strerror(errno));
-    if (rc==-6) syslog(LOG_ERR,"can't setuid %d: %s", job->uid,strerror(errno));
-    if (rc==-7) syslog(LOG_ERR,"can't exec %s: %s", pathname, strerror(errno));
+    if (rc==-6) syslog(LOG_ERR,"can't setrlimit %s", strerror(errno));
+    if (rc==-7) syslog(LOG_ERR,"can't setuid %d: %s", job->uid,strerror(errno));
+    if (rc==-8) syslog(LOG_ERR,"can't exec %s: %s", pathname, strerror(errno));
     exit(-1);  /* child exit */
   }
 }
@@ -526,6 +558,15 @@ int job_cmp(job_t *a, job_t *b) {
   while ( (ac=(char**)utarray_next(&a->envv,ac))) {
     bc = (char**)utarray_next(&b->envv,bc);
     if ((*ac && *bc) && ((rc=strcmp(*ac,*bc)) != 0)) return rc;
+  }
+  /* compare ulim */
+  uint64_t *ar, *br;
+  alen = utarray_len(&a->ulim); blen = utarray_len(&b->ulim); 
+  if (alen != blen) return alen-blen;
+  ar=NULL; br=NULL;
+  while ( (ar=(uint64_t*)utarray_next(&a->ulim,ar))) {
+    br = (uint64_t*)utarray_next(&b->ulim,br);
+    if (*ar != *br) return -1;
   }
   /* compare depv and the hash of the dependencies */
   alen = utarray_len(&a->depv); blen = utarray_len(&b->depv); 

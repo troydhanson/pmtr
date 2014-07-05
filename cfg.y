@@ -33,6 +33,7 @@ kv ::= ERR path(A).                   {set_err(ps,A);}
 kv ::= USER STR(A).                   {set_user(ps,A);}
 kv ::= ORDER STR(A).                  {set_ord(ps,A);}
 kv ::= ENV STR(A).                    {set_env(ps,A);}
+kv ::= ULIMIT STR(A) STR(B).          {set_ulimit(ps,A,B);}
 kv ::= DISABLED.                      {set_dis(ps);  }
 kv ::= WAIT.                          {set_wait(ps); }
 kv ::= ONCE.                          {set_once(ps); }

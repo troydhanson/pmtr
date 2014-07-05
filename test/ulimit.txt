@@ -1,0 +1,8 @@
+job {
+  name ulimited
+  ulimit -n 98
+  # print the ulimits it acquired
+  cmd /bin/bash -c "ulimit -a; sleep 200"
+  out /tmp/ulimits.out
+  err /tmp/ulimits.err
+}
