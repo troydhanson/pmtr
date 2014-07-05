@@ -903,12 +903,15 @@ an OS-specific initscript to run pmtr at boot
 </p>
 </li>
 </ul></div>
-<div class="paragraph"><p>It should already be running. Verify using <tt>service pmtr status</tt>.</p></div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="_to_start_or_stop_pmtr">To start or stop pmtr</h2>
+<h2 id="_running">Running</h2>
 <div class="sectionbody">
+<div class="paragraph"><p>After installation, pmtr should already be running. Verify using <tt>service pmtr
+status</tt>.</p></div>
+<div class="sect2">
+<h3 id="_service_start_stop">service start/stop</h3>
 <div class="paragraph"><p>You can use the system&#8217;s service command to start or stop pmtr itself.
 If you stop pmtr, it first stops any jobs that it&#8217;s running, then exits.</p></div>
 <div class="literalblock">
@@ -919,10 +922,8 @@ service pmtr start</tt></pre>
 <div class="paragraph"><p>You can also run pmtr on the command-line, either in the default mode where
 it forks into the background, or remaining in the foreground (<tt>-F</tt>).</p></div>
 </div>
-</div>
-<div class="sect1">
-<h2 id="_command_line_options">Command line options</h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="_command_line_options">Command line options</h3>
 <div class="paragraph"><p>While pmtr is normally run as a background service, you can run it manually on
 the command line, in which case you can specify these flags:</p></div>
 <div class="tableblock">
@@ -951,6 +952,20 @@ cellspacing="0" cellpadding="4">
 </tr>
 </tbody>
 </table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="logging">Logging</h3>
+<div class="paragraph"><p>Look in syslog (typically <tt>/var/log/messages</tt> or <tt>/var/log/syslog</tt>) to see
+pmtr log messages relating to configuration file changes and job activity.</p></div>
+<div class="literalblock">
+<div class="content">
+<pre><tt>Nov  7 1:38:09 ubuntu pmtr[477]: rescanning job configuration
+Nov  7 1:38:10 ubuntu pmtr[477]: started job proxy [478]
+Nov  7 1:38:20 ubuntu pmtr[477]: job proxy [478] exited after 10 sec: exit status 0</tt></pre>
+</div></div>
+<div class="paragraph"><p>If your job isn&#8217;t running, this is the first place to look. Pmtr is verbose
+about restarting jobs, or indicating if they are exiting for some reason.</p></div>
 </div>
 </div>
 </div>
@@ -1080,7 +1095,7 @@ cellspacing="0" cellpadding="4">
 <div class="ulist"><ul>
 <li>
 <p>
-The required entries are <tt>name</tt> and <tt>cmd</tt>.
+Only <tt>name</tt> and <tt>cmd</tt> are required.
 </p>
 </li>
 <li>
@@ -1102,7 +1117,7 @@ The <tt>cmd</tt> may contain double-quoted arguments e.g. <tt>cmd /bin/echo "hel
 <p>
 The <tt>cmd</tt> does no shell expansion: no wildcards, backticks, environment
   variables, etc. To use shell features, wrap your executable with a script
-  or invoke the shell inline like <tt>cmd /bin/bash -c "/bin/node my.js $DIR"</tt>.
+  or invoke the shell inline like <tt>cmd /bin/bash -c "/bin/server $DIR"</tt>.
 </p>
 </li>
 <li>
@@ -1137,6 +1152,12 @@ Use <tt>user</tt> to designate the unix user whose uid runs the job. Default: ro
 </li>
 <li>
 <p>
+Use a <tt>depends</tt> block to specify files, one per line, that should cause
+  pmtr to restart the job if their content changes.
+</p>
+</li>
+<li>
+<p>
 Use <tt>ulimit</tt> to modify the kernel-enforced resource limits for the job.
   It takes a flag denoting which limit to set, and a value, e.g., <tt>ulimit -n
   30</tt>. Only the <tt>-n</tt> flag (maximum file descriptors) has been implemented.
@@ -1145,17 +1166,11 @@ Use <tt>ulimit</tt> to modify the kernel-enforced resource limits for the job.
 </li>
 <li>
 <p>
-The <tt>bounce every</tt> option kills and restarts the job every so often. It
-  is intended for jobs that don&#8217;t behave well as long-running processes. It
+The <tt>bounce every</tt> option restarts the job every so often. It&#8217;s
+  intended for jobs that don&#8217;t behave well as long-running processes. It
   takes a number and unit, like <tt>5m</tt> to restart a job every five minutes. The
-  units are <tt>smhd</tt>- (s)econds, (m)inutes, (h)ours or (d)ays. The bounce timer
-  runs every 10s- it&#8217;s not for short intervals.
-</p>
-</li>
-<li>
-<p>
-Use a <tt>depends</tt> block to specify files, one per line, that should cause
-  pmtr to restart the job if their content changes.
+  units are <tt>smhd</tt>- (s)econds, (m)inutes, (h)ours or (d)ays. The interval
+  should be more than 10 seconds. The exact timing of the restart is approximate.
 </p>
 </li>
 </ul></div>
@@ -1178,6 +1193,24 @@ exit on SIGTERM or SIGKILL
 <li>
 <p>
 clean up any sub-processes when it exits
+</p>
+</li>
+</ul></div>
+</div>
+<div class="sect2">
+<h3 id="_job_restarts">Job restarts</h3>
+<div class="paragraph"><p>Since pmtr is designed to keep things running, if a job exits, pmtr restarts it.</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+If a job exits quickly (within ten seconds of when it started) pmtr
+  waits ten seconds then restarts it. This avoids rapid restart cycles. The
+  job probably has some sort of configuration problem if it exits quickly.
+</p>
+</li>
+<li>
+<p>
+Exit status 33 can be returned from a process to tell pmtr not to restart it.
 </p>
 </li>
 </ul></div>
@@ -1258,41 +1291,6 @@ settings in pmtr.conf resume precedence when it&#8217;s edited or pmtr is restar
 </div>
 </div>
 <div class="sect1">
-<h2 id="_restarts">Restarts</h2>
-<div class="sectionbody">
-<div class="paragraph"><p>Since pmtr is designed to keep things running, if a job exits, pmtr restarts it.</p></div>
-<div class="ulist"><ul>
-<li>
-<p>
-If a job exits quickly (within ten seconds of when it started) pmtr
-  waits ten seconds then restarts it. This avoids rapid restart cycles. The
-  job probably has some sort of configuration problem if it exits quickly.
-</p>
-</li>
-<li>
-<p>
-Exit status 33 can be returned from a process to tell pmtr not to restart it.
-</p>
-</li>
-</ul></div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="logging">Logging</h2>
-<div class="sectionbody">
-<div class="paragraph"><p>Look in syslog (typically <tt>/var/log/messages</tt> or <tt>/var/log/syslog</tt>) to see
-pmtr log messages relating to configuration file changes and job activity.</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><tt>Nov  7 1:38:09 ubuntu pmtr[477]: rescanning job configuration
-Nov  7 1:38:10 ubuntu pmtr[477]: started job proxy [478]
-Nov  7 1:38:20 ubuntu pmtr[477]: job proxy [478] exited after 10 sec: exit status 0</tt></pre>
-</div></div>
-<div class="paragraph"><p>If your job isn&#8217;t running, this is the first place to look. Pmtr is verbose
-about restarting jobs, or indicating if they are exiting for some reason.</p></div>
-</div>
-</div>
-<div class="sect1">
 <h2 id="_tips">Tips</h2>
 <div class="sectionbody">
 <div class="sect2">
@@ -1312,7 +1310,7 @@ can use the <tt>pstree</tt> utility, if you have it installed.  Here is the outp
 process. This is the dependency monitor that watches the config file.</p></div>
 </div>
 <div class="sect2">
-<h3 id="_with_docker">With Docker</h3>
+<h3 id="_using_pmtr_with_docker">Using pmtr with Docker</h3>
 <div class="paragraph"><p><a href="http://www.docker.com/">Docker</a> is a Linux container technology. If you&#8217;re using
 Docker, you can use pmtr as the initial process of a Docker container to run a
 process hierarchy inside the container. Make sure pmtr runs in the foreground
@@ -1340,11 +1338,7 @@ designate pmtr as default initial process for the image.</p></div>
 <li>
 <p>
 Please use the <a href="https://github.com/troydhanson/pmtr">pmtr Github page</a> for bug
-</p>
-</li>
-<li>
-<p>
-reports and pull requests.
+  reports and pull requests.
 </p>
 </li>
 </ul></div>
@@ -1379,7 +1373,7 @@ You can email me at <a href="mailto:tdh@tkhanson.net">tdh@tkhanson.net</a>. I ma
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2014-07-05 10:26:35 EDT
+Last updated 2014-07-05 10:50:26 EDT
 </div>
 </div>
 </body>

@@ -157,7 +157,20 @@ void set_user(parse_t *ps, char *user) {
 
 #define adim(x) (sizeof(x)/sizeof(*x))
 struct { char *name;  unsigned id; } resources[] =  {
+              { "-c", RLIMIT_CORE },
+              { "-d", RLIMIT_DATA },
+              { "-e", RLIMIT_NICE },
+              { "-f", RLIMIT_FSIZE },
+              { "-i", RLIMIT_SIGPENDING },
+              { "-l", RLIMIT_MEMLOCK },
+              { "-m", RLIMIT_RSS },
               { "-n", RLIMIT_NOFILE },
+              { "-q", RLIMIT_MSGQUEUE },
+              { "-r", RLIMIT_RTPRIO },
+              { "-s", RLIMIT_STACK },
+              { "-t", RLIMIT_CPU },
+              { "-u", RLIMIT_NPROC },
+              { "-v", RLIMIT_AS },
 };
 void set_ulimit(parse_t *ps, char *resource, char *value_a) { 
   int i;

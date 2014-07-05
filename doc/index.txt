@@ -93,10 +93,14 @@ The result of installation is:
  * the configuration file: `/etc/pmtr.conf` 
  * an OS-specific initscript to run pmtr at boot 
 
-It should already be running. Verify using `service pmtr status`. 
+Running
+-------
 
-To start or stop pmtr
----------------------
+After installation, pmtr should already be running. Verify using `service pmtr
+status`. 
+
+service start/stop
+~~~~~~~~~~~~~~~~~~
 You can use the system's service command to start or stop pmtr itself.
 If you stop pmtr, it first stops any jobs that it's running, then exits.
 
@@ -107,7 +111,7 @@ You can also run pmtr on the command-line, either in the default mode where
 it forks into the background, or remaining in the foreground (`-F`). 
 
 Command line options
---------------------
+~~~~~~~~~~~~~~~~~~~~
 While pmtr is normally run as a background service, you can run it manually on
 the command line, in which case you can specify these flags:
 
@@ -119,6 +123,18 @@ the command line, in which case you can specify these flags:
 | -v        | verbose (use -vv to see token parsing)
 |==========================================================================
 
+[[logging]]
+Logging
+~~~~~~~
+Look in syslog (typically `/var/log/messages` or `/var/log/syslog`) to see
+pmtr log messages relating to configuration file changes and job activity.
+
+  Nov  7 1:38:09 ubuntu pmtr[477]: rescanning job configuration
+  Nov  7 1:38:10 ubuntu pmtr[477]: started job proxy [478]
+  Nov  7 1:38:20 ubuntu pmtr[477]: job proxy [478] exited after 10 sec: exit status 0
+
+If your job isn't running, this is the first place to look. Pmtr is verbose
+about restarting jobs, or indicating if they are exiting for some reason.
 
 Configuration file 
 ------------------
@@ -178,30 +194,30 @@ Options
 
 Further details:
 
-* The required entries are `name` and `cmd`.
+* Only `name` and `cmd` are required.
 * The executable named in the `cmd` must have its executable-bit set. 
 * The `cmd` may include trailing arguments e.g. `cmd /bin/node server.js`.  
 * The `cmd` may contain double-quoted arguments e.g. `cmd /bin/echo "hello world"`
 * The `cmd` does no shell expansion: no wildcards, backticks, environment
   variables, etc. To use shell features, wrap your executable with a script
-  or invoke the shell inline like `cmd /bin/bash -c "/bin/node my.js $DIR"`.
+  or invoke the shell inline like `cmd /bin/bash -c "/bin/server $DIR"`.
 * Use `env` to push an environment variable into a job, e.g. `env TMPDIR=/tmp`.
 * Use `env` repeatedly to set multiple environment variables.
 * Use `disable` to stop a job, without having to comment it out.
 * Use `out`, `err`, and `in` to attach stdout, stderr or stdin to a file.
 * The stdout, stderr and stdin default to `/dev/null`.
 * Use `user` to designate the unix user whose uid runs the job. Default: root.
+* Use a `depends` block to specify files, one per line, that should cause
+  pmtr to restart the job if their content changes. 
 * Use `ulimit` to modify the kernel-enforced resource limits for the job.
   It takes a flag denoting which limit to set, and a value, e.g., `ulimit -n
   30`. Only the `-n` flag (maximum file descriptors) has been implemented. 
   (Type `ulimit -a` in bash to list flags, also see `setrlimit(2)`).
-* The `bounce every` option kills and restarts the job every so often. It
-  is intended for jobs that don't behave well as long-running processes. It
+* The `bounce every` option restarts the job every so often. It's
+  intended for jobs that don't behave well as long-running processes. It
   takes a number and unit, like `5m` to restart a job every five minutes. The
-  units are `smhd`- (s)econds, (m)inutes, (h)ours or (d)ays. The bounce timer
-  runs every 10s- it's not for short intervals.
-* Use a `depends` block to specify files, one per line, that should cause
-  pmtr to restart the job if their content changes. 
+  units are `smhd`- (s)econds, (m)inutes, (h)ours or (d)ays. The interval
+  should be more than 10 seconds. The exact timing of the restart is approximate.
 
 [[requirements]]
 Job requirements
@@ -211,6 +227,15 @@ In pmtr the job is just some executable that you want to keep running. It must:
  * stay in the foreground
  * exit on SIGTERM or SIGKILL 
  * clean up any sub-processes when it exits
+
+Job restarts
+~~~~~~~~~~~~
+Since pmtr is designed to keep things running, if a job exits, pmtr restarts it.
+
+* If a job exits quickly (within ten seconds of when it started) pmtr 
+  waits ten seconds then restarts it. This avoids rapid restart cycles. The
+  job probably has some sort of configuration problem if it exits quickly.
+* Exit status 33 can be returned from a process to tell pmtr not to restart it.
 
 Syntax check
 ~~~~~~~~~~~~
@@ -271,28 +296,6 @@ script in `pmtr/utils/pmtr-ctl` may be used to send the datagrams, for example
 `pmtr-ctl -s 192.168.0.22 -p 10000 enable abc`). The effect is temporary; the
 settings in pmtr.conf resume precedence when it's edited or pmtr is restarted.
 
-Restarts
---------
-Since pmtr is designed to keep things running, if a job exits, pmtr restarts it.
-
-* If a job exits quickly (within ten seconds of when it started) pmtr 
-  waits ten seconds then restarts it. This avoids rapid restart cycles. The
-  job probably has some sort of configuration problem if it exits quickly.
-* Exit status 33 can be returned from a process to tell pmtr not to restart it.
-
-[[logging]]
-Logging
--------
-Look in syslog (typically `/var/log/messages` or `/var/log/syslog`) to see
-pmtr log messages relating to configuration file changes and job activity.
-
-  Nov  7 1:38:09 ubuntu pmtr[477]: rescanning job configuration
-  Nov  7 1:38:10 ubuntu pmtr[477]: started job proxy [478]
-  Nov  7 1:38:20 ubuntu pmtr[477]: job proxy [478] exited after 10 sec: exit status 0
-
-If your job isn't running, this is the first place to look. Pmtr is verbose
-about restarting jobs, or indicating if they are exiting for some reason.
-
 Tips
 ----
 
@@ -313,8 +316,8 @@ can use the `pstree` utility, if you have it installed.  Here is the output of
 The other system processes have been omitted. Note that pmtr has its own child
 process. This is the dependency monitor that watches the config file.
 
-With Docker
-~~~~~~~~~~~
+Using pmtr with Docker
+~~~~~~~~~~~~~~~~~~~~~~
 http://www.docker.com/[Docker] is a Linux container technology. If you're using
 Docker, you can use pmtr as the initial process of a Docker container to run a
 process hierarchy inside the container. Make sure pmtr runs in the foreground
@@ -334,7 +337,7 @@ Resources
 GitHub
 ~~~~~~
 * Please use the https://github.com/troydhanson/pmtr[pmtr Github page] for bug
-* reports and pull requests.
+  reports and pull requests.
 
 Author
 ~~~~~~
