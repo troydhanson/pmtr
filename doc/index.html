@@ -796,8 +796,8 @@ pmtr
 </dt>
 <dd>
 <p>
-  a Linux process supervisor that can start your executables or scripts,
-  usually at system boot, then monitor and restart them as needed
+  a Linux process supervisor that can start your executables or scripts
+  at system boot, and restart them as needed
 </p>
 </dd>
 </dl></div>
@@ -836,13 +836,13 @@ pmtr easier to use or its features beneficial. Your jobs go in pmtr.conf:</p></d
     }
   }
 
-  # bounce this job every hour, set ulimits
+  # bounce this job every hour, raise ulimits
   job {
     name thermostat
     dir /home/thermo
     cmd /usr/bin/python therm.py
     bounce every 1h
-    ulimit -n 10
+    ulimit -n 4096
     user nobody
   }</tt></pre>
 </div></div>
@@ -904,6 +904,20 @@ an OS-specific initscript to run pmtr at boot
 </li>
 </ul></div>
 <div class="paragraph"><p>It should already be running. Verify using <tt>service pmtr status</tt>.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_to_start_or_stop_pmtr">To start or stop pmtr</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>You can use the system&#8217;s service command to start or stop pmtr itself.
+If you stop pmtr, it first stops any jobs that it&#8217;s running, then exits.</p></div>
+<div class="literalblock">
+<div class="content">
+<pre><tt>service pmtr stop
+service pmtr start</tt></pre>
+</div></div>
+<div class="paragraph"><p>You can also run pmtr on the command-line, either in the default mode where
+it forks into the background, or remaining in the foreground (<tt>-F</tt>).</p></div>
 </div>
 </div>
 <div class="sect1">
@@ -984,11 +998,9 @@ Comments start with <tt>#</tt> and must be on their own line.
     name trends
     dir /home/trends
     cmd /usr/bin/python trends.py "Hourly Trends"
-    out trends.out
     err trends.err
     bounce every 1d
     ulimit -n 30
-    env LIBS=/opt/libs
     env DEBUG=1
     user pyuser
     depends {
@@ -1120,16 +1132,15 @@ The stdout, stderr and stdin default to <tt>/dev/null</tt>.
 </li>
 <li>
 <p>
-The <tt>user</tt> option designates the unix username to run the job (default: root)
+Use <tt>user</tt> to designate the unix user whose uid runs the job. Default: root.
 </p>
 </li>
 <li>
 <p>
 Use <tt>ulimit</tt> to modify the kernel-enforced resource limits for the job.
   It takes a flag denoting which limit to set, and a value, e.g., <tt>ulimit -n
-  30</tt>. Only the <tt>-n</tt> flag (maximum file descriptors) has been implemented. The
-  flag names are planned to be identical with those used by the bash shell-
-  (type <tt>ulimit -a</tt> in bash to list them). Also see the <tt>setrlimit(2)</tt> man page.
+  30</tt>. Only the <tt>-n</tt> flag (maximum file descriptors) has been implemented.
+  (Type <tt>ulimit -a</tt> in bash to list flags, also see <tt>setrlimit(2)</tt>).
 </p>
 </li>
 <li>
@@ -1143,8 +1154,8 @@ The <tt>bounce every</tt> option kills and restarts the job every so often. It
 </li>
 <li>
 <p>
-Use <tt>depends</tt> to specify files that, if their content changes, should cause
-  pmtr to restart the job.
+Use a <tt>depends</tt> block to specify files, one per line, that should cause
+  pmtr to restart the job if their content changes.
 </p>
 </li>
 </ul></div>
@@ -1152,8 +1163,7 @@ Use <tt>depends</tt> to specify files that, if their content changes, should cau
 </div>
 <div class="sect2">
 <h3 id="requirements">Job requirements</h3>
-<div class="paragraph"><p>In pmtr the term <em>job</em> means a daemon. For our purposes, this is just
-some executable- a binary or script- that you want to keep running. It must:</p></div>
+<div class="paragraph"><p>In pmtr the job is just some executable that you want to keep running. It must:</p></div>
 <div class="ulist"><ul>
 <li>
 <p>
@@ -1173,17 +1183,17 @@ clean up any sub-processes when it exits
 </ul></div>
 </div>
 <div class="sect2">
-<h3 id="_checking_config_syntax">Checking config syntax</h3>
-<div class="paragraph"><p>To check the syntax of a configuration file, use the <tt>-t</tt> (test) flag:</p></div>
+<h3 id="_syntax_check">Syntax check</h3>
+<div class="paragraph"><p>To manually check the syntax of a configuration file, use the <tt>-t</tt> (test) flag:</p></div>
 <div class="literalblock">
 <div class="content">
 <pre><tt>pmtr -tc /etc/pmtr.conf</tt></pre>
 </div></div>
-<div class="paragraph"><p>This displays any syntax errors. In normal operation when pmtr is in the
-background, it logs syntax errors via syslog- see <a href="#logging">logging</a>.</p></div>
+<div class="paragraph"><p>This displays any syntax errors. In normal background operation pmtr
+would log syntax and other errors via syslog; see <a href="#logging">logging</a>.</p></div>
 </div>
 <div class="sect2">
-<h3 id="_when_do_configuration_changes_take_effect">When do configuration changes take effect?</h3>
+<h3 id="_immediate_effect">Immediate effect</h3>
 <div class="paragraph"><p>When you edit and save <tt>pmtr.conf</tt>, the changes get applied immediately.</p></div>
 <div class="ulist"><ul>
 <li>
@@ -1242,27 +1252,9 @@ specifies a UDP address and port that pmtr should listen on for datagrams of
 form <tt>enable abc</tt> or <tt>disable abc</tt>, where <em>abc</em> is a job name.  The address
 0.0.0.0 can be used as a shortcut to denote "any address" on this system. (A
 script in <tt>pmtr/utils/pmtr-ctl</tt> may be used to send the datagrams, for example
-<tt>pmtr-ctl -s 192.168.0.22 -p 10000 enable abc</tt>). The effect is temporary, until
-pmtr.conf is edited or pmtr is restarted.conf settings apply.</p></div>
+<tt>pmtr-ctl -s 192.168.0.22 -p 10000 enable abc</tt>). The effect is temporary; the
+settings in pmtr.conf resume precedence when it&#8217;s edited or pmtr is restarted.</p></div>
 </div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="_pstree">pstree</h2>
-<div class="sectionbody">
-<div class="paragraph"><p>To get a nice visual confirmation of the jobs you have running under pmtr, you
-can use the <tt>pstree</tt> utility, if you have it installed.  Here is the output of
-<tt>pstree -p</tt> with the PID&#8217;s.</p></div>
-<div class="listingblock">
-<div class="title">Example pstree output</div>
-<div class="content">
-<pre><tt>        ├─pmtr(2830)─┬─pmtr(2834)
-        │            ├─proxy(2831)
-        │            ├─sshd(2832)
-        │            └─python(2833)</tt></pre>
-</div></div>
-<div class="paragraph"><p>The rest of the system processes have been omitted. Note that pmtr has its
-own child process. This is the dependency monitor that watches the config file.</p></div>
 </div>
 </div>
 <div class="sect1">
@@ -1272,8 +1264,8 @@ own child process. This is the dependency monitor that watches the config file.<
 <div class="ulist"><ul>
 <li>
 <p>
-If a job exits quickly- within ten seconds of when it started- pmtr
-  waits ten seconds to restart it. This avoids rapid restart cycles. The
+If a job exits quickly (within ten seconds of when it started) pmtr
+  waits ten seconds then restarts it. This avoids rapid restart cycles. The
   job probably has some sort of configuration problem if it exits quickly.
 </p>
 </li>
@@ -1292,23 +1284,74 @@ Exit status 33 can be returned from a process to tell pmtr not to restart it.
 pmtr log messages relating to configuration file changes and job activity.</p></div>
 <div class="literalblock">
 <div class="content">
-<pre><tt>Nov  7 21:38:09 ubuntu pmtr[18477]: rescanning job configuration
-Nov  7 21:38:10 ubuntu pmtr[18477]: started job proxy [18478]
-Nov  7 21:38:20 ubuntu pmtr[18477]: job proxy [18478] exited after 10 sec: exit status 0</tt></pre>
+<pre><tt>Nov  7 1:38:09 ubuntu pmtr[477]: rescanning job configuration
+Nov  7 1:38:10 ubuntu pmtr[477]: started job proxy [478]
+Nov  7 1:38:20 ubuntu pmtr[477]: job proxy [478] exited after 10 sec: exit status 0</tt></pre>
 </div></div>
 <div class="paragraph"><p>If your job isn&#8217;t running, this is the first place to look. Pmtr is verbose
 about restarting jobs, or indicating if they are exiting for some reason.</p></div>
 </div>
 </div>
 <div class="sect1">
+<h2 id="_tips">Tips</h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="_pstree">pstree</h3>
+<div class="paragraph"><p>To get a nice visual confirmation of the jobs you have running under pmtr, you
+can use the <tt>pstree</tt> utility, if you have it installed.  Here is the output of
+<tt>pstree -p</tt>.</p></div>
+<div class="listingblock">
+<div class="title">Example pstree output</div>
+<div class="content">
+<pre><tt>        ├─pmtr(2830)─┬─pmtr(2834)
+        │            ├─proxy(2831)
+        │            ├─sshd(2832)
+        │            └─python(2833)</tt></pre>
+</div></div>
+<div class="paragraph"><p>The other system processes have been omitted. Note that pmtr has its own child
+process. This is the dependency monitor that watches the config file.</p></div>
+</div>
+<div class="sect2">
+<h3 id="_with_docker">With Docker</h3>
+<div class="paragraph"><p><a href="http://www.docker.com/">Docker</a> is a Linux container technology. If you&#8217;re using
+Docker, you can use pmtr as the initial process of a Docker container to run a
+process hierarchy inside the container. Make sure pmtr runs in the foreground
+using the <tt>-F</tt> flag, since the container exits if the initial process detaches.</p></div>
+<div class="literalblock">
+<div class="content">
+<pre><tt>/usr/bin/pmtr -F -c config.conf</tt></pre>
+</div></div>
+<div class="paragraph"><p>If you&#8217;re writing a Dockerfile to build your Docker images, you can use <tt>CMD</tt> to
+designate pmtr as default initial process for the image.</p></div>
+<div class="literalblock">
+<div class="title">Dockerfile using pmtr</div>
+<div class="content">
+<pre><tt>CMD [ "/usr/bin/pmtr", "-F", "-c", "/etc/container-pmtr.conf" ]</tt></pre>
+</div></div>
+</div>
+</div>
+</div>
+<div class="sect1">
 <h2 id="_resources">Resources</h2>
 <div class="sectionbody">
+<div class="sect2">
+<h3 id="_github">GitHub</h3>
 <div class="ulist"><ul>
 <li>
 <p>
-Please use the <a href="https://github.com/troydhanson/pmtr">pmtr Github page</a> for bug reports and pull requests.
+Please use the <a href="https://github.com/troydhanson/pmtr">pmtr Github page</a> for bug
 </p>
 </li>
+<li>
+<p>
+reports and pull requests.
+</p>
+</li>
+</ul></div>
+</div>
+<div class="sect2">
+<h3 id="_author">Author</h3>
+<div class="ulist"><ul>
 <li>
 <p>
 The <a href="http://troydhanson.github.io/">author&#8217;s GitHub page</a> lists my other software.
@@ -1325,6 +1368,7 @@ You can email me at <a href="mailto:tdh@tkhanson.net">tdh@tkhanson.net</a>. I ma
 </p>
 </li>
 </ul></div>
+</div>
 <div class="sect2">
 <h3 id="_license">License</h3>
 <div class="paragraph"><p>See the <a href="LICENSE.txt">LICENSE</a> file.</p></div>
@@ -1335,7 +1379,7 @@ You can email me at <a href="mailto:tdh@tkhanson.net">tdh@tkhanson.net</a>. I ma
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2014-07-05 08:51:45 EDT
+Last updated 2014-07-05 10:21:59 EDT
 </div>
 </div>
 </body>

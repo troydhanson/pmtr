@@ -8,8 +8,8 @@ include::twitter.txt[]
 Back to the https://github.com/troydhanson/pmtr[pmtr Github page].
 
 pmtr::
-  a Linux process supervisor that can start your executables or scripts,
-  usually at system boot, then monitor and restart them as needed
+  a Linux process supervisor that can start your executables or scripts
+  at system boot, and restart them as needed
 
 pmtr: process monitor
 ---------------------
@@ -44,13 +44,13 @@ pmtr easier to use or its features beneficial. Your jobs go in pmtr.conf:
     }
   }
   
-  # bounce this job every hour, set ulimits
+  # bounce this job every hour, raise ulimits
   job {
     name thermostat
     dir /home/thermo
     cmd /usr/bin/python therm.py
     bounce every 1h
-    ulimit -n 10
+    ulimit -n 4096
     user nobody
   }
 
@@ -95,6 +95,17 @@ The result of installation is:
 
 It should already be running. Verify using `service pmtr status`. 
 
+To start or stop pmtr
+---------------------
+You can use the system's service command to start or stop pmtr itself.
+If you stop pmtr, it first stops any jobs that it's running, then exits.
+
+  service pmtr stop
+  service pmtr start
+
+You can also run pmtr on the command-line, either in the default mode where
+it forks into the background, or remaining in the foreground (`-F`). 
+
 Command line options
 --------------------
 While pmtr is normally run as a background service, you can run it manually on
@@ -132,11 +143,9 @@ The configuration file contains any number of jobs.
     name trends
     dir /home/trends
     cmd /usr/bin/python trends.py "Hourly Trends"
-    out trends.out
     err trends.err
     bounce every 1d
     ulimit -n 30
-    env LIBS=/opt/libs
     env DEBUG=1
     user pyuser
     depends {
@@ -181,41 +190,39 @@ Further details:
 * Use `disable` to stop a job, without having to comment it out.
 * Use `out`, `err`, and `in` to attach stdout, stderr or stdin to a file.
 * The stdout, stderr and stdin default to `/dev/null`.
-* The `user` option designates the unix username to run the job (default: root)
+* Use `user` to designate the unix user whose uid runs the job. Default: root.
 * Use `ulimit` to modify the kernel-enforced resource limits for the job.
   It takes a flag denoting which limit to set, and a value, e.g., `ulimit -n
-  30`. Only the `-n` flag (maximum file descriptors) has been implemented. The
-  flag names are planned to be identical with those used by the bash shell-
-  (type `ulimit -a` in bash to list them). Also see the `setrlimit(2)` man page.
+  30`. Only the `-n` flag (maximum file descriptors) has been implemented. 
+  (Type `ulimit -a` in bash to list flags, also see `setrlimit(2)`).
 * The `bounce every` option kills and restarts the job every so often. It
   is intended for jobs that don't behave well as long-running processes. It
   takes a number and unit, like `5m` to restart a job every five minutes. The
   units are `smhd`- (s)econds, (m)inutes, (h)ours or (d)ays. The bounce timer
   runs every 10s- it's not for short intervals.
-* Use `depends` to specify files that, if their content changes, should cause
-  pmtr to restart the job. 
+* Use a `depends` block to specify files, one per line, that should cause
+  pmtr to restart the job if their content changes. 
 
 [[requirements]]
 Job requirements
 ~~~~~~~~~~~~~~~~
-In pmtr the term 'job' means a daemon. For our purposes, this is just
-some executable- a binary or script- that you want to keep running. It must:
+In pmtr the job is just some executable that you want to keep running. It must:
 
  * stay in the foreground
  * exit on SIGTERM or SIGKILL 
  * clean up any sub-processes when it exits
 
-Checking config syntax
-~~~~~~~~~~~~~~~~~~~~~~
-To check the syntax of a configuration file, use the `-t` (test) flag:
+Syntax check
+~~~~~~~~~~~~
+To manually check the syntax of a configuration file, use the `-t` (test) flag:
   
   pmtr -tc /etc/pmtr.conf
 
-This displays any syntax errors. In normal operation when pmtr is in the
-background, it logs syntax errors via syslog- see <<logging,logging>>.
+This displays any syntax errors. In normal background operation pmtr
+would log syntax and other errors via syslog; see <<logging,logging>>.
 
-When do configuration changes take effect?
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Immediate effect 
+~~~~~~~~~~~~~~~~
 When you edit and save `pmtr.conf`, the changes get applied immediately. 
 
  * A newly-added job gets started.
@@ -261,32 +268,15 @@ specifies a UDP address and port that pmtr should listen on for datagrams of
 form `enable abc` or `disable abc`, where 'abc' is a job name.  The address
 0.0.0.0 can be used as a shortcut to denote "any address" on this system. (A
 script in `pmtr/utils/pmtr-ctl` may be used to send the datagrams, for example 
-`pmtr-ctl -s 192.168.0.22 -p 10000 enable abc`). The effect is temporary, until
-pmtr.conf is edited or pmtr is restarted.conf settings apply.  
-
-pstree
-------
-To get a nice visual confirmation of the jobs you have running under pmtr, you
-can use the `pstree` utility, if you have it installed.  Here is the output of
-`pstree -p` with the PID's.
-
-.Example pstree output
-----------------------------------------
-        ├─pmtr(2830)─┬─pmtr(2834)
-        │            ├─proxy(2831)
-        │            ├─sshd(2832)
-        │            └─python(2833)
-----------------------------------------
-
-The rest of the system processes have been omitted. Note that pmtr has its
-own child process. This is the dependency monitor that watches the config file.
+`pmtr-ctl -s 192.168.0.22 -p 10000 enable abc`). The effect is temporary; the
+settings in pmtr.conf resume precedence when it's edited or pmtr is restarted.
 
 Restarts
 --------
 Since pmtr is designed to keep things running, if a job exits, pmtr restarts it.
 
-* If a job exits quickly- within ten seconds of when it started- pmtr 
-  waits ten seconds to restart it. This avoids rapid restart cycles. The
+* If a job exits quickly (within ten seconds of when it started) pmtr 
+  waits ten seconds then restarts it. This avoids rapid restart cycles. The
   job probably has some sort of configuration problem if it exits quickly.
 * Exit status 33 can be returned from a process to tell pmtr not to restart it.
 
@@ -296,17 +286,58 @@ Logging
 Look in syslog (typically `/var/log/messages` or `/var/log/syslog`) to see
 pmtr log messages relating to configuration file changes and job activity.
 
-  Nov  7 21:38:09 ubuntu pmtr[18477]: rescanning job configuration
-  Nov  7 21:38:10 ubuntu pmtr[18477]: started job proxy [18478]
-  Nov  7 21:38:20 ubuntu pmtr[18477]: job proxy [18478] exited after 10 sec: exit status 0
-
+  Nov  7 1:38:09 ubuntu pmtr[477]: rescanning job configuration
+  Nov  7 1:38:10 ubuntu pmtr[477]: started job proxy [478]
+  Nov  7 1:38:20 ubuntu pmtr[477]: job proxy [478] exited after 10 sec: exit status 0
 
 If your job isn't running, this is the first place to look. Pmtr is verbose
 about restarting jobs, or indicating if they are exiting for some reason.
 
+Tips
+----
+
+pstree
+~~~~~~
+To get a nice visual confirmation of the jobs you have running under pmtr, you
+can use the `pstree` utility, if you have it installed.  Here is the output of
+`pstree -p`.
+
+.Example pstree output
+----------------------------------------
+        ├─pmtr(2830)─┬─pmtr(2834)
+        │            ├─proxy(2831)
+        │            ├─sshd(2832)
+        │            └─python(2833)
+----------------------------------------
+
+The other system processes have been omitted. Note that pmtr has its own child
+process. This is the dependency monitor that watches the config file.
+
+With Docker
+~~~~~~~~~~~
+http://www.docker.com/[Docker] is a Linux container technology. If you're using
+Docker, you can use pmtr as the initial process of a Docker container to run a
+process hierarchy inside the container. Make sure pmtr runs in the foreground
+using the `-F` flag, since the container exits if the initial process detaches.
+
+  /usr/bin/pmtr -F -c config.conf 
+
+If you're writing a Dockerfile to build your Docker images, you can use `CMD` to
+designate pmtr as default initial process for the image.
+
+.Dockerfile using pmtr 
+  CMD [ "/usr/bin/pmtr", "-F", "-c", "/etc/container-pmtr.conf" ]
+
 Resources
 ---------
-* Please use the https://github.com/troydhanson/pmtr[pmtr Github page] for bug reports and pull requests.
+
+GitHub
+~~~~~~
+* Please use the https://github.com/troydhanson/pmtr[pmtr Github page] for bug
+* reports and pull requests.
+
+Author
+~~~~~~
 * The http://troydhanson.github.io/[author's GitHub page] lists my other software.
 * My http://tkhanson.net/blog[blog], and twitter https://twitter.com/troydhanson[@troydhanson].
 * You can email me at tdh@tkhanson.net. I may not be able to reply- sorry!
