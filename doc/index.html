@@ -1020,7 +1020,39 @@ Exit status 33 can be returned from a process to tell pmtr not to restart it.
 <div class="sectionbody">
 <div class="paragraph"><p>The default pmtr configuration file is <tt>/etc/pmtr.conf</tt>.</p></div>
 <div class="sect2">
-<h3 id="_syntax">Syntax</h3>
+<h3 id="_syntax_check">Syntax check</h3>
+<div class="paragraph"><p>To manually check the syntax of a configuration file, use the <tt>-t</tt> (test) flag:</p></div>
+<div class="literalblock">
+<div class="content">
+<pre><tt>pmtr -tc /etc/pmtr.conf</tt></pre>
+</div></div>
+<div class="paragraph"><p>This displays any syntax errors. In normal background operation pmtr
+would log syntax and other errors via syslog; see <a href="#logging">logging</a>.</p></div>
+</div>
+<div class="sect2">
+<h3 id="_immediate_effect">Immediate effect</h3>
+<div class="paragraph"><p>When you edit and save <tt>pmtr.conf</tt>, the changes get applied immediately.</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+A newly-added job gets started.
+</p>
+</li>
+<li>
+<p>
+A deleted job is terminated.
+</p>
+</li>
+<li>
+<p>
+A changed job is restarted with its new configuration.
+</p>
+</li>
+</ul></div>
+<div class="paragraph"><p>To terminate a job, pmtr sends SIGTERM to it, then SIGKILL shortly afterward.</p></div>
+</div>
+<div class="sect2">
+<h3 id="_syntax_summary">Syntax summary</h3>
 <div class="paragraph"><p>The configuration file contains any number of jobs.</p></div>
 <div class="ulist"><ul>
 <li>
@@ -1075,8 +1107,6 @@ Comments start with <tt>#</tt> and must be on their own line.
     env DEBUG=1
   }</tt></pre>
 </div></div>
-<div class="sect3">
-<h4 id="_options">Options</h4>
 <div class="tableblock" id="options">
 <table rules="none"
 width="90%"
@@ -1143,7 +1173,10 @@ cellspacing="0" cellpadding="4">
 </table>
 </div>
 <div class="paragraph"><p>Further information about these options appears below.</p></div>
-<div class="ulist"><div class="title">cmd</div><ul>
+</div>
+<div class="sect2">
+<h3 id="_cmd">cmd</h3>
+<div class="ulist"><ul>
 <li>
 <p>
 The executable named in the <tt>cmd</tt> must have its executable-bit set.
@@ -1179,7 +1212,10 @@ can even do this "inline" by passing your commands as a string to bash:</td>
 <pre><tt>env DIR=/home/ws
 cmd /bin/bash -c "/bin/python ws.py -d $DIR/`date +%s`"</tt></pre>
 </div></div>
-<div class="ulist"><div class="title">env</div><ul>
+</div>
+<div class="sect2">
+<h3 id="_env">env</h3>
+<div class="ulist"><ul>
 <li>
 <p>
 Use <tt>env</tt> to push an environment variable into a job, e.g. <tt>env TMPDIR=/tmp</tt>.
@@ -1191,7 +1227,10 @@ Use <tt>env</tt> repeatedly to set multiple environment variables.
 </p>
 </li>
 </ul></div>
-<div class="ulist"><div class="title">disable</div><ul>
+</div>
+<div class="sect2">
+<h3 id="_disable">disable</h3>
+<div class="ulist"><ul>
 <li>
 <p>
 Use <tt>disable</tt> to stop a job, without having to comment it out.
@@ -1204,7 +1243,10 @@ This is often helpful in debugging a job since it makes it easy to
 </p>
 </li>
 </ul></div>
-<div class="ulist"><div class="title">out, err, in</div><ul>
+</div>
+<div class="sect2">
+<h3 id="_out_err_in">out, err, in</h3>
+<div class="ulist"><ul>
 <li>
 <p>
 Use <tt>out</tt>, <tt>err</tt>, and <tt>in</tt> to attach stdout, stderr or stdin to a file.
@@ -1216,7 +1258,10 @@ The stdout, stderr and stdin default to <tt>/dev/null</tt>.
 </p>
 </li>
 </ul></div>
-<div class="ulist"><div class="title">user</div><ul>
+</div>
+<div class="sect2">
+<h3 id="_user">user</h3>
+<div class="ulist"><ul>
 <li>
 <p>
 The <tt>user</tt> option is the unix username that should be the process owner.
@@ -1233,7 +1278,10 @@ The <tt>user</tt> defaults to whoever started pmtr, if pmtr was run manually.
 </p>
 </li>
 </ul></div>
-<div class="ulist"><div class="title">depends</div><ul>
+</div>
+<div class="sect2">
+<h3 id="_depends">depends</h3>
+<div class="ulist"><ul>
 <li>
 <p>
 Use a <tt>depends</tt> block to specify files, one per line, that the job depends on.
@@ -1245,7 +1293,10 @@ If the content of any of the dependencies changes, pmtr restarts the job.
 </p>
 </li>
 </ul></div>
-<div class="ulist"><div class="title">bounce every</div><ul>
+</div>
+<div class="sect2">
+<h3 id="_bounce_every">bounce every</h3>
+<div class="ulist"><ul>
 <li>
 <p>
 The <tt>bounce every</tt> option restarts the job every so often.
@@ -1277,7 +1328,10 @@ The exact timing of the restart is approximate.
 </p>
 </li>
 </ul></div>
-<div class="ulist"><div class="title">ulimit</div><ul>
+</div>
+<div class="sect2">
+<h3 id="_ulimit">ulimit</h3>
+<div class="ulist"><ul>
 <li>
 <p>
 Use <tt>ulimit</tt> to modify the kernel-enforced resource limits for the job.
@@ -1341,142 +1395,6 @@ In bash, type <tt>man prlimit</tt> to see the more technical description and the
 </p>
 </li>
 </ul></div>
-<div class="tableblock">
-<table rules="none"
-width="50%"
-frame="border"
-cellspacing="0" cellpadding="4">
-<caption class="title">Table 1. ulimit options supported by pmtr</caption>
-<col width="16%" />
-<col width="83%" />
-<thead>
-<tr>
-<th align="left" valign="top">flag</th>
-<th align="left" valign="top"> resource name      </th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td align="left" valign="top"><p class="table"><tt></tt></p></td>
-<td align="left" valign="top"><p class="table"><tt>-c</tt></p></td>
-</tr>
-<tr>
-<td align="left" valign="top"><p class="table"><tt>RLIMIT_CORE</tt></p></td>
-<td align="left" valign="top"><p class="table"><tt></tt></p></td>
-</tr>
-<tr>
-<td align="left" valign="top"><p class="table"><tt>-d</tt></p></td>
-<td align="left" valign="top"><p class="table"><tt>RLIMIT_DATA</tt></p></td>
-</tr>
-<tr>
-<td align="left" valign="top"><p class="table"><tt></tt></p></td>
-<td align="left" valign="top"><p class="table"><tt>-e</tt></p></td>
-</tr>
-<tr>
-<td align="left" valign="top"><p class="table"><tt>RLIMIT_NICE</tt></p></td>
-<td align="left" valign="top"><p class="table"><tt></tt></p></td>
-</tr>
-<tr>
-<td align="left" valign="top"><p class="table"><tt>-f</tt></p></td>
-<td align="left" valign="top"><p class="table"><tt>RLIMIT_FSIZE</tt></p></td>
-</tr>
-<tr>
-<td align="left" valign="top"><p class="table"><tt></tt></p></td>
-<td align="left" valign="top"><p class="table"><tt>-i</tt></p></td>
-</tr>
-<tr>
-<td align="left" valign="top"><p class="table"><tt>RLIMIT_SIGPENDING</tt></p></td>
-<td align="left" valign="top"><p class="table"><tt></tt></p></td>
-</tr>
-<tr>
-<td align="left" valign="top"><p class="table"><tt>-l</tt></p></td>
-<td align="left" valign="top"><p class="table"><tt>RLIMIT_MEMLOCK</tt></p></td>
-</tr>
-<tr>
-<td align="left" valign="top"><p class="table"><tt></tt></p></td>
-<td align="left" valign="top"><p class="table"><tt>-m</tt></p></td>
-</tr>
-<tr>
-<td align="left" valign="top"><p class="table"><tt>RLIMIT_RSS</tt></p></td>
-<td align="left" valign="top"><p class="table"><tt></tt></p></td>
-</tr>
-<tr>
-<td align="left" valign="top"><p class="table"><tt>-n</tt></p></td>
-<td align="left" valign="top"><p class="table"><tt>RLIMIT_NOFILE</tt></p></td>
-</tr>
-<tr>
-<td align="left" valign="top"><p class="table"><tt></tt></p></td>
-<td align="left" valign="top"><p class="table"><tt>-q</tt></p></td>
-</tr>
-<tr>
-<td align="left" valign="top"><p class="table"><tt>RLIMIT_MSGQUEUE</tt></p></td>
-<td align="left" valign="top"><p class="table"><tt></tt></p></td>
-</tr>
-<tr>
-<td align="left" valign="top"><p class="table"><tt>-r</tt></p></td>
-<td align="left" valign="top"><p class="table"><tt>RLIMIT_RTPRIO</tt></p></td>
-</tr>
-<tr>
-<td align="left" valign="top"><p class="table"><tt></tt></p></td>
-<td align="left" valign="top"><p class="table"><tt>-s</tt></p></td>
-</tr>
-<tr>
-<td align="left" valign="top"><p class="table"><tt>RLIMIT_STACK</tt></p></td>
-<td align="left" valign="top"><p class="table"><tt></tt></p></td>
-</tr>
-<tr>
-<td align="left" valign="top"><p class="table"><tt>-t</tt></p></td>
-<td align="left" valign="top"><p class="table"><tt>RLIMIT_CPU</tt></p></td>
-</tr>
-<tr>
-<td align="left" valign="top"><p class="table"><tt></tt></p></td>
-<td align="left" valign="top"><p class="table"><tt>-u</tt></p></td>
-</tr>
-<tr>
-<td align="left" valign="top"><p class="table"><tt>RLIMIT_NPROC</tt></p></td>
-<td align="left" valign="top"><p class="table"><tt></tt></p></td>
-</tr>
-<tr>
-<td align="left" valign="top"><p class="table"><tt>-v</tt></p></td>
-<td align="left" valign="top"><p class="table"><tt>RLIMIT_AS</tt></p></td>
-</tr>
-</tbody>
-</table>
-</div>
-<div class="paragraph"><p>You can use either the flag, or the resource name, in pmtr.conf.</p></div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="_syntax_check">Syntax check</h3>
-<div class="paragraph"><p>To manually check the syntax of a configuration file, use the <tt>-t</tt> (test) flag:</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><tt>pmtr -tc /etc/pmtr.conf</tt></pre>
-</div></div>
-<div class="paragraph"><p>This displays any syntax errors. In normal background operation pmtr
-would log syntax and other errors via syslog; see <a href="#logging">logging</a>.</p></div>
-</div>
-<div class="sect2">
-<h3 id="_immediate_effect">Immediate effect</h3>
-<div class="paragraph"><p>When you edit and save <tt>pmtr.conf</tt>, the changes get applied immediately.</p></div>
-<div class="ulist"><ul>
-<li>
-<p>
-A newly-added job gets started.
-</p>
-</li>
-<li>
-<p>
-A deleted job is terminated.
-</p>
-</li>
-<li>
-<p>
-A changed job is restarted with its new configuration.
-</p>
-</li>
-</ul></div>
-<div class="paragraph"><p>To terminate a job, pmtr sends SIGTERM to it, then SIGKILL shortly afterward.</p></div>
 </div>
 <div class="sect2">
 <h3 id="_one_time_jobs">One-time jobs</h3>
@@ -1604,7 +1522,7 @@ You can email me at <a href="mailto:tdh@tkhanson.net">tdh@tkhanson.net</a>. I ma
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2014-07-05 14:40:25 EDT
+Last updated 2014-07-05 14:55:26 EDT
 </div>
 </div>
 </body>
