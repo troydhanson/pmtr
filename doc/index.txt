@@ -50,7 +50,10 @@ pmtr easier to use or its features beneficial. Your jobs go in pmtr.conf:
     dir /home/thermo
     cmd /usr/bin/python therm.py
     bounce every 1h
-    ulimit -n 4096
+    ulimit {
+      -n infinity
+      -l infinity
+    }
     user nobody
   }
 
@@ -107,20 +110,20 @@ If you stop pmtr, it first stops any jobs that it's running, then exits.
   service pmtr stop
   service pmtr start
 
-You can also run pmtr on the command-line, either in the default mode where
-it forks into the background, or remaining in the foreground (`-F`). 
+You can also run pmtr on the command-line. By default, it forks into the
+background. You can tell it to stay in the foreground using `-F`. 
 
 Command line options
 ~~~~~~~~~~~~~~~~~~~~
 While pmtr is normally run as a background service, you can run it manually on
 the command line, in which case you can specify these flags:
 
-[width="70%",cols="20m,50",grid="none",options="none"]
+[width="80%",cols="20m,20,50",grid="none",options="none"]
 |==========================================================================
-| -c <file> | specify alternate configuration file
-| -t        | test only- parse config file and exit (implies -F)
-| -F        | Foreground (stay in foreground instead of detaching)
-| -v        | verbose (use -vv to see token parsing)
+| -c <file> | config file | specify alternate configuration file
+| -t        | test only   | parse config file and exit, implies -F
+| -F        | Foreground  | stay in foreground instead of detaching
+| -v        | verbose     | extra logging. repeatable. -vv shows parsing
 |==========================================================================
 
 [[logging]]
@@ -136,6 +139,23 @@ pmtr log messages relating to configuration file changes and job activity.
 If your job isn't running, this is the first place to look. Pmtr is verbose
 about restarting jobs, or indicating if they are exiting for some reason.
 
+[[requirements]]
+Job requirements
+----------------
+In pmtr the job is just some executable that you want to keep running. It must:
+
+ * stay in the foreground
+ * exit on SIGTERM or SIGKILL 
+ * clean up any sub-processes when it exits
+
+.Restarts
+Since pmtr is designed to keep things running, if a job exits, pmtr restarts it.
+
+* If a job exits quickly (within ten seconds of when it started) pmtr 
+  waits ten seconds then restarts it. This avoids rapid restart cycles. The
+  job probably has some sort of configuration problem if it exits quickly.
+* Exit status 33 can be returned from a process to tell pmtr not to restart it.
+
 Configuration file 
 ------------------
 The default pmtr configuration file is `/etc/pmtr.conf`. 
@@ -146,6 +166,7 @@ The configuration file contains any number of jobs.
 
 * Each job is in a curly-brace delimited block.  
 * The order of options inside does not matter. 
+* Only the `name` and `cmd` are required.
 * Indentation is optional. 
 * Blank lines are ok.  
 * Comments start with `#` and must be on their own line.
@@ -158,16 +179,16 @@ The configuration file contains any number of jobs.
   job {
     name trends
     dir /home/trends
-    cmd /usr/bin/python trends.py "Hourly Trends"
-    err trends.err
+    cmd /usr/bin/python trends.py
     bounce every 1d
-    ulimit -n 30
-    env DEBUG=1
-    user pyuser
+    err trends.err
+    ulimit -n infinity
     depends {
       trends.conf
-      /etc/py.conf
+      db.conf
     }
+    user pyuser
+    env DEBUG=1
   }
 ---------------------------------------------------
 
@@ -186,56 +207,97 @@ Options
 |in             | hook stdin to this file
 |env            | environment variable setting `VAR=VALUE` (repeatable)
 |user           | unix username under whose id to run the process 
-|ulimit         | an option and a numeric value, like `-n 30`      
+|ulimit         | a flag and value, or a curly-brace delimited list of them
 |bounce every   | a time interval like 5m (five minutes) - units are `smhd`
 |depends        | a curly-brace delimited list of files, one per line
 |disable        | this keyword disables the job 
 |===============================================================================
 
-Further details:
+Further information about these options appears below.
 
-* Only `name` and `cmd` are required.
+.cmd
 * The executable named in the `cmd` must have its executable-bit set. 
 * The `cmd` may include trailing arguments e.g. `cmd /bin/node server.js`.  
 * The `cmd` may contain double-quoted arguments e.g. `cmd /bin/echo "hello world"`
-* The `cmd` does no shell expansion: no wildcards, backticks, environment
-  variables, etc. To use shell features, wrap your executable with a script
-  or invoke the shell inline like `cmd /bin/bash -c "/bin/server $DIR"`.
+* The `cmd` does no shell expansion: no wildcards, backticks, variables, etc. 
+
+[TIP]
+If you need shell features in your command, wrap it with a shell script. You
+can even do this "inline" by passing your commands as a string to bash:
+
+  env DIR=/home/ws
+  cmd /bin/bash -c "/bin/python ws.py -d $DIR/`date +%s`"
+
+.env
 * Use `env` to push an environment variable into a job, e.g. `env TMPDIR=/tmp`.
 * Use `env` repeatedly to set multiple environment variables.
+
+.disable
 * Use `disable` to stop a job, without having to comment it out.
+* This is often helpful in debugging a job since it makes it easy to 
+  re-enable the job later (by commenting out the disable line, or removing it).
+
+.out, err, in
 * Use `out`, `err`, and `in` to attach stdout, stderr or stdin to a file.
 * The stdout, stderr and stdin default to `/dev/null`.
-* Use `user` to designate the unix user whose uid runs the job. Default: root.
-* Use a `depends` block to specify files, one per line, that should cause
-  pmtr to restart the job if their content changes. 
+
+.user
+* The `user` option is the unix username that should be the process owner.
+* The `user` defaults to root usually, when pmtr is running as a service.
+* The `user` defaults to whoever started pmtr, if pmtr was run manually.
+
+.depends
+* Use a `depends` block to specify files, one per line, that the job depends on.
+* If the content of any of the dependencies changes, pmtr restarts the job.
+
+.bounce every
+* The `bounce every` option restarts the job every so often. 
+* It's intended for jobs that don't behave well as long-running processes. 
+* It takes a number and unit, like `5m` to restart a job every five minutes. 
+* The units are `smhd`- (s)econds, (m)inutes, (h)ours or (d)ays. 
+* The interval should be more than 10 seconds. 
+* The exact timing of the restart is approximate.
+
+.ulimit
 * Use `ulimit` to modify the kernel-enforced resource limits for the job.
-  It takes a flag denoting which limit to set, and a value, e.g., `ulimit -n
-  30`. Only the `-n` flag (maximum file descriptors) has been implemented. 
-  (Type `ulimit -a` in bash to list flags, also see `setrlimit(2)`).
-* The `bounce every` option restarts the job every so often. It's
-  intended for jobs that don't behave well as long-running processes. It
-  takes a number and unit, like `5m` to restart a job every five minutes. The
-  units are `smhd`- (s)econds, (m)inutes, (h)ours or (d)ays. The interval
-  should be more than 10 seconds. The exact timing of the restart is approximate.
+* It takes a flag denoting which limit to set, and a value, e.g., `ulimit -n 30`.  
+* Alternatively, you can list a series of ulimit settings in a curly brace block:
 
-[[requirements]]
-Job requirements
-~~~~~~~~~~~~~~~~
-In pmtr the job is just some executable that you want to keep running. It must:
+  ulimit {
+    -n infinity
+    -l 10000
+  }
 
- * stay in the foreground
- * exit on SIGTERM or SIGKILL 
- * clean up any sub-processes when it exits
+* The values are all numeric or the keyword `infinity`.
+* To see the current kernel limits on a process, run `cat /proc/<pid>/limits`.
+* pmtr sets both the "hard" and "soft" ulimit to the same value.
+* If there is an error setting the ulimits, it's logged to syslog.
+* The meaning of the flags like `-n` are explained in the bash shell itself:
+* In bash, type `ulimit -a` in bash to list flags, and the values in your shell;
+* In bash, type `help ulimit` for more information about the ulimits;
+* In bash, type `man prlimit` to see the more technical description and the units.
 
-Job restarts
-~~~~~~~~~~~~
-Since pmtr is designed to keep things running, if a job exits, pmtr restarts it.
+.ulimit options supported by pmtr
+[width="50%",cols="10m,50m",grid="none",options="header"]
+|==========================
+|flag| resource name      |
+| -c | RLIMIT_CORE        |
+| -d | RLIMIT_DATA        | 
+| -e | RLIMIT_NICE        | 
+| -f | RLIMIT_FSIZE       | 
+| -i | RLIMIT_SIGPENDING  | 
+| -l | RLIMIT_MEMLOCK     | 
+| -m | RLIMIT_RSS         | 
+| -n | RLIMIT_NOFILE      | 
+| -q | RLIMIT_MSGQUEUE    | 
+| -r | RLIMIT_RTPRIO      | 
+| -s | RLIMIT_STACK       | 
+| -t | RLIMIT_CPU         | 
+| -u | RLIMIT_NPROC       | 
+| -v | RLIMIT_AS          | 
+|==========================
 
-* If a job exits quickly (within ten seconds of when it started) pmtr 
-  waits ten seconds then restarts it. This avoids rapid restart cycles. The
-  job probably has some sort of configuration problem if it exits quickly.
-* Exit status 33 can be returned from a process to tell pmtr not to restart it.
+You can use either the flag, or the resource name, in pmtr.conf.
 
 Syntax check
 ~~~~~~~~~~~~

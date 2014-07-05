@@ -842,7 +842,10 @@ pmtr easier to use or its features beneficial. Your jobs go in pmtr.conf:</p></d
     dir /home/thermo
     cmd /usr/bin/python therm.py
     bounce every 1h
-    ulimit -n 4096
+    ulimit {
+      -n infinity
+      -l infinity
+    }
     user nobody
   }</tt></pre>
 </div></div>
@@ -919,8 +922,8 @@ If you stop pmtr, it first stops any jobs that it&#8217;s running, then exits.</
 <pre><tt>service pmtr stop
 service pmtr start</tt></pre>
 </div></div>
-<div class="paragraph"><p>You can also run pmtr on the command-line, either in the default mode where
-it forks into the background, or remaining in the foreground (<tt>-F</tt>).</p></div>
+<div class="paragraph"><p>You can also run pmtr on the command-line. By default, it forks into the
+background. You can tell it to stay in the foreground using <tt>-F</tt>.</p></div>
 </div>
 <div class="sect2">
 <h3 id="_command_line_options">Command line options</h3>
@@ -928,27 +931,32 @@ it forks into the background, or remaining in the foreground (<tt>-F</tt>).</p><
 the command line, in which case you can specify these flags:</p></div>
 <div class="tableblock">
 <table rules="none"
-width="70%"
+width="80%"
 frame="border"
 cellspacing="0" cellpadding="4">
-<col width="28%" />
-<col width="71%" />
+<col width="22%" />
+<col width="22%" />
+<col width="55%" />
 <tbody>
 <tr>
 <td align="left" valign="top"><p class="table"><tt>-c &lt;file&gt;</tt></p></td>
+<td align="left" valign="top"><p class="table">config file</p></td>
 <td align="left" valign="top"><p class="table">specify alternate configuration file</p></td>
 </tr>
 <tr>
 <td align="left" valign="top"><p class="table"><tt>-t</tt></p></td>
-<td align="left" valign="top"><p class="table">test only- parse config file and exit (implies -F)</p></td>
+<td align="left" valign="top"><p class="table">test only</p></td>
+<td align="left" valign="top"><p class="table">parse config file and exit, implies -F</p></td>
 </tr>
 <tr>
 <td align="left" valign="top"><p class="table"><tt>-F</tt></p></td>
-<td align="left" valign="top"><p class="table">Foreground (stay in foreground instead of detaching)</p></td>
+<td align="left" valign="top"><p class="table">Foreground</p></td>
+<td align="left" valign="top"><p class="table">stay in foreground instead of detaching</p></td>
 </tr>
 <tr>
 <td align="left" valign="top"><p class="table"><tt>-v</tt></p></td>
-<td align="left" valign="top"><p class="table">verbose (use -vv to see token parsing)</p></td>
+<td align="left" valign="top"><p class="table">verbose</p></td>
+<td align="left" valign="top"><p class="table">extra logging. repeatable. -vv shows parsing</p></td>
 </tr>
 </tbody>
 </table>
@@ -970,6 +978,44 @@ about restarting jobs, or indicating if they are exiting for some reason.</p></d
 </div>
 </div>
 <div class="sect1">
+<h2 id="requirements">Job requirements</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>In pmtr the job is just some executable that you want to keep running. It must:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+stay in the foreground
+</p>
+</li>
+<li>
+<p>
+exit on SIGTERM or SIGKILL
+</p>
+</li>
+<li>
+<p>
+clean up any sub-processes when it exits
+</p>
+</li>
+</ul></div>
+<div class="paragraph"><div class="title">Restarts</div><p>Since pmtr is designed to keep things running, if a job exits, pmtr restarts it.</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+If a job exits quickly (within ten seconds of when it started) pmtr
+  waits ten seconds then restarts it. This avoids rapid restart cycles. The
+  job probably has some sort of configuration problem if it exits quickly.
+</p>
+</li>
+<li>
+<p>
+Exit status 33 can be returned from a process to tell pmtr not to restart it.
+</p>
+</li>
+</ul></div>
+</div>
+</div>
+<div class="sect1">
 <h2 id="_configuration_file">Configuration file</h2>
 <div class="sectionbody">
 <div class="paragraph"><p>The default pmtr configuration file is <tt>/etc/pmtr.conf</tt>.</p></div>
@@ -985,6 +1031,11 @@ Each job is in a curly-brace delimited block.
 <li>
 <p>
 The order of options inside does not matter.
+</p>
+</li>
+<li>
+<p>
+Only the <tt>name</tt> and <tt>cmd</tt> are required.
 </p>
 </li>
 <li>
@@ -1012,16 +1063,16 @@ Comments start with <tt>#</tt> and must be on their own line.
   job {
     name trends
     dir /home/trends
-    cmd /usr/bin/python trends.py "Hourly Trends"
-    err trends.err
+    cmd /usr/bin/python trends.py
     bounce every 1d
-    ulimit -n 30
-    env DEBUG=1
-    user pyuser
+    err trends.err
+    ulimit -n infinity
     depends {
       trends.conf
-      /etc/py.conf
+      db.conf
     }
+    user pyuser
+    env DEBUG=1
   }</tt></pre>
 </div></div>
 <div class="sect3">
@@ -1074,7 +1125,7 @@ cellspacing="0" cellpadding="4">
 </tr>
 <tr>
 <td align="left" valign="top"><p class="table"><tt>ulimit</tt></p></td>
-<td align="left" valign="top"><p class="table">an option and a numeric value, like <tt>-n 30</tt></p></td>
+<td align="left" valign="top"><p class="table">a flag and value, or a curly-brace delimited list of them</p></td>
 </tr>
 <tr>
 <td align="left" valign="top"><p class="table"><tt>bounce every</tt></p></td>
@@ -1091,13 +1142,8 @@ cellspacing="0" cellpadding="4">
 </tbody>
 </table>
 </div>
-<div class="paragraph"><p>Further details:</p></div>
-<div class="ulist"><ul>
-<li>
-<p>
-Only <tt>name</tt> and <tt>cmd</tt> are required.
-</p>
-</li>
+<div class="paragraph"><p>Further information about these options appears below.</p></div>
+<div class="ulist"><div class="title">cmd</div><ul>
 <li>
 <p>
 The executable named in the <tt>cmd</tt> must have its executable-bit set.
@@ -1115,11 +1161,25 @@ The <tt>cmd</tt> may contain double-quoted arguments e.g. <tt>cmd /bin/echo "hel
 </li>
 <li>
 <p>
-The <tt>cmd</tt> does no shell expansion: no wildcards, backticks, environment
-  variables, etc. To use shell features, wrap your executable with a script
-  or invoke the shell inline like <tt>cmd /bin/bash -c "/bin/server $DIR"</tt>.
+The <tt>cmd</tt> does no shell expansion: no wildcards, backticks, variables, etc.
 </p>
 </li>
+</ul></div>
+<div class="admonitionblock">
+<table><tr>
+<td class="icon">
+<div class="title">Tip</div>
+</td>
+<td class="content">If you need shell features in your command, wrap it with a shell script. You
+can even do this "inline" by passing your commands as a string to bash:</td>
+</tr></table>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre><tt>env DIR=/home/ws
+cmd /bin/bash -c "/bin/python ws.py -d $DIR/`date +%s`"</tt></pre>
+</div></div>
+<div class="ulist"><div class="title">env</div><ul>
 <li>
 <p>
 Use <tt>env</tt> to push an environment variable into a job, e.g. <tt>env TMPDIR=/tmp</tt>.
@@ -1130,11 +1190,21 @@ Use <tt>env</tt> to push an environment variable into a job, e.g. <tt>env TMPDIR
 Use <tt>env</tt> repeatedly to set multiple environment variables.
 </p>
 </li>
+</ul></div>
+<div class="ulist"><div class="title">disable</div><ul>
 <li>
 <p>
 Use <tt>disable</tt> to stop a job, without having to comment it out.
 </p>
 </li>
+<li>
+<p>
+This is often helpful in debugging a job since it makes it easy to
+  re-enable the job later (by commenting out the disable line, or removing it).
+</p>
+</li>
+</ul></div>
+<div class="ulist"><div class="title">out, err, in</div><ul>
 <li>
 <p>
 Use <tt>out</tt>, <tt>err</tt>, and <tt>in</tt> to attach stdout, stderr or stdin to a file.
@@ -1145,75 +1215,236 @@ Use <tt>out</tt>, <tt>err</tt>, and <tt>in</tt> to attach stdout, stderr or stdi
 The stdout, stderr and stdin default to <tt>/dev/null</tt>.
 </p>
 </li>
+</ul></div>
+<div class="ulist"><div class="title">user</div><ul>
 <li>
 <p>
-Use <tt>user</tt> to designate the unix user whose uid runs the job. Default: root.
+The <tt>user</tt> option is the unix username that should be the process owner.
 </p>
 </li>
 <li>
 <p>
-Use a <tt>depends</tt> block to specify files, one per line, that should cause
-  pmtr to restart the job if their content changes.
+The <tt>user</tt> defaults to root usually, when pmtr is running as a service.
 </p>
 </li>
+<li>
+<p>
+The <tt>user</tt> defaults to whoever started pmtr, if pmtr was run manually.
+</p>
+</li>
+</ul></div>
+<div class="ulist"><div class="title">depends</div><ul>
+<li>
+<p>
+Use a <tt>depends</tt> block to specify files, one per line, that the job depends on.
+</p>
+</li>
+<li>
+<p>
+If the content of any of the dependencies changes, pmtr restarts the job.
+</p>
+</li>
+</ul></div>
+<div class="ulist"><div class="title">bounce every</div><ul>
+<li>
+<p>
+The <tt>bounce every</tt> option restarts the job every so often.
+</p>
+</li>
+<li>
+<p>
+It&#8217;s intended for jobs that don&#8217;t behave well as long-running processes.
+</p>
+</li>
+<li>
+<p>
+It takes a number and unit, like <tt>5m</tt> to restart a job every five minutes.
+</p>
+</li>
+<li>
+<p>
+The units are <tt>smhd</tt>- (s)econds, (m)inutes, (h)ours or (d)ays.
+</p>
+</li>
+<li>
+<p>
+The interval should be more than 10 seconds.
+</p>
+</li>
+<li>
+<p>
+The exact timing of the restart is approximate.
+</p>
+</li>
+</ul></div>
+<div class="ulist"><div class="title">ulimit</div><ul>
 <li>
 <p>
 Use <tt>ulimit</tt> to modify the kernel-enforced resource limits for the job.
-  It takes a flag denoting which limit to set, and a value, e.g., <tt>ulimit -n
-  30</tt>. Only the <tt>-n</tt> flag (maximum file descriptors) has been implemented.
-  (Type <tt>ulimit -a</tt> in bash to list flags, also see <tt>setrlimit(2)</tt>).
 </p>
 </li>
 <li>
 <p>
-The <tt>bounce every</tt> option restarts the job every so often. It&#8217;s
-  intended for jobs that don&#8217;t behave well as long-running processes. It
-  takes a number and unit, like <tt>5m</tt> to restart a job every five minutes. The
-  units are <tt>smhd</tt>- (s)econds, (m)inutes, (h)ours or (d)ays. The interval
-  should be more than 10 seconds. The exact timing of the restart is approximate.
+It takes a flag denoting which limit to set, and a value, e.g., <tt>ulimit -n 30</tt>.
+</p>
+</li>
+<li>
+<p>
+Alternatively, you can list a series of ulimit settings in a curly brace block:
+</p>
+<div class="literalblock">
+<div class="content">
+<pre><tt>ulimit {
+  -n infinity
+  -l 10000
+}</tt></pre>
+</div></div>
+</li>
+<li>
+<p>
+The values are all numeric or the keyword <tt>infinity</tt>.
+</p>
+</li>
+<li>
+<p>
+To see the current kernel limits on a process, run <tt>cat /proc/&lt;pid&gt;/limits</tt>.
+</p>
+</li>
+<li>
+<p>
+pmtr sets both the "hard" and "soft" ulimit to the same value.
+</p>
+</li>
+<li>
+<p>
+If there is an error setting the ulimits, it&#8217;s logged to syslog.
+</p>
+</li>
+<li>
+<p>
+The meaning of the flags like <tt>-n</tt> are explained in the bash shell itself:
+</p>
+</li>
+<li>
+<p>
+In bash, type <tt>ulimit -a</tt> in bash to list flags, and the values in your shell;
+</p>
+</li>
+<li>
+<p>
+In bash, type <tt>help ulimit</tt> for more information about the ulimits;
+</p>
+</li>
+<li>
+<p>
+In bash, type <tt>man prlimit</tt> to see the more technical description and the units.
 </p>
 </li>
 </ul></div>
+<div class="tableblock">
+<table rules="none"
+width="50%"
+frame="border"
+cellspacing="0" cellpadding="4">
+<caption class="title">Table 1. ulimit options supported by pmtr</caption>
+<col width="16%" />
+<col width="83%" />
+<thead>
+<tr>
+<th align="left" valign="top">flag</th>
+<th align="left" valign="top"> resource name      </th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="left" valign="top"><p class="table"><tt></tt></p></td>
+<td align="left" valign="top"><p class="table"><tt>-c</tt></p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><tt>RLIMIT_CORE</tt></p></td>
+<td align="left" valign="top"><p class="table"><tt></tt></p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><tt>-d</tt></p></td>
+<td align="left" valign="top"><p class="table"><tt>RLIMIT_DATA</tt></p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><tt></tt></p></td>
+<td align="left" valign="top"><p class="table"><tt>-e</tt></p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><tt>RLIMIT_NICE</tt></p></td>
+<td align="left" valign="top"><p class="table"><tt></tt></p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><tt>-f</tt></p></td>
+<td align="left" valign="top"><p class="table"><tt>RLIMIT_FSIZE</tt></p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><tt></tt></p></td>
+<td align="left" valign="top"><p class="table"><tt>-i</tt></p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><tt>RLIMIT_SIGPENDING</tt></p></td>
+<td align="left" valign="top"><p class="table"><tt></tt></p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><tt>-l</tt></p></td>
+<td align="left" valign="top"><p class="table"><tt>RLIMIT_MEMLOCK</tt></p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><tt></tt></p></td>
+<td align="left" valign="top"><p class="table"><tt>-m</tt></p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><tt>RLIMIT_RSS</tt></p></td>
+<td align="left" valign="top"><p class="table"><tt></tt></p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><tt>-n</tt></p></td>
+<td align="left" valign="top"><p class="table"><tt>RLIMIT_NOFILE</tt></p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><tt></tt></p></td>
+<td align="left" valign="top"><p class="table"><tt>-q</tt></p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><tt>RLIMIT_MSGQUEUE</tt></p></td>
+<td align="left" valign="top"><p class="table"><tt></tt></p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><tt>-r</tt></p></td>
+<td align="left" valign="top"><p class="table"><tt>RLIMIT_RTPRIO</tt></p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><tt></tt></p></td>
+<td align="left" valign="top"><p class="table"><tt>-s</tt></p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><tt>RLIMIT_STACK</tt></p></td>
+<td align="left" valign="top"><p class="table"><tt></tt></p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><tt>-t</tt></p></td>
+<td align="left" valign="top"><p class="table"><tt>RLIMIT_CPU</tt></p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><tt></tt></p></td>
+<td align="left" valign="top"><p class="table"><tt>-u</tt></p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><tt>RLIMIT_NPROC</tt></p></td>
+<td align="left" valign="top"><p class="table"><tt></tt></p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><tt>-v</tt></p></td>
+<td align="left" valign="top"><p class="table"><tt>RLIMIT_AS</tt></p></td>
+</tr>
+</tbody>
+</table>
 </div>
+<div class="paragraph"><p>You can use either the flag, or the resource name, in pmtr.conf.</p></div>
 </div>
-<div class="sect2">
-<h3 id="requirements">Job requirements</h3>
-<div class="paragraph"><p>In pmtr the job is just some executable that you want to keep running. It must:</p></div>
-<div class="ulist"><ul>
-<li>
-<p>
-stay in the foreground
-</p>
-</li>
-<li>
-<p>
-exit on SIGTERM or SIGKILL
-</p>
-</li>
-<li>
-<p>
-clean up any sub-processes when it exits
-</p>
-</li>
-</ul></div>
-</div>
-<div class="sect2">
-<h3 id="_job_restarts">Job restarts</h3>
-<div class="paragraph"><p>Since pmtr is designed to keep things running, if a job exits, pmtr restarts it.</p></div>
-<div class="ulist"><ul>
-<li>
-<p>
-If a job exits quickly (within ten seconds of when it started) pmtr
-  waits ten seconds then restarts it. This avoids rapid restart cycles. The
-  job probably has some sort of configuration problem if it exits quickly.
-</p>
-</li>
-<li>
-<p>
-Exit status 33 can be returned from a process to tell pmtr not to restart it.
-</p>
-</li>
-</ul></div>
 </div>
 <div class="sect2">
 <h3 id="_syntax_check">Syntax check</h3>
@@ -1373,7 +1604,7 @@ You can email me at <a href="mailto:tdh@tkhanson.net">tdh@tkhanson.net</a>. I ma
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2014-07-05 10:50:26 EDT
+Last updated 2014-07-05 14:40:25 EDT
 </div>
 </div>
 </body>
