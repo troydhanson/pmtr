@@ -1,7 +1,6 @@
 multicast-rptserver
 web based rptserver - jp
 job sould be absolute path if present
-ulimit -n etc
 
 MAYBE
 ======================================
@@ -13,3 +12,4 @@ x bounce every 5m
 x report to @eth2 
 x document more complex config file
 x depends {} for each job
+x ulimit -n etc
