@@ -878,26 +878,18 @@ or, git clone <a href="https://github.com/troydhanson/pmtr.git">https://github.c
 </p>
 </li>
 </ul></div>
-<div class="paragraph"><p>Pmtr is for Linux only. It&#8217;s been used on Ubuntu (10+), CentOS/RHEL (6+),
-Debian (6+), and Raspbian (6+).  To build and install:</p></div>
+<div class="paragraph"><p>To build and install:</p></div>
 <div class="literalblock">
 <div class="content">
 <pre><tt>cd pmtr
 make
 sudo make install</tt></pre>
 </div></div>
-<div class="paragraph"><p>Verify pmtr is running using <tt>service pmtr status</tt>.  If you need to, you can
-manually stop and start pmtr the usual way:</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><tt>service pmtr stop
-service pmtr start</tt></pre>
-</div></div>
 <div class="paragraph"><p>The result of installation is:</p></div>
 <div class="ulist"><ul>
 <li>
 <p>
-the executabe: <tt>/usr/bin/pmtr</tt>
+the executable: <tt>/usr/bin/pmtr</tt>
 </p>
 </li>
 <li>
@@ -911,6 +903,7 @@ an OS-specific initscript to run pmtr at boot
 </p>
 </li>
 </ul></div>
+<div class="paragraph"><p>It should already be running. Verify using <tt>service pmtr status</tt>.</p></div>
 </div>
 </div>
 <div class="sect1">
@@ -920,11 +913,11 @@ an OS-specific initscript to run pmtr at boot
 the command line, in which case you can specify these flags:</p></div>
 <div class="tableblock">
 <table rules="none"
-width="60%"
+width="70%"
 frame="border"
 cellspacing="0" cellpadding="4">
-<col width="16%" />
-<col width="83%" />
+<col width="28%" />
+<col width="71%" />
 <tbody>
 <tr>
 <td align="left" valign="top"><p class="table"><tt>-c &lt;file&gt;</tt></p></td>
@@ -953,9 +946,34 @@ cellspacing="0" cellpadding="4">
 <div class="paragraph"><p>The default pmtr configuration file is <tt>/etc/pmtr.conf</tt>.</p></div>
 <div class="sect2">
 <h3 id="_syntax">Syntax</h3>
-<div class="paragraph"><p>The configuration file contains any number of jobs. Each job is in a curly-brace
-delimited block.  Indentation is optional. Blank lines are ok.  Comments start
-with &8216;&#8217; and must be on their own line.</p></div>
+<div class="paragraph"><p>The configuration file contains any number of jobs.</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+Each job is in a curly-brace delimited block.
+</p>
+</li>
+<li>
+<p>
+The order of options inside does not matter.
+</p>
+</li>
+<li>
+<p>
+Indentation is optional.
+</p>
+</li>
+<li>
+<p>
+Blank lines are ok.
+</p>
+</li>
+<li>
+<p>
+Comments start with <tt>#</tt> and must be on their own line.
+</p>
+</li>
+</ul></div>
 <div class="listingblock">
 <div class="title">A job with many options</div>
 <div class="content">
@@ -970,13 +988,13 @@ with &8216;&#8217; and must be on their own line.</p></div>
     err trends.err
     bounce every 1d
     ulimit -n 30
+    env LIBS=/opt/libs
+    env DEBUG=1
+    user pyuser
     depends {
       trends.conf
       /etc/py.conf
     }
-    env LIBS=/opt/libs
-    env DEBUG=1
-    user pyuser
   }</tt></pre>
 </div></div>
 <div class="sect3">
@@ -1065,14 +1083,14 @@ The <tt>cmd</tt> may include trailing arguments e.g. <tt>cmd /bin/node server.js
 </li>
 <li>
 <p>
-The <tt>cmd</tt> may contain double-quoted arguments.
+The <tt>cmd</tt> may contain double-quoted arguments e.g. <tt>cmd /bin/echo "hello world"</tt>
 </p>
 </li>
 <li>
 <p>
 The <tt>cmd</tt> does no shell expansion: no wildcards, backticks, environment
-  variables, etc. To use such features, write a script to wrap your executable
-  or invoke the shell inline like <tt>cmd /bin/bash -c "/bin/node `date</tt> -f $DIR"`.
+  variables, etc. To use shell features, wrap your executable with a script
+  or invoke the shell inline like <tt>cmd /bin/bash -c "/bin/node my.js $DIR"</tt>.
 </p>
 </li>
 <li>
@@ -1102,7 +1120,7 @@ The stdout, stderr and stdin default to <tt>/dev/null</tt>.
 </li>
 <li>
 <p>
-Use <tt>user</tt> to specify the unix user to run the job as; defaults to root.
+The <tt>user</tt> option designates the unix username to run the job (default: root)
 </p>
 </li>
 <li>
@@ -1110,8 +1128,8 @@ Use <tt>user</tt> to specify the unix user to run the job as; defaults to root.
 Use <tt>ulimit</tt> to modify the kernel-enforced resource limits for the job.
   It takes a flag denoting which limit to set, and a value, e.g., <tt>ulimit -n
   30</tt>. Only the <tt>-n</tt> flag (maximum file descriptors) has been implemented. The
-  flag names are (planned to be) identical with those used by the <tt>bash</tt> shell-
-  type <tt>ulimit -a</tt> in bash to list them. Also see the <tt>setrlimit(2)</tt> man page.
+  flag names are planned to be identical with those used by the bash shell-
+  (type <tt>ulimit -a</tt> in bash to list them). Also see the <tt>setrlimit(2)</tt> man page.
 </p>
 </li>
 <li>
@@ -1161,13 +1179,12 @@ clean up any sub-processes when it exits
 <div class="content">
 <pre><tt>pmtr -tc /etc/pmtr.conf</tt></pre>
 </div></div>
-<div class="paragraph"><p>This displays any syntax errors. Otherwise, if syntax errors are encountered at
-runtime, when pmtr is running as a background service, pmtr logs them to syslog.</p></div>
+<div class="paragraph"><p>This displays any syntax errors. In normal operation when pmtr is in the
+background, it logs syntax errors via syslog- see <a href="#logging">logging</a>.</p></div>
 </div>
 <div class="sect2">
 <h3 id="_when_do_configuration_changes_take_effect">When do configuration changes take effect?</h3>
-<div class="paragraph"><p>When you edit and save <tt>pmtr.conf</tt>, the changes get applied immediately. There
-is no need to signal pmtr, because it already watches for config file changes.</p></div>
+<div class="paragraph"><p>When you edit and save <tt>pmtr.conf</tt>, the changes get applied immediately.</p></div>
 <div class="ulist"><ul>
 <li>
 <p>
@@ -1186,8 +1203,6 @@ A changed job is restarted with its new configuration.
 </li>
 </ul></div>
 <div class="paragraph"><p>To terminate a job, pmtr sends SIGTERM to it, then SIGKILL shortly afterward.</p></div>
-<div class="paragraph"><p>If you stop pmtr itself (for example, by running <tt>service pmtr stop</tt>), it
-terminates its jobs before exiting.</p></div>
 </div>
 <div class="sect2">
 <h3 id="_one_time_jobs">One-time jobs</h3>
@@ -1227,8 +1242,8 @@ specifies a UDP address and port that pmtr should listen on for datagrams of
 form <tt>enable abc</tt> or <tt>disable abc</tt>, where <em>abc</em> is a job name.  The address
 0.0.0.0 can be used as a shortcut to denote "any address" on this system. (A
 script in <tt>pmtr/utils/pmtr-ctl</tt> may be used to send the datagrams, for example
-<tt>pmtr-ctl -s 192.168.0.22 -p 10000 enable abc</tt>). The effect is temporary; when
-pmtr.conf is edited or pmtr is restarted, the pmtr.conf settings apply.</p></div>
+<tt>pmtr-ctl -s 192.168.0.22 -p 10000 enable abc</tt>). The effect is temporary, until
+pmtr.conf is edited or pmtr is restarted.conf settings apply.</p></div>
 </div>
 </div>
 </div>
@@ -1271,7 +1286,7 @@ Exit status 33 can be returned from a process to tell pmtr not to restart it.
 </div>
 </div>
 <div class="sect1">
-<h2 id="_logging">Logging</h2>
+<h2 id="logging">Logging</h2>
 <div class="sectionbody">
 <div class="paragraph"><p>Look in syslog (typically <tt>/var/log/messages</tt> or <tt>/var/log/syslog</tt>) to see
 pmtr log messages relating to configuration file changes and job activity.</p></div>
@@ -1320,7 +1335,7 @@ You can email me at <a href="mailto:tdh@tkhanson.net">tdh@tkhanson.net</a>. I ma
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2014-07-05 02:51:30 EDT
+Last updated 2014-07-05 08:51:45 EDT
 </div>
 </div>
 </body>
