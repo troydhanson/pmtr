@@ -30,7 +30,7 @@ void job_ini(job_t *job) {
   utarray_init(&job->cmdv, &ut_str_icd); 
   utarray_init(&job->envv, &ut_str_icd); 
   utarray_init(&job->depv, &ut_str_icd); 
-  utarray_init(&job->ulim, &uint64_icd); 
+  utarray_init(&job->rlim, &rlimit_icd); 
   job->respawn=1;
   job->uid=-1;
 }
@@ -39,7 +39,7 @@ void job_fin(job_t *job) {
   utarray_done(&job->cmdv); 
   utarray_done(&job->envv); 
   utarray_done(&job->depv); 
-  utarray_done(&job->ulim); 
+  utarray_done(&job->rlim); 
   if (job->dir) free(job->dir);
   if (job->out) free(job->out);
   if (job->err) free(job->err);
@@ -50,7 +50,7 @@ void job_cpy(job_t *dst, const job_t *src) {
   utarray_init(&dst->cmdv, &ut_str_icd); utarray_concat(&dst->cmdv, &src->cmdv);
   utarray_init(&dst->envv, &ut_str_icd); utarray_concat(&dst->envv, &src->envv);
   utarray_init(&dst->depv, &ut_str_icd); utarray_concat(&dst->depv, &src->depv);
-  utarray_init(&dst->ulim, &uint64_icd); utarray_concat(&dst->ulim, &src->ulim);
+  utarray_init(&dst->rlim, &rlimit_icd); utarray_concat(&dst->rlim, &src->rlim);
   dst->dir = src->dir ? strdup(src->dir) : NULL;
   dst->out = src->out ? strdup(src->out) : NULL;
   dst->err = src->err ? strdup(src->err) : NULL;
@@ -155,35 +155,24 @@ void set_user(parse_t *ps, char *user) {
   ps->job->uid = p->pw_uid;
 }
 
-#define adim(x) (sizeof(x)/sizeof(*x))
-struct { char *name;  unsigned id; } resources[] =  {
-              { "-c", RLIMIT_CORE },
-              { "-d", RLIMIT_DATA },
-              { "-e", RLIMIT_NICE },
-              { "-f", RLIMIT_FSIZE },
-              { "-i", RLIMIT_SIGPENDING },
-              { "-l", RLIMIT_MEMLOCK },
-              { "-m", RLIMIT_RSS },
-              { "-n", RLIMIT_NOFILE },
-              { "-q", RLIMIT_MSGQUEUE },
-              { "-r", RLIMIT_RTPRIO },
-              { "-s", RLIMIT_STACK },
-              { "-t", RLIMIT_CPU },
-              { "-u", RLIMIT_NPROC },
-              { "-v", RLIMIT_AS },
-};
-void set_ulimit(parse_t *ps, char *resource, char *value_a) { 
+void set_ulimit(parse_t *ps, char *rname, char *value_a) { 
+  rlim_t rval = (!strcmp(value_a,"infinity")) ? RLIM_INFINITY : atoi(value_a);
   int i;
-  for(i=0; i<adim(resources); i++) {
-    if (strcmp(resources[i].name, resource)) continue;
-    uint64_t rid = resources[i].id;
-    uint64_t val = atoi(value_a);
-    uint64_t rval = (rid << 32) | val;
-    utarray_push_back(&ps->job->ulim, &rval);
-    return;
+  for(i=0; i<adim(rlimit_labels); i++) {
+    if ( (!strcmp(rname, rlimit_labels[i].flag)) || // accept a flag like -m or 
+         (!strcmp(rname, rlimit_labels[i].name))) { // full name like RLIMIT_RSS
+      resource_rlimit_t rt;
+      rt.id = rlimit_labels[i].id;
+      rt.rlim.rlim_cur = rval;
+      rt.rlim.rlim_max = rval;
+      utarray_push_back(&ps->job->rlim, &rt);
+      return;
+    }
   }
+
+  utstring_printf(ps->em, "unknown ulimit resource %s", rname);
   ps->rc = -1;
-  utstring_printf(ps->em, "unsupported ulimit '%s'", resource);
+
 }
 
 void push_job(parse_t *ps) {
@@ -366,7 +355,6 @@ void do_jobs(pmtr_t *cfg) {
   time_t now, elapsed;
   int es, n, fo, fe, fi, rc=-1, sig, kr;
   char *pathname, *o, *e, *i, **argv, **env;
-  uint64_t *ulim;
 
   job_t *job = NULL;
   while ( (job = (job_t*)utarray_next(cfg->jobs,job))) {
@@ -441,12 +429,11 @@ void do_jobs(pmtr_t *cfg) {
     while ( (env=(char**)utarray_next(&job->envv,env))) putenv(*env);
 
     /* set ulimits */
-    ulim=NULL;
-    while ( (ulim=(uint64_t*)utarray_next(&job->ulim,ulim))) {
-      uint32_t id   = (uint32_t)((*ulim & 0xffffffff00000000) >> 32);
-      uint32_t val  = (uint32_t) (*ulim & 0x00000000ffffffff);
-      struct rlimit rlim = {.rlim_cur=val, .rlim_max=val};
-      if (setrlimit(id, &rlim))                             {rc=-6; goto fail;}
+    resource_rlimit_t *rt=NULL;
+    while ( (rt=(resource_rlimit_t*)utarray_next(&job->rlim,rt))) {
+      struct rlimit new_limit = {.rlim_cur=rt->rlim.rlim_cur,
+                                  .rlim_max=rt->rlim.rlim_max};
+      if (prlimit(0, rt->id, &new_limit, NULL))              {rc=-6; goto fail;}
     }
 
     /* restore/unblock default handlers so they're unblocked after exec */
@@ -472,7 +459,7 @@ void do_jobs(pmtr_t *cfg) {
     if (rc==-3) syslog(LOG_ERR,"can't open %s: %s", o, strerror(errno));
     if (rc==-4) syslog(LOG_ERR,"can't open %s: %s", e, strerror(errno));
     if (rc==-5) syslog(LOG_ERR,"can't dup: %s", strerror(errno));
-    if (rc==-6) syslog(LOG_ERR,"can't setrlimit %s", strerror(errno));
+    if (rc==-6) syslog(LOG_ERR,"can't setrlimit: %s", strerror(errno));
     if (rc==-7) syslog(LOG_ERR,"can't setuid %d: %s", job->uid,strerror(errno));
     if (rc==-8) syslog(LOG_ERR,"can't exec %s: %s", pathname, strerror(errno));
     exit(-1);  /* child exit */
@@ -572,14 +559,16 @@ int job_cmp(job_t *a, job_t *b) {
     bc = (char**)utarray_next(&b->envv,bc);
     if ((*ac && *bc) && ((rc=strcmp(*ac,*bc)) != 0)) return rc;
   }
-  /* compare ulim */
-  uint64_t *ar, *br;
-  alen = utarray_len(&a->ulim); blen = utarray_len(&b->ulim); 
+  /* compare rlim */
+  resource_rlimit_t *ar, *br;
+  alen = utarray_len(&a->rlim); blen = utarray_len(&b->rlim); 
   if (alen != blen) return alen-blen;
   ar=NULL; br=NULL;
-  while ( (ar=(uint64_t*)utarray_next(&a->ulim,ar))) {
-    br = (uint64_t*)utarray_next(&b->ulim,br);
-    if (*ar != *br) return -1;
+  while ( (ar=(resource_rlimit_t*)utarray_next(&a->rlim,ar))) {
+    br = (resource_rlimit_t*)utarray_next(&b->rlim,br);
+    if (ar->id != br->id) return -1;
+    if (ar->rlim.rlim_cur != br->rlim.rlim_cur) return -1;
+    if (ar->rlim.rlim_max != br->rlim.rlim_max) return -1;
   }
   /* compare depv and the hash of the dependencies */
   alen = utarray_len(&a->depv); blen = utarray_len(&b->depv); 

@@ -34,6 +34,7 @@ kv ::= USER STR(A).                   {set_user(ps,A);}
 kv ::= ORDER STR(A).                  {set_ord(ps,A);}
 kv ::= ENV STR(A).                    {set_env(ps,A);}
 kv ::= ULIMIT STR(A) STR(B).          {set_ulimit(ps,A,B);}
+kv ::= ULIMIT LCURLY pairs RCURLY.    
 kv ::= DISABLED.                      {set_dis(ps);  }
 kv ::= WAIT.                          {set_wait(ps); }
 kv ::= ONCE.                          {set_once(ps); }
@@ -48,3 +49,5 @@ arg(A) ::= STR(B).                    {A=B;}
 arg(A) ::= QUOTEDSTR(B).              {A=unquote(B);}
 paths ::= paths path(A).              {utarray_push_back(&ps->job->depv,&A);}
 paths ::= path(A).                    {utarray_push_back(&ps->job->depv,&A);}
+pairs ::= pairs STR(A) STR(B).        {set_ulimit(ps,A,B);}
+pairs ::= .

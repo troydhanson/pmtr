@@ -2,7 +2,7 @@
 #define _JOB_H_
 
 #include <sys/types.h>
-#include <inttypes.h>
+#include <sys/resource.h>
 #include <unistd.h>
 #include <time.h>
 #include <signal.h>
@@ -11,6 +11,8 @@
 #include "utstring.h"
 #include "utarray.h"
 
+#define adim(x) (sizeof(x)/sizeof(*x))
+
 /* exit status that a job can use to indicate it does not want to be respawned */
 #define PM_NO_RESTART 33
 
@@ -18,14 +20,42 @@
 static const int sigs[] = {SIGHUP,SIGCHLD,SIGTERM,SIGINT,SIGQUIT,
                            SIGALRM,SIGUSR1,SIGIO};
 
-static const UT_icd uint64_icd={.sz=sizeof(uint64_t)};
+#define S(x) #x, x
+static struct rlimit_label { 
+ char *flag;
+ char *name;  
+ int  id; 
+} rlimit_labels[] =  {
+              { "-c", S(RLIMIT_CORE)       },
+              { "-d", S(RLIMIT_DATA)       },
+              { "-e", S(RLIMIT_NICE)       },
+              { "-f", S(RLIMIT_FSIZE)      },
+              { "-i", S(RLIMIT_SIGPENDING) },
+              { "-l", S(RLIMIT_MEMLOCK)    },
+              { "-m", S(RLIMIT_RSS)        },
+              { "-n", S(RLIMIT_NOFILE)     },
+              { "-q", S(RLIMIT_MSGQUEUE)   },
+              { "-r", S(RLIMIT_RTPRIO)     },
+              { "-s", S(RLIMIT_STACK)      },
+              { "-t", S(RLIMIT_CPU)        },
+              { "-u", S(RLIMIT_NPROC)      },
+              { "-v", S(RLIMIT_AS)         },
+};
+
+/* wrap struct rlimit with our own struct to track which resource it applies to. */
+typedef struct {
+  int id;
+  struct rlimit rlim;  
+} resource_rlimit_t;
+
+static const UT_icd rlimit_icd={.sz=sizeof(resource_rlimit_t)};
 
 typedef struct {
   char *name;
   UT_array cmdv; // cmd and args
   UT_array envv; // environment variables
   UT_array depv; // monitored dependencies
-  UT_array ulim; // ulimits
+  UT_array rlim; // resource ulimits
   int deps_hash;
   char *dir;
   char *out;
@@ -81,7 +111,6 @@ void set_wait(parse_t *ps);
 void set_once(parse_t *ps);
 void set_cmd(parse_t *ps, char *s);
 char *fpath(job_t *job, char *file);
-
 
 
 #endif /* _JOB_H_ */

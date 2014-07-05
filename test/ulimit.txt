@@ -1,6 +1,10 @@
 job {
   name ulimited
-  ulimit -n 98
+  ulimit {
+    -n 97
+    -u infinity
+    RLIMIT_MEMLOCK infinity
+  }
   # print the ulimits it acquired
   cmd /bin/bash -c "ulimit -a; sleep 200"
   out /tmp/ulimits.out
