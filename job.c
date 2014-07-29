@@ -433,7 +433,7 @@ void do_jobs(pmtr_t *cfg) {
     while ( (rt=(resource_rlimit_t*)utarray_next(&job->rlim,rt))) {
       struct rlimit new_limit = {.rlim_cur=rt->rlim.rlim_cur,
                                   .rlim_max=rt->rlim.rlim_max};
-      if (prlimit(0, rt->id, &new_limit, NULL))              {rc=-6; goto fail;}
+      if (setrlimit(rt->id, &new_limit))              {rc=-6; goto fail;}
     }
 
     /* restore/unblock default handlers so they're unblocked after exec */
