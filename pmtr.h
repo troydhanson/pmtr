@@ -11,6 +11,7 @@
 
 typedef struct {
   char *file;
+  char *pidfile;
   int verbose;
   int foreground;
   int test_only;

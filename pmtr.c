@@ -10,6 +10,7 @@
 #include <sys/wait.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <fcntl.h>
 #include <sys/prctl.h>
 #include <sys/inotify.h>
 #include <assert.h>
@@ -30,8 +31,9 @@ pmtr_t cfg = {
 
 void usage(char *prog) {
   fprintf(stderr, "%s version %s\n\n", prog, PMTR_VERSION);
-  fprintf(stderr, "usage: %s [-v] [-F] [-c cfg] [-t]\n", prog);
+  fprintf(stderr, "usage: %s [-v] [-p <file>] [-F] [-c cfg] [-t]\n", prog);
   fprintf(stderr, "  -v verbose\n");
+  fprintf(stderr, "  -p <pidfile> make pidfile\n");
   fprintf(stderr, "  -F foreground\n");
   fprintf(stderr, "  -c <cfg> specify configuration file\n");
   fprintf(stderr, "  -t test only; parse config file only (implies -F)\n");
@@ -139,6 +141,37 @@ void rescan_config(void) {
   utstring_free(em);
 }
 
+int make_pidfile() {
+  size_t pid_strlen;
+  char pid_str[20];
+  int fd,rc=-1;
+  pid_t pid;
+
+  if (!cfg.pidfile) return 0;
+
+  fd = open(cfg.pidfile, O_WRONLY|O_TRUNC|O_CREAT, 0644);
+  if (fd == -1) {
+   fprintf(stderr,"can't open %s: %s\n",cfg.pidfile, strerror(errno));
+   goto done;
+  }
+
+  pid = getpid();
+  snprintf(pid_str,sizeof(pid_str),"%u\n",(unsigned)pid);
+  pid_strlen = strlen(pid_str);
+  if (write(fd,pid_str,pid_strlen) != pid_strlen) {
+   fprintf(stderr,"can't write to %s: %s\n",cfg.pidfile, strerror(errno));
+   close(fd);
+   unlink(cfg.pidfile);
+   goto done;
+  }
+
+  close(fd);
+  rc = 0;
+
+ done:
+  return rc;
+}
+
 static struct timespec half = {.tv_sec = 0, .tv_nsec=500000000}; /* half-sec */
 
 int main (int argc, char *argv[]) {
@@ -149,9 +182,10 @@ int main (int argc, char *argv[]) {
   utstring_new(em);
   utstring_new(sm);
 
-  while ( (opt = getopt(argc, argv, "v+Fc:s:th")) != -1) {
+  while ( (opt = getopt(argc, argv, "v+p:Fc:s:th")) != -1) {
     switch (opt) {
       case 'v': cfg.verbose++; break;
+      case 'p': cfg.pidfile=strdup(optarg); break;
       case 'F': cfg.foreground=1; break;
       case 'c': cfg.file=strdup(optarg); break;
       case 't': cfg.test_only=1; cfg.foreground=1; break;
@@ -168,17 +202,19 @@ int main (int argc, char *argv[]) {
     close(STDOUT_FILENO);
     close(STDERR_FILENO);
   }
-  umask(0);
+
+  /* block all signals. we remain fully blocked except in sigsuspend */
+  sigset_t all;
+  sigfillset(&all);
+  sigprocmask(SIG_SETMASK,&all,NULL);
 
   utarray_new(cfg.jobs, &job_mm);
   utarray_new(cfg.listen, &ut_int_icd);
   utarray_new(cfg.report, &ut_int_icd);
   utstring_new(cfg.s);
 
-  /* block all signals. we remain fully blocked except in sigsuspend */
-  sigset_t all;
-  sigfillset(&all);
-  sigprocmask(SIG_SETMASK,&all,NULL);
+  if (make_pidfile()) goto final;
+  umask(0);
 
   /* parse config file. we blocked signals above because we can get SIGIO 
    * during parsing if we open UDP listeners and get any datagrams */
@@ -258,5 +294,6 @@ int main (int argc, char *argv[]) {
   utstring_free(cfg.s);
   utstring_free(em);
   utstring_free(sm);
+  if (cfg.pidfile) {unlink(cfg.pidfile); free(cfg.pidfile);}
   return 0;
 }
