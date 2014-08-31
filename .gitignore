@@ -1,0 +1,7 @@
+*.o
+*.swp
+/cfg.c
+/cfg.h
+/cfg.out
+/lemon/lemon
+/pmtr
