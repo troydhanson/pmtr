@@ -21,6 +21,7 @@ typedef struct {
   /* the next two fields are for the UDP control and reporting features */
   UT_array *listen; /* file descriptors listening on */
   UT_array *report; /* file descriptors reporting to */
+  char report_id[100]; /* our identity in report */
   UT_string *s;     /* scratch space */
 
 } pmtr_t;

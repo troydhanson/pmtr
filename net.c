@@ -131,6 +131,8 @@ void set_report(parse_t *ps, char *dest) {
   flags |= FD_CLOEXEC;
   if (fcntl(fd, F_SETFD, flags) == -1) {rc = -3; goto done;}
 
+  gethostname(ps->cfg->report_id, sizeof(ps->cfg->report_id));
+
   /* use a specific NIC if one was specified, supported here for multicast */
   if (iface) {
     int l = strlen(iface);
@@ -149,6 +151,8 @@ void set_report(parse_t *ps, char *dest) {
     if (ioctl(fd, SIOCGIFADDR, &ifr)) {utstring_printf(ps->em,"ioctl: %s\n", strerror(errno)); goto done;} 
     iface_addr = (((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr);
     // utstring_printf(ps->em,"iface %s has addr %s\n", iface, inet_ntoa(iface_addr));
+    strcat(ps->cfg->report_id, " ");
+    strcat(ps->cfg->report_id, inet_ntoa(iface_addr));
 
     /* ask kernel to use its IP address for outgoing multicast */
     if (setsockopt(fd, IPPROTO_IP, IP_MULTICAST_IF, &iface_addr, sizeof(iface_addr))) {
@@ -262,7 +266,7 @@ void report_status(pmtr_t *cfg) {
 
   /* construct msg */
   utstring_clear(cfg->s);
-  utstring_printf(cfg->s, "report\n");
+  utstring_printf(cfg->s, "report %s\n", cfg->report_id);
   job_t *j = NULL;
   while ( (j=(job_t*)utarray_next(cfg->jobs,j))) {
     if (j->respawn == 0) continue; /* don't advertise one-time jobs */
