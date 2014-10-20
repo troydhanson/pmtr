@@ -270,8 +270,8 @@ void report_status(pmtr_t *cfg) {
   job_t *j = NULL;
   while ( (j=(job_t*)utarray_next(cfg->jobs,j))) {
     if (j->respawn == 0) continue; /* don't advertise one-time jobs */
-    utstring_printf(cfg->s, "%s %c %u\n", j->name, j->disabled?'d':'e', 
-                    (unsigned)(now - j->start_ts));
+    utstring_printf(cfg->s, "%s %c %u %jd %s\n", j->name, j->disabled?'d':'e', 
+                    (unsigned)(now - j->start_ts), (intmax_t)j->pid, *((char**)utarray_front(&j->cmdv)));
   }
 
   /* send to all dests */
