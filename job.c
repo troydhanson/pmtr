@@ -155,8 +155,10 @@ void set_user(parse_t *ps, char *user) {
   ps->job->uid = p->pw_uid;
 }
 
-void set_ulimit(parse_t *ps, char *rname, char *value_a) { 
-  rlim_t rval = (!strcmp(value_a,"infinity")) ? RLIM_INFINITY : atoi(value_a);
+#define unlimited(a) ((!strcmp(a,"infinity")) ||  \
+                      (!strcmp(a,"unlimited")) )
+void set_ulimit(parse_t *ps, char *rname, char *value_a) {
+  rlim_t rval = (unlimited(value_a)) ? RLIM_INFINITY : atoi(value_a);
   int i;
   for(i=0; i<adim(rlimit_labels); i++) {
     if ( (!strcmp(rname, rlimit_labels[i].flag)) || // accept a flag like -m or 
