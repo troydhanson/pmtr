@@ -221,7 +221,7 @@ char *fpath(job_t *job, char *file) {
 int slurp(char *file, char **text, size_t *len) {
   struct stat s;
   char *buf;
-  int fd = -1, rc=-1;
+  int fd = -1, rc=-1, nr;
   *text=NULL; *len = 0;
 
   if (stat(file, &s) == -1) {
@@ -235,14 +235,19 @@ int slurp(char *file, char **text, size_t *len) {
     goto done;
   }
   if ( (*text = malloc(*len)) == NULL) goto done;
-  if (read(fd, *text, *len) != *len) {
-   syslog(LOG_ERR,"incomplete read");
+  if ( (nr=read(fd, *text, *len)) != *len) {
+   if (nr == -1) {
+     syslog(LOG_CRIT,"read %s failed: %s", file, strerror(errno));
+   } else {
+     syslog(LOG_CRIT,"read %s failed: incomplete (%u/%u)", file, 
+        nr, (unsigned)*len);
+   }
    goto done;
   }
   rc = 0;
 
  done:
-  if ((rc < 0) && *text) free(*text);
+  if ((rc < 0) && *text) { free(*text); *text=NULL; }
   if (fd != -1) close(fd);
   return rc;
 }
