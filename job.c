@@ -155,10 +155,22 @@ void set_user(parse_t *ps, char *user) {
   ps->job->uid = p->pw_uid;
 }
 
-#define unlimited(a) ((!strcmp(a,"infinity")) ||  \
-                      (!strcmp(a,"unlimited")) )
+#define unlimited(a) 
 void set_ulimit(parse_t *ps, char *rname, char *value_a) {
-  rlim_t rval = (unlimited(value_a)) ? RLIM_INFINITY : atoi(value_a);
+  rlim_t rval;
+  int v;
+
+  /* parse the numeric value of the rlimit */
+  if ((!strcmp(value_a,"infinity")) || (!strcmp(value_a,"unlimited")))
+    rval = RLIM_INFINITY;
+  else if (sscanf(value_a, "%u", &v) == 1) {
+    rval = v;
+  } else {
+    utstring_printf(ps->em, "non-numeric ulimit value");
+    ps->rc = -1;
+    return;
+  }
+
   int i;
   for(i=0; i<adim(rlimit_labels); i++) {
     if ( (!strcmp(rname, rlimit_labels[i].flag)) || // accept a flag like -m or 
@@ -167,6 +179,12 @@ void set_ulimit(parse_t *ps, char *rname, char *value_a) {
       rt.id = rlimit_labels[i].id;
       rt.rlim.rlim_cur = rval;
       rt.rlim.rlim_max = rval;
+      /* prevent "ulimit -n infinity", POSIX allows, but it doesn't work */
+      if ((rt.id == RLIMIT_NOFILE) && (rval == RLIM_INFINITY)) {
+        utstring_printf(ps->em, "ulimit -n must be finite");
+        ps->rc = -1;
+        return;
+      }
       utarray_push_back(&ps->job->rlim, &rt);
       return;
     }
@@ -439,7 +457,7 @@ void do_jobs(pmtr_t *cfg) {
     resource_rlimit_t *rt=NULL;
     while ( (rt=(resource_rlimit_t*)utarray_next(&job->rlim,rt))) {
       struct rlimit new_limit = {.rlim_cur=rt->rlim.rlim_cur,
-                                  .rlim_max=rt->rlim.rlim_max};
+                                 .rlim_max=rt->rlim.rlim_max};
       if (setrlimit(rt->id, &new_limit))              {rc=-6; goto fail;}
     }
 
