@@ -386,7 +386,9 @@ void do_jobs(pmtr_t *cfg) {
     if (job->bounce_interval && job->pid) { 
       now = time(NULL);
       elapsed = now - job->start_ts;
-      if (elapsed >= job->bounce_interval) job->terminate=1; 
+      if (elapsed >= job->bounce_interval) {
+        if (job->terminate==0) job->terminate=1;
+      }
     }
     if (job->terminate) {signal_job(job); continue;}
     if (job->disabled) continue;
