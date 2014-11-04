@@ -22,6 +22,7 @@
 #include "net.h"
 
 
+static struct timespec half = {.tv_sec = 0, .tv_nsec=500000000}; /* half-sec */
 sigjmp_buf jmp;
 
 pmtr_t cfg = {
@@ -48,7 +49,7 @@ void sighandler(int signo) {
 pid_t dep_monitor(char *file) {
   size_t eblen = sizeof(struct inotify_event)+PATH_MAX;
   char *eb;
-  int rc,fd,wd, events = IN_MODIFY;
+  int rc,fd,wd, events = IN_CLOSE_WRITE;
   pid_t dm_pid = fork();
   if (dm_pid > 0) return dm_pid;
   if ((dm_pid == (pid_t)-1)                              ||
@@ -65,7 +66,7 @@ pid_t dep_monitor(char *file) {
     if (job->disabled) continue;
     char **dep=NULL;
     while ( (dep=(char**)utarray_next(&job->depv,dep))) {
-      if (inotify_add_watch(fd, fpath(job,*dep), IN_MODIFY) == -1) {
+      if (inotify_add_watch(fd, fpath(job,*dep), IN_CLOSE_WRITE) == -1) {
         // proceed despite error, pmtr disables job if dep missing
         syslog(LOG_ERR,"can't watch %s: %s", *dep, strerror(errno));
       }
@@ -81,7 +82,8 @@ pid_t dep_monitor(char *file) {
   sigprocmask(SIG_UNBLOCK,&hup,NULL);
 
   eb = malloc(eblen);
-  rc = read(fd,eb,eblen);
+  rc = read(fd,eb,eblen);/* block for file update */
+  nanosleep(&half,NULL); /* a little time to let files settle */
   kill(getppid(), SIGHUP);
   free(eb);
   exit(0);
@@ -171,8 +173,6 @@ int make_pidfile() {
  done:
   return rc;
 }
-
-static struct timespec half = {.tv_sec = 0, .tv_nsec=500000000}; /* half-sec */
 
 int main (int argc, char *argv[]) {
   int n, opt;
