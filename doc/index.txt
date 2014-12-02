@@ -387,8 +387,6 @@ GitHub
 Author
 ~~~~~~
 * The http://troydhanson.github.io/[author's GitHub page] lists my other software.
-* My http://tkhanson.net/blog[blog], and twitter https://twitter.com/troydhanson[@troydhanson].
-* You can email me at tdh@tkhanson.net. I may not be able to reply- sorry!
 
 License
 ~~~~~~~
