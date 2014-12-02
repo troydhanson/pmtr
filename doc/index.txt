@@ -3,8 +3,6 @@ pmtr: process monitor
 Troy D. Hanson <tdh@tkhanson.net>
 v1.7 July 2014
 
-include::twitter.txt[]
-
 Back to the https://github.com/troydhanson/pmtr[pmtr Github page].
 
 pmtr::
