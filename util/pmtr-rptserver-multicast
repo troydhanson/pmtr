@@ -1,0 +1,111 @@
+#!/usr/bin/perl
+use strict;
+use warnings;
+use IO::Socket::Multicast;
+use Getopt::Long;
+use Socket;
+
+################################################################################
+# This script can be used to monitor many pmtr instances across machines. 
+# Each pmtr must be configured to "report to udp://<host>:<port>" in pmtr.conf,
+# where the host and port are where this script is running.
+#
+# When this script is invoked with a filename as a final argument, it keeps that
+# file updated on an ongoing basis with job status for all pmtr instances.
+################################################################################
+
+sub usage {
+  print "usage: $0 [-v] [-a <addr>] -p <port> -f <file>\n";
+  exit(-1);
+}
+
+our $addr = "239.0.0.1";
+our $port;
+our $verbose;
+our $help;
+our $msg;
+our $file = "/tmp/pmtr-status";
+our $max=2000;
+our $last=0;
+our %jobs;
+our %expire;
+usage unless GetOptions("port=i"           => \$port,
+			"addr=s"	   => \$addr,
+                        "verbose+"         => \$verbose,
+                        "file=s"           => \$file,
+                        "help"             => \$help);
+usage if $help;
+usage unless $port;
+$file = shift @ARGV if @ARGV;
+open FILE, ">$file" or die "can't open $file: $!";
+close FILE;
+
+my $server = IO::Socket::Multicast->new(LocalPort => $port, Proto => "udp")
+    or die "Couldn't listen on udp port $port : $@\n";
+$server->mcast_add($addr);
+
+sub sec_to_dhms {
+  my $sec = shift;
+  $sec = 0 if $sec<0;
+
+  my ($d,$h,$m) = (24*60*60, 60*60, 60);
+
+  my $days = int ($sec / $d); $sec = $sec % $d;
+  my $hour = int ($sec / $h); $sec = $sec % $h;
+  my $min  = int ($sec / $m); $sec = $sec % $m;
+
+  $days = ($days > 0) ? "${days}d " : "";
+  $hour = ($hour > 0) ? "${hour}h " : "";
+  $min  = ($min  > 0) ? "${min}m "  : "";
+  $sec  = "${sec}s";
+  return $days.$hour.$min.$sec;
+}
+
+sub update_file() {
+  my $now = time;
+  $last = $now;
+  open FILE, ">$file" or die "can't open $file: $!";
+  print FILE "update at ".scalar localtime . "\n";
+  print FILE scalar(keys %jobs) . " systems reporting\n\n";
+  for my $host (sort keys %jobs) {
+    if ($expire{$host} < $now) { # purge record if too old
+      delete $jobs{$host};
+      delete $expire{$host};
+      next;
+    }
+    my $name = gethostbyaddr(inet_aton($host), AF_INET);
+    $name = $host unless $name;
+    print FILE "$name:\n";
+    for my $job (@{$jobs{$host}}) {
+      my ($name,$enabled,$elapsed) = @$job;
+      my $e = ($enabled eq 'e') ? 'enabled' : 'disabled';
+      my $howlong = ($enabled eq 'e') ? sec_to_dhms($elapsed) : "-";
+      printf FILE ("\t%-40s %-10s %20s\n",$name,$e,$howlong);
+    }
+  }
+  close FILE;
+}
+
+# the UDP messages sent by pmtr look like:
+#
+# report 
+# echo-test-alt e 1349317996
+# echo-test e 1349318036
+#
+
+
+while ($server->recv($msg, $max)) {
+  my $peer = $server->peerhost();
+  print STDERR "datagram from $peer:\n$msg\n" if $verbose;
+  if ($msg =~ m/report/) {
+    delete $jobs{$peer};
+    my @lines = split /\n/, $msg;
+    shift @lines;
+    for my $line (@lines) {
+      my ($job,$enabled,$elapsed) = split /\s/, $line;
+      push @{$jobs{$peer}}, [$job,$enabled,$elapsed];
+      $expire{$peer} = time + 60; # delete it in a minute if no update
+    }
+  } 
+  update_file if ((time - $last) >= 10); # 10 seconds min between file re-writes
+}
