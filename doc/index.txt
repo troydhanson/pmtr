@@ -11,68 +11,119 @@ pmtr::
 
 pmtr: process monitor
 ---------------------
-Pmtr is a supervisor daemon that starts your programs and then babysits them.
-Most "standard" system services (httpd, sshd, etc) have initscripts, which are
-the typical way to run daemons on Linux. For programs you wrote yourself, or
-your local application servers that don't have initscripts, you might find
-pmtr easier to use or its features beneficial. Your jobs go in pmtr.conf:
+Pmtr is a supervisor that starts your programs at boot and keeps them running.
+You put the scripts and servers that constitute your application in pmtr.conf.
 
 .Example `/etc/pmtr.conf`
 --------------------------------------------------------
 
   job {
-    name rest_server
-    cmd /usr/bin/python rest.py
+    name persistent-ssh-tunnel
+    user joe
+    dir /home/joe
+    cmd /usr/bin/ssh -i .ssh/id_rsa -T -N -L localhost:5901:localhost:5901 192.168.11.1
   }
 
-  # set working directory, keep errors
-  job {
-    name ws-server
-    dir /home/maps
-    cmd /usr/bin/node maps.js
-    err /tmp/maps.err
-  }
-
-  # restart if dependencies change
-  job {
-    name proxy
-    cmd /usr/bin/proxy -c /etc/proxy.cfg
-    depends {
-      /etc/proxy.cfg
-    }
-  }
-  
-  # bounce this job every hour, raise ulimits
-  job {
-    name thermostat
-    dir /home/thermo
-    cmd /usr/bin/python therm.py
-    bounce every 1h
-    ulimit {
-      -n infinity
-      -l infinity
-    }
-    user nobody
-  }
+  # more jobs here...
 
 --------------------------------------------------------
 
-See the <<options,full options>> below, and the <<requirements,requirements>>
-for pmtr jobs. Pmtr applies changes immediately when the config file is edited.
 The pmtr daemon itself is small, written in C, open-source and for Linux only.
 It runs on Ubuntu, Debian, RHEL/CentOS, in Docker containers, and others.
+Jobs that run under pmtr must meet some <<requirements,requirements>>.
 
-.Why did I write it?
-**************************************************************************
-I wrote pmtr because I wanted one simple configuration file where I could
-list all my programs, knowing that they'd be run at boot, get restarted if 
-they exit, and they'd react immediately to configuration files changes.
-**************************************************************************
+These options may appear in a job definition.
 
-.Does it work?
-The author has used pmtr for several years in production on hundreds of systems
-having dozens of jobs each.  If you find a bug or have a new feature to suggest-
-please use the https://github.com/troydhanson/pmtr[pmtr Github page].
+[[options]]
+[width="90%",cols="20m,50",grid="none",options="header"]
+|===============================================================================
+|option         | argument
+|name           | descriptive job name used for logging - must be unique
+|cmd            | executable (fully-qualified) and any arguments 
+|dir            | working directory (fully qualified) to run the process in
+|out            | send stdout to this file
+|err            | send stderr to this file
+|in             | hook stdin to this file
+|env            | environment variable setting `VAR=VALUE` (repeatable)
+|user           | unix username under whose id to run the process 
+|ulimit         | a flag and value, or a curly-brace delimited list of them
+|bounce every   | a time interval like 5m (five minutes) - units are `smhd`
+|depends        | a curly-brace delimited list of files, one per line
+|disable        | this keyword disables the job 
+|===============================================================================
+
+More details on each option follows.
+
+cmd
+~~~
+* The executable named in the `cmd` must have its executable-bit set. 
+* The `cmd` may include trailing arguments e.g. `cmd /bin/node server.js`.  
+* The `cmd` may contain double-quoted arguments e.g. `cmd /bin/echo "hello world"`
+* The `cmd` does no shell expansion: no wildcards, backticks, variables, etc. 
+
+[TIP]
+If you need shell features in your command, wrap it with a shell script. You
+can even do this "inline" by passing your commands as a string to bash:
+
+  env DIR=/home/ws
+  cmd /bin/bash -c "/bin/python ws.py -d $DIR/`date +%s`"
+
+env
+~~~
+* Use `env` to push an environment variable into a job, e.g. `env TMPDIR=/tmp`.
+* Use `env` repeatedly to set multiple environment variables.
+
+disable
+~~~~~~~
+* Use `disable` to stop a job, without having to comment it out.
+* This is often helpful in debugging a job since it makes it easy to 
+  re-enable the job later (by commenting out the disable line, or removing it).
+
+out, err, in
+~~~~~~~~~~~~
+* Use `out`, `err`, and `in` to attach stdout, stderr or stdin to a file.
+* The stdout, stderr and stdin default to `/dev/null`.
+
+user
+~~~~
+* The `user` option is the unix username that should be the process owner.
+* The `user` defaults to root usually, when pmtr is running as a service.
+* The `user` defaults to whoever started pmtr, if pmtr was run manually.
+
+depends
+~~~~~~~
+* Use a `depends` block to specify files, one per line, that the job depends on.
+* If the content of any of the dependencies changes, pmtr restarts the job.
+
+bounce every
+~~~~~~~~~~~~
+* The `bounce every` option restarts the job every so often. 
+* It's intended for jobs that don't behave well as long-running processes. 
+* It takes a number and unit, like `5m` to restart a job every five minutes. 
+* The units are `smhd`- (s)econds, (m)inutes, (h)ours or (d)ays. 
+* The interval should be more than 10 seconds. 
+* The exact timing of the restart is approximate.
+
+ulimit
+~~~~~~
+* Use `ulimit` to modify the kernel-enforced resource limits for the job.
+* It takes a flag denoting which limit to set, and a value, e.g., `ulimit -n 30`.  
+* Alternatively, you can list a series of ulimit settings in a curly brace block:
+
+  ulimit {
+    -n infinity
+    -l 10000
+  }
+
+* The values are all numeric or the keyword `infinity`.
+* To see the current kernel limits on a process, run `cat /proc/<pid>/limits`.
+* pmtr sets both the "hard" and "soft" ulimit to the same value.
+* If there is an error setting the ulimits, it's logged to syslog.
+* The meaning of the flags like `-n` are explained in the bash shell itself:
+* In bash, type `ulimit -a` in bash to list flags, and the values in your shell;
+* In bash, type `help ulimit` for more information about the ulimits;
+* In bash, type `man prlimit` to see the more technical description and the units.
+
 
 Download & Install
 ------------------
@@ -209,96 +260,6 @@ The configuration file contains any number of jobs.
   }
 ---------------------------------------------------
 
-[[options]]
-[width="90%",cols="20m,50",grid="none",options="header"]
-|===============================================================================
-|option         | argument
-|name           | descriptive job name used for logging - must be unique
-|cmd            | executable (fully-qualified) and any arguments 
-|dir            | working directory (fully qualified) to run the process in
-|out            | send stdout to this file
-|err            | send stderr to this file
-|in             | hook stdin to this file
-|env            | environment variable setting `VAR=VALUE` (repeatable)
-|user           | unix username under whose id to run the process 
-|ulimit         | a flag and value, or a curly-brace delimited list of them
-|bounce every   | a time interval like 5m (five minutes) - units are `smhd`
-|depends        | a curly-brace delimited list of files, one per line
-|disable        | this keyword disables the job 
-|===============================================================================
-
-Further information about these options appears below.
-
-cmd
-~~~
-* The executable named in the `cmd` must have its executable-bit set. 
-* The `cmd` may include trailing arguments e.g. `cmd /bin/node server.js`.  
-* The `cmd` may contain double-quoted arguments e.g. `cmd /bin/echo "hello world"`
-* The `cmd` does no shell expansion: no wildcards, backticks, variables, etc. 
-
-[TIP]
-If you need shell features in your command, wrap it with a shell script. You
-can even do this "inline" by passing your commands as a string to bash:
-
-  env DIR=/home/ws
-  cmd /bin/bash -c "/bin/python ws.py -d $DIR/`date +%s`"
-
-env
-~~~
-* Use `env` to push an environment variable into a job, e.g. `env TMPDIR=/tmp`.
-* Use `env` repeatedly to set multiple environment variables.
-
-disable
-~~~~~~~
-* Use `disable` to stop a job, without having to comment it out.
-* This is often helpful in debugging a job since it makes it easy to 
-  re-enable the job later (by commenting out the disable line, or removing it).
-
-out, err, in
-~~~~~~~~~~~~
-* Use `out`, `err`, and `in` to attach stdout, stderr or stdin to a file.
-* The stdout, stderr and stdin default to `/dev/null`.
-
-user
-~~~~
-* The `user` option is the unix username that should be the process owner.
-* The `user` defaults to root usually, when pmtr is running as a service.
-* The `user` defaults to whoever started pmtr, if pmtr was run manually.
-
-depends
-~~~~~~~
-* Use a `depends` block to specify files, one per line, that the job depends on.
-* If the content of any of the dependencies changes, pmtr restarts the job.
-
-bounce every
-~~~~~~~~~~~~
-* The `bounce every` option restarts the job every so often. 
-* It's intended for jobs that don't behave well as long-running processes. 
-* It takes a number and unit, like `5m` to restart a job every five minutes. 
-* The units are `smhd`- (s)econds, (m)inutes, (h)ours or (d)ays. 
-* The interval should be more than 10 seconds. 
-* The exact timing of the restart is approximate.
-
-ulimit
-~~~~~~
-* Use `ulimit` to modify the kernel-enforced resource limits for the job.
-* It takes a flag denoting which limit to set, and a value, e.g., `ulimit -n 30`.  
-* Alternatively, you can list a series of ulimit settings in a curly brace block:
-
-  ulimit {
-    -n infinity
-    -l 10000
-  }
-
-* The values are all numeric or the keyword `infinity`.
-* To see the current kernel limits on a process, run `cat /proc/<pid>/limits`.
-* pmtr sets both the "hard" and "soft" ulimit to the same value.
-* If there is an error setting the ulimits, it's logged to syslog.
-* The meaning of the flags like `-n` are explained in the bash shell itself:
-* In bash, type `ulimit -a` in bash to list flags, and the values in your shell;
-* In bash, type `help ulimit` for more information about the ulimits;
-* In bash, type `man prlimit` to see the more technical description and the units.
-
 One-time jobs
 ~~~~~~~~~~~~~
 For "initial setup" situations, pmtr has basic support for one-time jobs. The
@@ -374,22 +335,15 @@ designate pmtr as default initial process for the image.
 .Dockerfile using pmtr 
   CMD [ "/usr/bin/pmtr", "-F", "-c", "/etc/container-pmtr.conf" ]
 
-Resources
----------
-
-GitHub
-~~~~~~
-* Please use the https://github.com/troydhanson/pmtr[pmtr Github page] for bug
-  reports and pull requests.
-
-Author
-~~~~~~
-* The http://troydhanson.github.io/[author's GitHub page] lists my other software.
 
 License
 ~~~~~~~
 See the link:LICENSE.txt[LICENSE] file.
 
+Contact
+~~~~~~~
+Use the https://github.com/troydhanson/pmtr[pmtr Github page] for requests.
+My other software is listed on http://troydhanson.github.io/[my GitHub page].
 
 // vim: set tw=80 wm=2 syntax=asciidoc: 
 
