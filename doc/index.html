@@ -803,16 +803,16 @@ You put the scripts and servers that constitute your application in pmtr.conf.</
 <div class="content">
 <pre><code>  job {
     name persistent-ssh-tunnel
-    user joe
-    dir /home/joe
-    cmd /usr/bin/ssh -i .ssh/id_rsa -T -N -L localhost:5901:localhost:5901 192.168.11.1
+    user nobody
+    dir /data
+    cmd /usr/bin/ssh -i key -TNL 5901:127.0.0.1:5901 box
   }
 
   # more jobs here...</code></pre>
 </div></div>
 <div class="paragraph"><p>The pmtr daemon itself is small, written in C, open-source and for Linux only.
-It runs on Ubuntu, Debian, RHEL/CentOS, in Docker containers, and others.
-Jobs that run under pmtr must meet some <a href="#requirements">requirements</a>.</p></div>
+It runs on Ubuntu, Debian, RHEL/CentOS, and others.  Jobs that run under pmtr
+are usually long lived daemons, that meet some <a href="#requirements">requirements</a>.</p></div>
 <div class="paragraph"><p>These options may appear in a job definition.</p></div>
 <div class="tableblock" id="options">
 <table rules="none"
@@ -1442,7 +1442,7 @@ My other software is listed on <a href="http://troydhanson.github.io/">my GitHub
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2015-04-19 22:40:44 EDT
+Last updated 2015-04-19 22:49:21 EDT
 </div>
 </div>
 </body>

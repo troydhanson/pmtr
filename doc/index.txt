@@ -19,9 +19,9 @@ You put the scripts and servers that constitute your application in pmtr.conf.
 
   job {
     name persistent-ssh-tunnel
-    user joe
-    dir /home/joe
-    cmd /usr/bin/ssh -i .ssh/id_rsa -T -N -L localhost:5901:localhost:5901 192.168.11.1
+    user nobody
+    dir /data
+    cmd /usr/bin/ssh -i key -TNL 5901:127.0.0.1:5901 box
   }
 
   # more jobs here...
@@ -29,8 +29,8 @@ You put the scripts and servers that constitute your application in pmtr.conf.
 --------------------------------------------------------
 
 The pmtr daemon itself is small, written in C, open-source and for Linux only.
-It runs on Ubuntu, Debian, RHEL/CentOS, in Docker containers, and others.
-Jobs that run under pmtr must meet some <<requirements,requirements>>.
+It runs on Ubuntu, Debian, RHEL/CentOS, and others.  Jobs that run under pmtr
+are usually long lived daemons, that meet some <<requirements,requirements>>.
 
 These options may appear in a job definition.
 
