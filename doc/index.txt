@@ -5,14 +5,12 @@ v1.7 July 2014
 
 Back to the https://github.com/troydhanson/pmtr[pmtr Github page].
 
-pmtr::
-  a Linux process supervisor that can start your executables or scripts
-  at system boot, and restart them as needed
-
 pmtr: process monitor
 ---------------------
 Pmtr is a supervisor that starts your programs at boot and keeps them running.
-You put the scripts and servers that constitute your application in pmtr.conf.
+Pmtr is for Linux only. It runs on Ubuntu, Redhat, CentOS, and others. It is 
+meant for long lived programs meeting these <<requirements,requirements>>.
+The scripts and servers that constitute your application go in pmtr.conf.
 
 .Example `/etc/pmtr.conf`
 --------------------------------------------------------
@@ -27,10 +25,6 @@ You put the scripts and servers that constitute your application in pmtr.conf.
   # more jobs here...
 
 --------------------------------------------------------
-
-The pmtr daemon itself is small, written in C, open-source and for Linux only.
-It runs on Ubuntu, Debian, RHEL/CentOS, and others.  Jobs that run under pmtr
-are usually long lived daemons, that meet some <<requirements,requirements>>.
 
 These options may appear in a job definition.
 
@@ -60,13 +54,10 @@ cmd
 * The `cmd` may include trailing arguments e.g. `cmd /bin/node server.js`.  
 * The `cmd` may contain double-quoted arguments e.g. `cmd /bin/echo "hello world"`
 * The `cmd` does no shell expansion: no wildcards, backticks, variables, etc. 
+* If you need shell features in your command, wrap it with a shell script. 
+* You can wrap a shell script around something using this trick too:
 
-[TIP]
-If you need shell features in your command, wrap it with a shell script. You
-can even do this "inline" by passing your commands as a string to bash:
-
-  env DIR=/home/ws
-  cmd /bin/bash -c "/bin/python ws.py -d $DIR/`date +%s`"
+  cmd /bin/bash -c "killall Xvnc; vncserver :1"
 
 env
 ~~~

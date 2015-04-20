@@ -780,24 +780,15 @@ asciidoc.install(2);
 <div id="preamble">
 <div class="sectionbody">
 <div class="paragraph"><p>Back to the <a href="https://github.com/troydhanson/pmtr">pmtr Github page</a>.</p></div>
-<div class="dlist"><dl>
-<dt class="hdlist1">
-pmtr
-</dt>
-<dd>
-<p>
-  a Linux process supervisor that can start your executables or scripts
-  at system boot, and restart them as needed
-</p>
-</dd>
-</dl></div>
 </div>
 </div>
 <div class="sect1">
 <h2 id="_pmtr_process_monitor">pmtr: process monitor</h2>
 <div class="sectionbody">
 <div class="paragraph"><p>Pmtr is a supervisor that starts your programs at boot and keeps them running.
-You put the scripts and servers that constitute your application in pmtr.conf.</p></div>
+Pmtr is for Linux only. It runs on Ubuntu, Redhat, CentOS, and others. It is
+meant for long lived programs meeting these <a href="#requirements">requirements</a>.
+The scripts and servers that constitute your application go in pmtr.conf.</p></div>
 <div class="listingblock">
 <div class="title">Example <code>/etc/pmtr.conf</code></div>
 <div class="content">
@@ -810,9 +801,6 @@ You put the scripts and servers that constitute your application in pmtr.conf.</
 
   # more jobs here...</code></pre>
 </div></div>
-<div class="paragraph"><p>The pmtr daemon itself is small, written in C, open-source and for Linux only.
-It runs on Ubuntu, Debian, RHEL/CentOS, and others.  Jobs that run under pmtr
-are usually long lived daemons, that meet some <a href="#requirements">requirements</a>.</p></div>
 <div class="paragraph"><p>These options may appear in a job definition.</p></div>
 <div class="tableblock" id="options">
 <table rules="none"
@@ -903,21 +891,21 @@ The <code>cmd</code> may contain double-quoted arguments e.g. <code>cmd /bin/ech
 The <code>cmd</code> does no shell expansion: no wildcards, backticks, variables, etc.
 </p>
 </li>
-</ul></div>
-<div class="admonitionblock">
-<table><tr>
-<td class="icon">
-<div class="title">Tip</div>
-</td>
-<td class="content">If you need shell features in your command, wrap it with a shell script. You
-can even do this "inline" by passing your commands as a string to bash:</td>
-</tr></table>
-</div>
+<li>
+<p>
+If you need shell features in your command, wrap it with a shell script.
+</p>
+</li>
+<li>
+<p>
+You can wrap a shell script around something using this trick too:
+</p>
 <div class="literalblock">
 <div class="content">
-<pre><code>env DIR=/home/ws
-cmd /bin/bash -c "/bin/python ws.py -d $DIR/`date +%s`"</code></pre>
+<pre><code>cmd /bin/bash -c "killall Xvnc; vncserver :1"</code></pre>
 </div></div>
+</li>
+</ul></div>
 </div>
 <div class="sect2">
 <h3 id="_env">env</h3>
@@ -1442,7 +1430,7 @@ My other software is listed on <a href="http://troydhanson.github.io/">my GitHub
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2015-04-19 22:49:21 EDT
+Last updated 2015-04-19 22:59:20 EDT
 </div>
 </div>
 </body>
