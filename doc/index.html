@@ -770,7 +770,6 @@ asciidoc.install(2);
 <h1>pmtr: process supervisor</h1>
 <span id="author">Troy D. Hanson</span><br />
 <span id="email"><code>&lt;<a href="mailto:tdh@tkhanson.net">tdh@tkhanson.net</a>&gt;</code></span><br />
-<span id="revdate">July 2014</span>
 <div id="toc">
   <div id="toctitle">Table of Contents</div>
   <noscript><p><b>JavaScript must be enabled in your browser to display the table of contents.</b></p></noscript>
@@ -786,11 +785,11 @@ asciidoc.install(2);
 <h2 id="_pmtr_a_linux_process_supervisor">pmtr: a Linux process supervisor</h2>
 <div class="sectionbody">
 <div class="paragraph"><p>Most Linux services start from initscripts. In some situations it&#8217;s easier to
-have one configuration file that governs a collection of processes.  I wrote
-pmtr to manage all my appliance processes through a single configuration file.
-It runs on Ubuntu, Redhat/CentOS, and others.  It is written in C. It is meant
-to run processes that run permanently. It restarts processes that exit.  The
-pmtr config file lists the services (jobs) to run and their options.</p></div>
+supervise a collection of processes through one configuration file.  I wrote
+pmtr to manage my appliance processes. It is meant to run permanent processes.
+It restarts processes if they exit.  It runs on Linux (Ubuntu, RHEL/CentOS,
+etc).  It is written in C. Pmtr itself runs from an initscript. The pmtr config
+file <code>/etc/pmtr.conf</code> lists the services that pmtr should run and supervise.</p></div>
 <div class="listingblock">
 <div class="title">Example <code>/etc/pmtr.conf</code></div>
 <div class="content">
@@ -1360,7 +1359,7 @@ process. This is the dependency monitor that watches the config file.</p></div>
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2015-08-20 01:52:50 EDT
+Last updated 2015-08-20 02:14:39 EDT
 </div>
 </div>
 </body>

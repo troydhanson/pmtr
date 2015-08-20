@@ -1,18 +1,17 @@
 pmtr: process supervisor
 ========================
 Troy D. Hanson <tdh@tkhanson.net>
-July 2014
 
 Back to the https://github.com/troydhanson/pmtr[pmtr Github page].
 
 pmtr: a Linux process supervisor
 --------------------------------
 Most Linux services start from initscripts. In some situations it's easier to
-have one configuration file that governs a collection of processes.  I wrote
-pmtr to manage all my appliance processes through a single configuration file.
-It runs on Ubuntu, Redhat/CentOS, and others.  It is written in C. It is meant
-to run processes that run permanently. It restarts processes that exit.  The
-pmtr config file lists the services (jobs) to run and their options.
+supervise a collection of processes through one configuration file.  I wrote
+pmtr to manage my appliance processes. It is meant to run permanent processes.
+It restarts processes if they exit.  It runs on Linux (Ubuntu, RHEL/CentOS,
+etc).  It is written in C. Pmtr itself runs from an initscript. The pmtr config
+file `/etc/pmtr.conf` lists the services that pmtr should run and supervise.
 
 .Example `/etc/pmtr.conf`
 --------------------------------------------------------
