@@ -47,10 +47,10 @@ Pmtr is free and open source. Here is the link:LICENSE.txt[LICENSE].
 
 About
 ~~~~~
-Pmtr is one of my hobby projects. I wrote it for managing sensor appliances
-that had a dozen or more cooperating processes. I wanted to roll my own so
-that I could go my own way with pmtr whenever I wanted to hack new features
-in, and because, well, http://troydhanson.github.io/[I write lots of C code].
+Pmtr is one of my hobby projects. I wrote it for managing appliances that had a
+a dozen or two related processes. I wanted to roll my own so that I could go my
+own way with pmtr whenever I wanted to hack in new features, and because, well,
+http://troydhanson.github.io/[I write lots of C code].
 
 Build and Install
 ~~~~~~~~~~~~~~~~~
