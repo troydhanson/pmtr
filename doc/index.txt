@@ -1,30 +1,118 @@
-pmtr: process monitor
-=====================
+pmtr: process supervisor
+========================
 Troy D. Hanson <tdh@tkhanson.net>
-v1.7 July 2014
+July 2014
 
 Back to the https://github.com/troydhanson/pmtr[pmtr Github page].
 
-pmtr: process monitor
----------------------
-Pmtr is a supervisor that starts your programs at boot and keeps them running.
-Pmtr is for Linux only. It runs on Ubuntu, Redhat, CentOS, and others. It is 
-meant for long lived programs meeting these <<requirements,requirements>>.
-The scripts and servers that constitute your application go in pmtr.conf.
+pmtr: a Linux process supervisor
+--------------------------------
+Most Linux services start from initscripts. In some situations it's easier to
+have a single configuration file that governs a whole collection of processes.
+I wrote pmtr to have a unified configuration file for a collection of services.
+It runs on Ubuntu, Redhat/CentOS, and others. It is meant for daemon processes.
+It is written in C. The pmtr config file is a list of jobs. It looks like this:
 
 .Example `/etc/pmtr.conf`
 --------------------------------------------------------
 
   job {
-    name persistent-ssh-tunnel
-    user nobody
-    dir /data
+    name application-proxy
+    cmd /bin/aproxy -j 10 -l 127.0.0.1
+    err /var/log/aproxy.err
+  }
+
+  job {
+    name ssh-tunnel
     cmd /usr/bin/ssh -i key -TNL 5901:127.0.0.1:5901 box
   }
 
-  # more jobs here...
-
+  job {
+    name snmp-mon 
+    cmd /usr/bin/snmp-mon -c snmp.conf
+    env LD_LIBRARY_PATH=/opt/lib
+    ulimit -n infinity
+    bounce every 1d
+    user daemon
+    depends {
+      snmp.conf
+      device.oid
+    }
+  }
 --------------------------------------------------------
+
+License
+~~~~~~~
+Pmtr is free and open source. Here is the link:LICENSE.txt[LICENSE].
+
+About
+~~~~~
+Pmtr is one of my hobby projects. I wrote it for managing sensor appliances
+that had a dozen or more cooperating processes. I wanted to roll my own so
+that I could go my own way with pmtr whenever I wanted to hack new features
+in, and because, well, http://troydhanson.github.io/[I write lots of C code].
+
+Build and Install
+~~~~~~~~~~~~~~~~~
+
+You can git clone https://github.com/troydhanson/pmtr.git. The 
+https://github.com/troydhanson/pmtr[pmtr Github page] has other options.
+
+Build and install:
+
+  cd pmtr
+  make
+  sudo make install
+
+Afterward pmtr should already be running. Verify using `service pmtr status`. 
+The result of installation is:
+
+ * the executable: `/usr/bin/pmtr` 
+ * the configuration file: `/etc/pmtr.conf` 
+ * an OS-specific initscript that runs pmtr at boot 
+
+You can use the system's service command to start or stop pmtr itself.
+
+  service pmtr start
+  service pmtr stop
+
+When you stop pmtr, it stops the jobs that it's supervising and then itself.
+
+[[logging]]
+Pmtr logs to syslog. This is `/var/log/syslog` or `/var/log/messages` typically.
+
+  Nov  7 1:38:10 ubuntu pmtr[477]: started job proxy [478]
+  Nov  7 1:38:20 ubuntu pmtr[477]: job proxy [478] exited after 10 sec: exit status 0
+
+Normally pmtr forks into the background. You can tell it to stay in the
+foreground using `-F`. These are the full command options.
+
+.pmtr options
+[width="80%",cols="20m,20,50",grid="none",options="none"]
+|==========================================================================
+| -c <file> | specify alternate configuration file
+| -t        | parse config file and exit, implies -F
+| -F        | stay in foreground instead of detaching
+| -v        | verbose logging (repeatable), -vv shows parsing
+|==========================================================================
+
+Jobs
+~~~~
+Processes that run under pmtr should,
+
+ * stay in the foreground
+ * exit on SIGTERM or SIGKILL 
+ * clean up their own sub-processes
+
+The default pmtr configuration file is `/etc/pmtr.conf`. 
+
+When you edit and save `pmtr.conf`, it applies the changes immediately.
+
+ * A newly-added job gets started.
+ * A deleted job is terminated.
+ * A changed job is restarted with its new configuration.
+
+To terminate a job, pmtr sends SIGTERM to it, then SIGKILL shortly afterward.
 
 These options may appear in a job definition.
 
@@ -49,7 +137,7 @@ These options may appear in a job definition.
 More details on each option follows.
 
 cmd
-~~~
+^^^
 * The executable named in the `cmd` must have its executable-bit set. 
 * The `cmd` may include trailing arguments e.g. `cmd /bin/node server.js`.  
 * The `cmd` may contain double-quoted arguments e.g. `cmd /bin/echo "hello world"`
@@ -60,34 +148,34 @@ cmd
   cmd /bin/bash -c "killall Xvnc; vncserver :1"
 
 env
-~~~
+^^^
 * Use `env` to push an environment variable into a job, e.g. `env TMPDIR=/tmp`.
 * Use `env` repeatedly to set multiple environment variables.
 
 disable
-~~~~~~~
+^^^^^^^
 * Use `disable` to stop a job, without having to comment it out.
 * This is often helpful in debugging a job since it makes it easy to 
   re-enable the job later (by commenting out the disable line, or removing it).
 
 out, err, in
-~~~~~~~~~~~~
+^^^^^^^^^^^^
 * Use `out`, `err`, and `in` to attach stdout, stderr or stdin to a file.
 * The stdout, stderr and stdin default to `/dev/null`.
 
 user
-~~~~
+^^^^
 * The `user` option is the unix username that should be the process owner.
 * The `user` defaults to root usually, when pmtr is running as a service.
 * The `user` defaults to whoever started pmtr, if pmtr was run manually.
 
 depends
-~~~~~~~
+^^^^^^^
 * Use a `depends` block to specify files, one per line, that the job depends on.
 * If the content of any of the dependencies changes, pmtr restarts the job.
 
 bounce every
-~~~~~~~~~~~~
+^^^^^^^^^^^^
 * The `bounce every` option restarts the job every so often. 
 * It's intended for jobs that don't behave well as long-running processes. 
 * It takes a number and unit, like `5m` to restart a job every five minutes. 
@@ -96,7 +184,7 @@ bounce every
 * The exact timing of the restart is approximate.
 
 ulimit
-~~~~~~
+^^^^^^
 * Use `ulimit` to modify the kernel-enforced resource limits for the job.
 * It takes a flag denoting which limit to set, and a value, e.g., `ulimit -n 30`.  
 * Alternatively, you can list a series of ulimit settings in a curly brace block:
@@ -106,118 +194,22 @@ ulimit
     -l 10000
   }
 
+* In bash, type `ulimit -a` in bash to list flags, and the values in your shell;
+* In bash, type `help ulimit` for more information about the ulimits;
+* In bash, type `man prlimit` to see the more technical description and the units.
 * The values are all numeric or the keyword `infinity`.
 * To see the current kernel limits on a process, run `cat /proc/<pid>/limits`.
 * pmtr sets both the "hard" and "soft" ulimit to the same value.
 * If there is an error setting the ulimits, it's logged to syslog.
-* The meaning of the flags like `-n` are explained in the bash shell itself:
-* In bash, type `ulimit -a` in bash to list flags, and the values in your shell;
-* In bash, type `help ulimit` for more information about the ulimits;
-* In bash, type `man prlimit` to see the more technical description and the units.
 
-
-Download & Install
-------------------
-
-You can use the https://github.com/troydhanson/pmtr[Github page] to:
-
- * download a https://github.com/troydhanson/pmtr/archive/master.zip[zipfile]. 
- * or, git clone https://github.com/troydhanson/pmtr.git
-
-To build and install:
-
-  cd pmtr
-  make
-  sudo make install
-
-The result of installation is:
-
- * the executable: `/usr/bin/pmtr` 
- * the configuration file: `/etc/pmtr.conf` 
- * an OS-specific initscript to run pmtr at boot 
-
-Running
--------
-
-After installation, pmtr should already be running. Verify using `service pmtr
-status`. 
-
-service start/stop
-~~~~~~~~~~~~~~~~~~
-You can use the system's service command to start or stop pmtr itself.
-If you stop pmtr, it first stops any jobs that it's running, then exits.
-
-  service pmtr stop
-  service pmtr start
-
-You can also run pmtr on the command-line. By default, it forks into the
-background. You can tell it to stay in the foreground using `-F`. 
-
-Command line options
-~~~~~~~~~~~~~~~~~~~~
-While pmtr is normally run as a background service, you can run it manually on
-the command line, in which case you can specify these flags:
-
-[width="80%",cols="20m,20,50",grid="none",options="none"]
-|==========================================================================
-| -c <file> | config file | specify alternate configuration file
-| -t        | test only   | parse config file and exit, implies -F
-| -F        | Foreground  | stay in foreground instead of detaching
-| -v        | verbose     | extra logging. repeatable. -vv shows parsing
-|==========================================================================
-
-[[logging]]
-Logging
-~~~~~~~
-Look in syslog (typically `/var/log/messages` or `/var/log/syslog`) to see
-pmtr log messages relating to configuration file changes and job activity.
-
-  Nov  7 1:38:09 ubuntu pmtr[477]: rescanning job configuration
-  Nov  7 1:38:10 ubuntu pmtr[477]: started job proxy [478]
-  Nov  7 1:38:20 ubuntu pmtr[477]: job proxy [478] exited after 10 sec: exit status 0
-
-If your job isn't running, this is the first place to look. Pmtr is verbose
-about restarting jobs, or indicating if they are exiting for some reason.
-
-[[requirements]]
-Job requirements
-----------------
-In pmtr the job is just some executable that you want to keep running. It must:
-
- * stay in the foreground
- * exit on SIGTERM or SIGKILL 
- * clean up any sub-processes when it exits
-
-.Restarts
+Restarts
+~~~~~~~~
 Since pmtr is designed to keep things running, if a job exits, pmtr restarts it.
 
 * If a job exits quickly (within ten seconds of when it started) pmtr 
   waits ten seconds then restarts it. This avoids rapid restart cycles. The
   job probably has some sort of configuration problem if it exits quickly.
 * Exit status 33 can be returned from a process to tell pmtr not to restart it.
-
-Configuration file 
-------------------
-The default pmtr configuration file is `/etc/pmtr.conf`. 
-
-Syntax check
-~~~~~~~~~~~~
-To manually check the syntax of a configuration file, use the `-t` (test) flag:
-  
-  pmtr -tc /etc/pmtr.conf
-
-This displays any syntax errors. In normal background operation pmtr
-would log syntax and other errors via syslog; see <<logging,logging>>.
-
-Immediate effect 
-~~~~~~~~~~~~~~~~
-When you edit and save `pmtr.conf`, the changes get applied immediately. 
-
- * A newly-added job gets started.
- * A deleted job is terminated.
- * A changed job is restarted with its new configuration.
-
-To terminate a job, pmtr sends SIGTERM to it, then SIGKILL shortly afterward.
 
 Syntax summary
 ~~~~~~~~~~~~~~
@@ -230,38 +222,33 @@ The configuration file contains any number of jobs.
 * Blank lines are ok.  
 * Comments start with `#` and must be on their own line.
 
-.A job with many options 
+.Several options 
 ---------------------------------------------------
-  # trending service
-  # restarted daily 
-
   job {
-    name trends
-    dir /home/trends
-    cmd /usr/bin/python trends.py
-    bounce every 1d
-    err trends.err
+    name snmp-mon 
+    cmd /usr/bin/snmp-mon -c snmp.conf
+    env LD_LIBRARY_PATH=/opt/lib
     ulimit -n infinity
+    bounce every 1d
+    user daemon
     depends {
-      trends.conf
-      db.conf
+      snmp.conf
+      device.oid
     }
-    user pyuser
-    env DEBUG=1
   }
 ---------------------------------------------------
 
 One-time jobs
-~~~~~~~~~~~~~
-For "initial setup" situations, pmtr has basic support for one-time jobs. The
+^^^^^^^^^^^^^
+For "initial setup" situations, pmtr has limited support for one-time jobs. The
 `wait` option makes pmtr wait for the job to exit before starting subsequent
 jobs. To keep pmtr from restarting it, use the `once` option. 
 
   job {
-        name create-ramdisk
-        cmd /bin/mkdir -p /dev/shm/ws/data
-        wait
-        once
+    name setup
+    cmd /bin/mkdir -p /dev/shm/ws
+    wait
+    once
   }
 
 Experimental 
@@ -292,10 +279,10 @@ script in `pmtr/utils/pmtr-ctl` may be used to send the datagrams, for example
 settings in pmtr.conf resume precedence when it's edited or pmtr is restarted.
 
 Tips
-----
+~~~~
 
 pstree
-~~~~~~
+^^^^^^
 To get a nice visual confirmation of the jobs you have running under pmtr, you
 can use the `pstree` utility, if you have it installed.  Here is the output of
 `pstree -p`.
@@ -310,31 +297,6 @@ can use the `pstree` utility, if you have it installed.  Here is the output of
 
 The other system processes have been omitted. Note that pmtr has its own child
 process. This is the dependency monitor that watches the config file.
-
-Using pmtr with Docker
-~~~~~~~~~~~~~~~~~~~~~~
-http://www.docker.com/[Docker] is a Linux container technology. If you're using
-Docker, you can use pmtr as the initial process of a Docker container to run a
-process hierarchy inside the container. Make sure pmtr runs in the foreground
-using the `-F` flag, since the container exits if the initial process detaches.
-
-  /usr/bin/pmtr -F -c config.conf 
-
-If you're writing a Dockerfile to build your Docker images, you can use `CMD` to
-designate pmtr as default initial process for the image.
-
-.Dockerfile using pmtr 
-  CMD [ "/usr/bin/pmtr", "-F", "-c", "/etc/container-pmtr.conf" ]
-
-
-License
-~~~~~~~
-See the link:LICENSE.txt[LICENSE] file.
-
-Contact
-~~~~~~~
-Use the https://github.com/troydhanson/pmtr[pmtr Github page] for requests.
-My other software is listed on http://troydhanson.github.io/[my GitHub page].
 
 // vim: set tw=80 wm=2 syntax=asciidoc: 
 

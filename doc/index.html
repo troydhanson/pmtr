@@ -4,7 +4,7 @@
 <head>
 <meta http-equiv="Content-Type" content="application/xhtml+xml; charset=UTF-8" />
 <meta name="generator" content="AsciiDoc 8.6.9" />
-<title>pmtr: process monitor</title>
+<title>pmtr: process supervisor</title>
 <style type="text/css">
 /* Shared CSS for AsciiDoc xhtml11 and html5 backends */
 
@@ -767,10 +767,10 @@ asciidoc.install(2);
 </head>
 <body class="article">
 <div id="header">
-<h1>pmtr: process monitor</h1>
+<h1>pmtr: process supervisor</h1>
 <span id="author">Troy D. Hanson</span><br />
 <span id="email"><code>&lt;<a href="mailto:tdh@tkhanson.net">tdh@tkhanson.net</a>&gt;</code></span><br />
-<span id="revdate">v1.7 July 2014</span>
+<span id="revdate">July 2014</span>
 <div id="toc">
   <div id="toctitle">Table of Contents</div>
   <noscript><p><b>JavaScript must be enabled in your browser to display the table of contents.</b></p></noscript>
@@ -783,24 +783,160 @@ asciidoc.install(2);
 </div>
 </div>
 <div class="sect1">
-<h2 id="_pmtr_process_monitor">pmtr: process monitor</h2>
+<h2 id="_pmtr_a_linux_process_supervisor">pmtr: a Linux process supervisor</h2>
 <div class="sectionbody">
-<div class="paragraph"><p>Pmtr is a supervisor that starts your programs at boot and keeps them running.
-Pmtr is for Linux only. It runs on Ubuntu, Redhat, CentOS, and others. It is
-meant for long lived programs meeting these <a href="#requirements">requirements</a>.
-The scripts and servers that constitute your application go in pmtr.conf.</p></div>
+<div class="paragraph"><p>Most Linux services start from initscripts. In some situations it&#8217;s easier to
+have a single configuration file that governs a whole collection of processes.
+I wrote pmtr to have a unified configuration file for a collection of services.
+It runs on Ubuntu, Redhat/CentOS, and others. It is meant for daemon processes.
+It is written in C. The pmtr config file is a list of jobs. It looks like this:</p></div>
 <div class="listingblock">
 <div class="title">Example <code>/etc/pmtr.conf</code></div>
 <div class="content">
 <pre><code>  job {
-    name persistent-ssh-tunnel
-    user nobody
-    dir /data
+    name application-proxy
+    cmd /bin/aproxy -j 10 -l 127.0.0.1
+    err /var/log/aproxy.err
+  }
+
+  job {
+    name ssh-tunnel
     cmd /usr/bin/ssh -i key -TNL 5901:127.0.0.1:5901 box
   }
 
-  # more jobs here...</code></pre>
+  job {
+    name snmp-mon
+    cmd /usr/bin/snmp-mon -c snmp.conf
+    env LD_LIBRARY_PATH=/opt/lib
+    ulimit -n infinity
+    bounce every 1d
+    user daemon
+    depends {
+      snmp.conf
+      device.oid
+    }
+  }</code></pre>
 </div></div>
+<div class="sect2">
+<h3 id="_license">License</h3>
+<div class="paragraph"><p>Pmtr is free and open source. Here is the <a href="LICENSE.txt">LICENSE</a>.</p></div>
+</div>
+<div class="sect2">
+<h3 id="_about">About</h3>
+<div class="paragraph"><p>Pmtr is one of my hobby projects. I wrote it for managing sensor appliances
+that had a dozen or more cooperating processes. I wanted to roll my own so
+that I could go my own way with pmtr whenever I wanted to hack new features
+in, and because, well, <a href="http://troydhanson.github.io/">I write lots of C code</a>.</p></div>
+</div>
+<div class="sect2">
+<h3 id="_build_and_install">Build and Install</h3>
+<div class="paragraph"><p>You can git clone <a href="https://github.com/troydhanson/pmtr.git">https://github.com/troydhanson/pmtr.git</a>. The
+<a href="https://github.com/troydhanson/pmtr">pmtr Github page</a> has other options.</p></div>
+<div class="paragraph"><p>Build and install:</p></div>
+<div class="literalblock">
+<div class="content">
+<pre><code>cd pmtr
+make
+sudo make install</code></pre>
+</div></div>
+<div class="paragraph"><p>Afterward pmtr should already be running. Verify using <code>service pmtr status</code>.
+The result of installation is:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+the executable: <code>/usr/bin/pmtr</code>
+</p>
+</li>
+<li>
+<p>
+the configuration file: <code>/etc/pmtr.conf</code>
+</p>
+</li>
+<li>
+<p>
+an OS-specific initscript that runs pmtr at boot
+</p>
+</li>
+</ul></div>
+<div class="paragraph"><p>You can use the system&#8217;s service command to start or stop pmtr itself.</p></div>
+<div class="literalblock">
+<div class="content">
+<pre><code>service pmtr start
+service pmtr stop</code></pre>
+</div></div>
+<div class="paragraph"><p>When you stop pmtr, it stops the jobs that it&#8217;s supervising and then itself.</p></div>
+<div class="paragraph" id="logging"><p>Pmtr logs to syslog. This is <code>/var/log/syslog</code> or <code>/var/log/messages</code> typically.</p></div>
+<div class="literalblock">
+<div class="content">
+<pre><code>Nov  7 1:38:10 ubuntu pmtr[477]: started job proxy [478]
+Nov  7 1:38:20 ubuntu pmtr[477]: job proxy [478] exited after 10 sec: exit status 0</code></pre>
+</div></div>
+<div class="paragraph"><p>Normally pmtr forks into the background. You can tell it to stay in the
+foreground using <code>-F</code>. These are the full command options.</p></div>
+<div class="tableblock">
+<table rules="none"
+width="80%"
+frame="border"
+cellspacing="0" cellpadding="4">
+<caption class="title">Table 1. pmtr options</caption>
+<col width="22%" />
+<col width="22%" />
+<col width="55%" />
+<tbody>
+<tr>
+<td align="left" valign="top"><p class="table"><code>-c &lt;file&gt;</code></p></td>
+<td align="left" valign="top"><p class="table">specify alternate configuration file</p></td>
+<td align="left" valign="top"><p class="table">-t</p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><code>parse config file and exit, implies -F</code></p></td>
+<td align="left" valign="top"><p class="table">-F</p></td>
+<td align="left" valign="top"><p class="table">stay in foreground instead of detaching</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_jobs">Jobs</h3>
+<div class="paragraph"><p>Processes that run under pmtr should,</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+stay in the foreground
+</p>
+</li>
+<li>
+<p>
+exit on SIGTERM or SIGKILL
+</p>
+</li>
+<li>
+<p>
+clean up their own sub-processes
+</p>
+</li>
+</ul></div>
+<div class="paragraph"><p>The default pmtr configuration file is <code>/etc/pmtr.conf</code>.</p></div>
+<div class="paragraph"><p>When you edit and save <code>pmtr.conf</code>, it applies the changes immediately.</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+A newly-added job gets started.
+</p>
+</li>
+<li>
+<p>
+A deleted job is terminated.
+</p>
+</li>
+<li>
+<p>
+A changed job is restarted with its new configuration.
+</p>
+</li>
+</ul></div>
+<div class="paragraph"><p>To terminate a job, pmtr sends SIGTERM to it, then SIGKILL shortly afterward.</p></div>
 <div class="paragraph"><p>These options may appear in a job definition.</p></div>
 <div class="tableblock" id="options">
 <table rules="none"
@@ -868,8 +1004,8 @@ cellspacing="0" cellpadding="4">
 </table>
 </div>
 <div class="paragraph"><p>More details on each option follows.</p></div>
-<div class="sect2">
-<h3 id="_cmd">cmd</h3>
+<div class="sect3">
+<h4 id="_cmd">cmd</h4>
 <div class="ulist"><ul>
 <li>
 <p>
@@ -907,8 +1043,8 @@ You can wrap a shell script around something using this trick too:
 </li>
 </ul></div>
 </div>
-<div class="sect2">
-<h3 id="_env">env</h3>
+<div class="sect3">
+<h4 id="_env">env</h4>
 <div class="ulist"><ul>
 <li>
 <p>
@@ -922,8 +1058,8 @@ Use <code>env</code> repeatedly to set multiple environment variables.
 </li>
 </ul></div>
 </div>
-<div class="sect2">
-<h3 id="_disable">disable</h3>
+<div class="sect3">
+<h4 id="_disable">disable</h4>
 <div class="ulist"><ul>
 <li>
 <p>
@@ -938,8 +1074,8 @@ This is often helpful in debugging a job since it makes it easy to
 </li>
 </ul></div>
 </div>
-<div class="sect2">
-<h3 id="_out_err_in">out, err, in</h3>
+<div class="sect3">
+<h4 id="_out_err_in">out, err, in</h4>
 <div class="ulist"><ul>
 <li>
 <p>
@@ -953,8 +1089,8 @@ The stdout, stderr and stdin default to <code>/dev/null</code>.
 </li>
 </ul></div>
 </div>
-<div class="sect2">
-<h3 id="_user">user</h3>
+<div class="sect3">
+<h4 id="_user">user</h4>
 <div class="ulist"><ul>
 <li>
 <p>
@@ -973,8 +1109,8 @@ The <code>user</code> defaults to whoever started pmtr, if pmtr was run manually
 </li>
 </ul></div>
 </div>
-<div class="sect2">
-<h3 id="_depends">depends</h3>
+<div class="sect3">
+<h4 id="_depends">depends</h4>
 <div class="ulist"><ul>
 <li>
 <p>
@@ -988,8 +1124,8 @@ If the content of any of the dependencies changes, pmtr restarts the job.
 </li>
 </ul></div>
 </div>
-<div class="sect2">
-<h3 id="_bounce_every">bounce every</h3>
+<div class="sect3">
+<h4 id="_bounce_every">bounce every</h4>
 <div class="ulist"><ul>
 <li>
 <p>
@@ -1023,8 +1159,8 @@ The exact timing of the restart is approximate.
 </li>
 </ul></div>
 </div>
-<div class="sect2">
-<h3 id="_ulimit">ulimit</h3>
+<div class="sect3">
+<h4 id="_ulimit">ulimit</h4>
 <div class="ulist"><ul>
 <li>
 <p>
@@ -1050,6 +1186,21 @@ Alternatively, you can list a series of ulimit settings in a curly brace block:
 </li>
 <li>
 <p>
+In bash, type <code>ulimit -a</code> in bash to list flags, and the values in your shell;
+</p>
+</li>
+<li>
+<p>
+In bash, type <code>help ulimit</code> for more information about the ulimits;
+</p>
+</li>
+<li>
+<p>
+In bash, type <code>man prlimit</code> to see the more technical description and the units.
+</p>
+</li>
+<li>
+<p>
 The values are all numeric or the keyword <code>infinity</code>.
 </p>
 </li>
@@ -1068,164 +1219,12 @@ pmtr sets both the "hard" and "soft" ulimit to the same value.
 If there is an error setting the ulimits, it&#8217;s logged to syslog.
 </p>
 </li>
-<li>
-<p>
-The meaning of the flags like <code>-n</code> are explained in the bash shell itself:
-</p>
-</li>
-<li>
-<p>
-In bash, type <code>ulimit -a</code> in bash to list flags, and the values in your shell;
-</p>
-</li>
-<li>
-<p>
-In bash, type <code>help ulimit</code> for more information about the ulimits;
-</p>
-</li>
-<li>
-<p>
-In bash, type <code>man prlimit</code> to see the more technical description and the units.
-</p>
-</li>
 </ul></div>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="_download_amp_install">Download &amp; Install</h2>
-<div class="sectionbody">
-<div class="paragraph"><p>You can use the <a href="https://github.com/troydhanson/pmtr">Github page</a> to:</p></div>
-<div class="ulist"><ul>
-<li>
-<p>
-download a <a href="https://github.com/troydhanson/pmtr/archive/master.zip">zipfile</a>.
-</p>
-</li>
-<li>
-<p>
-or, git clone <a href="https://github.com/troydhanson/pmtr.git">https://github.com/troydhanson/pmtr.git</a>
-</p>
-</li>
-</ul></div>
-<div class="paragraph"><p>To build and install:</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>cd pmtr
-make
-sudo make install</code></pre>
-</div></div>
-<div class="paragraph"><p>The result of installation is:</p></div>
-<div class="ulist"><ul>
-<li>
-<p>
-the executable: <code>/usr/bin/pmtr</code>
-</p>
-</li>
-<li>
-<p>
-the configuration file: <code>/etc/pmtr.conf</code>
-</p>
-</li>
-<li>
-<p>
-an OS-specific initscript to run pmtr at boot
-</p>
-</li>
-</ul></div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="_running">Running</h2>
-<div class="sectionbody">
-<div class="paragraph"><p>After installation, pmtr should already be running. Verify using <code>service pmtr
-status</code>.</p></div>
-<div class="sect2">
-<h3 id="_service_start_stop">service start/stop</h3>
-<div class="paragraph"><p>You can use the system&#8217;s service command to start or stop pmtr itself.
-If you stop pmtr, it first stops any jobs that it&#8217;s running, then exits.</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>service pmtr stop
-service pmtr start</code></pre>
-</div></div>
-<div class="paragraph"><p>You can also run pmtr on the command-line. By default, it forks into the
-background. You can tell it to stay in the foreground using <code>-F</code>.</p></div>
-</div>
-<div class="sect2">
-<h3 id="_command_line_options">Command line options</h3>
-<div class="paragraph"><p>While pmtr is normally run as a background service, you can run it manually on
-the command line, in which case you can specify these flags:</p></div>
-<div class="tableblock">
-<table rules="none"
-width="80%"
-frame="border"
-cellspacing="0" cellpadding="4">
-<col width="22%" />
-<col width="22%" />
-<col width="55%" />
-<tbody>
-<tr>
-<td align="left" valign="top"><p class="table"><code>-c &lt;file&gt;</code></p></td>
-<td align="left" valign="top"><p class="table">config file</p></td>
-<td align="left" valign="top"><p class="table">specify alternate configuration file</p></td>
-</tr>
-<tr>
-<td align="left" valign="top"><p class="table"><code>-t</code></p></td>
-<td align="left" valign="top"><p class="table">test only</p></td>
-<td align="left" valign="top"><p class="table">parse config file and exit, implies -F</p></td>
-</tr>
-<tr>
-<td align="left" valign="top"><p class="table"><code>-F</code></p></td>
-<td align="left" valign="top"><p class="table">Foreground</p></td>
-<td align="left" valign="top"><p class="table">stay in foreground instead of detaching</p></td>
-</tr>
-<tr>
-<td align="left" valign="top"><p class="table"><code>-v</code></p></td>
-<td align="left" valign="top"><p class="table">verbose</p></td>
-<td align="left" valign="top"><p class="table">extra logging. repeatable. -vv shows parsing</p></td>
-</tr>
-</tbody>
-</table>
 </div>
 </div>
 <div class="sect2">
-<h3 id="logging">Logging</h3>
-<div class="paragraph"><p>Look in syslog (typically <code>/var/log/messages</code> or <code>/var/log/syslog</code>) to see
-pmtr log messages relating to configuration file changes and job activity.</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>Nov  7 1:38:09 ubuntu pmtr[477]: rescanning job configuration
-Nov  7 1:38:10 ubuntu pmtr[477]: started job proxy [478]
-Nov  7 1:38:20 ubuntu pmtr[477]: job proxy [478] exited after 10 sec: exit status 0</code></pre>
-</div></div>
-<div class="paragraph"><p>If your job isn&#8217;t running, this is the first place to look. Pmtr is verbose
-about restarting jobs, or indicating if they are exiting for some reason.</p></div>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="requirements">Job requirements</h2>
-<div class="sectionbody">
-<div class="paragraph"><p>In pmtr the job is just some executable that you want to keep running. It must:</p></div>
-<div class="ulist"><ul>
-<li>
-<p>
-stay in the foreground
-</p>
-</li>
-<li>
-<p>
-exit on SIGTERM or SIGKILL
-</p>
-</li>
-<li>
-<p>
-clean up any sub-processes when it exits
-</p>
-</li>
-</ul></div>
-<div class="paragraph"><div class="title">Restarts</div><p>Since pmtr is designed to keep things running, if a job exits, pmtr restarts it.</p></div>
+<h3 id="_restarts">Restarts</h3>
+<div class="paragraph"><p>Since pmtr is designed to keep things running, if a job exits, pmtr restarts it.</p></div>
 <div class="ulist"><ul>
 <li>
 <p>
@@ -1240,43 +1239,6 @@ Exit status 33 can be returned from a process to tell pmtr not to restart it.
 </p>
 </li>
 </ul></div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="_configuration_file">Configuration file</h2>
-<div class="sectionbody">
-<div class="paragraph"><p>The default pmtr configuration file is <code>/etc/pmtr.conf</code>.</p></div>
-<div class="sect2">
-<h3 id="_syntax_check">Syntax check</h3>
-<div class="paragraph"><p>To manually check the syntax of a configuration file, use the <code>-t</code> (test) flag:</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>pmtr -tc /etc/pmtr.conf</code></pre>
-</div></div>
-<div class="paragraph"><p>This displays any syntax errors. In normal background operation pmtr
-would log syntax and other errors via syslog; see <a href="#logging">logging</a>.</p></div>
-</div>
-<div class="sect2">
-<h3 id="_immediate_effect">Immediate effect</h3>
-<div class="paragraph"><p>When you edit and save <code>pmtr.conf</code>, the changes get applied immediately.</p></div>
-<div class="ulist"><ul>
-<li>
-<p>
-A newly-added job gets started.
-</p>
-</li>
-<li>
-<p>
-A deleted job is terminated.
-</p>
-</li>
-<li>
-<p>
-A changed job is restarted with its new configuration.
-</p>
-</li>
-</ul></div>
-<div class="paragraph"><p>To terminate a job, pmtr sends SIGTERM to it, then SIGKILL shortly afterward.</p></div>
 </div>
 <div class="sect2">
 <h3 id="_syntax_summary">Syntax summary</h3>
@@ -1314,41 +1276,36 @@ Comments start with <code>#</code> and must be on their own line.
 </li>
 </ul></div>
 <div class="listingblock">
-<div class="title">A job with many options</div>
+<div class="title">Several options</div>
 <div class="content">
-<pre><code>  # trending service
-  # restarted daily
-
-  job {
-    name trends
-    dir /home/trends
-    cmd /usr/bin/python trends.py
-    bounce every 1d
-    err trends.err
+<pre><code>  job {
+    name snmp-mon
+    cmd /usr/bin/snmp-mon -c snmp.conf
+    env LD_LIBRARY_PATH=/opt/lib
     ulimit -n infinity
+    bounce every 1d
+    user daemon
     depends {
-      trends.conf
-      db.conf
+      snmp.conf
+      device.oid
     }
-    user pyuser
-    env DEBUG=1
   }</code></pre>
 </div></div>
-</div>
-<div class="sect2">
-<h3 id="_one_time_jobs">One-time jobs</h3>
-<div class="paragraph"><p>For "initial setup" situations, pmtr has basic support for one-time jobs. The
+<div class="sect3">
+<h4 id="_one_time_jobs">One-time jobs</h4>
+<div class="paragraph"><p>For "initial setup" situations, pmtr has limited support for one-time jobs. The
 <code>wait</code> option makes pmtr wait for the job to exit before starting subsequent
 jobs. To keep pmtr from restarting it, use the <code>once</code> option.</p></div>
 <div class="literalblock">
 <div class="content">
 <pre><code>job {
-      name create-ramdisk
-      cmd /bin/mkdir -p /dev/shm/ws/data
-      wait
-      once
+  name setup
+  cmd /bin/mkdir -p /dev/shm/ws
+  wait
+  once
 }</code></pre>
 </div></div>
+</div>
 </div>
 <div class="sect2">
 <h3 id="_experimental">Experimental</h3>
@@ -1376,13 +1333,10 @@ script in <code>pmtr/utils/pmtr-ctl</code> may be used to send the datagrams, fo
 <code>pmtr-ctl -s 192.168.0.22 -p 10000 enable abc</code>). The effect is temporary; the
 settings in pmtr.conf resume precedence when it&#8217;s edited or pmtr is restarted.</p></div>
 </div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="_tips">Tips</h2>
-<div class="sectionbody">
 <div class="sect2">
-<h3 id="_pstree">pstree</h3>
+<h3 id="_tips">Tips</h3>
+<div class="sect3">
+<h4 id="_pstree">pstree</h4>
 <div class="paragraph"><p>To get a nice visual confirmation of the jobs you have running under pmtr, you
 can use the <code>pstree</code> utility, if you have it installed.  Here is the output of
 <code>pstree -p</code>.</p></div>
@@ -1397,32 +1351,6 @@ can use the <code>pstree</code> utility, if you have it installed.  Here is the 
 <div class="paragraph"><p>The other system processes have been omitted. Note that pmtr has its own child
 process. This is the dependency monitor that watches the config file.</p></div>
 </div>
-<div class="sect2">
-<h3 id="_using_pmtr_with_docker">Using pmtr with Docker</h3>
-<div class="paragraph"><p><a href="http://www.docker.com/">Docker</a> is a Linux container technology. If you&#8217;re using
-Docker, you can use pmtr as the initial process of a Docker container to run a
-process hierarchy inside the container. Make sure pmtr runs in the foreground
-using the <code>-F</code> flag, since the container exits if the initial process detaches.</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>/usr/bin/pmtr -F -c config.conf</code></pre>
-</div></div>
-<div class="paragraph"><p>If you&#8217;re writing a Dockerfile to build your Docker images, you can use <code>CMD</code> to
-designate pmtr as default initial process for the image.</p></div>
-<div class="literalblock">
-<div class="title">Dockerfile using pmtr</div>
-<div class="content">
-<pre><code>CMD [ "/usr/bin/pmtr", "-F", "-c", "/etc/container-pmtr.conf" ]</code></pre>
-</div></div>
-</div>
-<div class="sect2">
-<h3 id="_license">License</h3>
-<div class="paragraph"><p>See the <a href="LICENSE.txt">LICENSE</a> file.</p></div>
-</div>
-<div class="sect2">
-<h3 id="_contact">Contact</h3>
-<div class="paragraph"><p>Use the <a href="https://github.com/troydhanson/pmtr">pmtr Github page</a> for requests.
-My other software is listed on <a href="http://troydhanson.github.io/">my GitHub page</a>.</p></div>
 </div>
 </div>
 </div>
@@ -1430,7 +1358,7 @@ My other software is listed on <a href="http://troydhanson.github.io/">my GitHub
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2015-04-19 22:59:20 EDT
+Last updated 2015-08-20 01:33:30 EDT
 </div>
 </div>
 </body>
