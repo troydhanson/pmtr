@@ -1,17 +1,18 @@
-pmtr: process supervisor
-========================
+pmtr: a Linux process supervisor
+================================
 Troy D. Hanson <tdh@tkhanson.net>
 
 Back to the https://github.com/troydhanson/pmtr[pmtr Github page].
 
-pmtr: a Linux process supervisor
---------------------------------
+pmtr
+----
 Most Linux services start from initscripts. In some situations it's easier to
 supervise a collection of processes through one configuration file.  I wrote
-pmtr to manage my appliance processes. It is meant to run permanent processes.
-It restarts processes if they exit.  It runs on Linux (Ubuntu, RHEL/CentOS,
-etc).  It is written in C. The pmtr config file `/etc/pmtr.conf` lists the
-services that pmtr should run and supervise.
+pmtr to manage my appliance processes. 
+
+It is meant to run permanent processes.  It restarts processes that exit.  It
+is written in C, and runs on Linux- Ubuntu, RHEL/CentOS, etc. The pmtr config
+file `/etc/pmtr.conf` lists the services that pmtr should run and supervise.
 
 .Example `/etc/pmtr.conf`
 --------------------------------------------------------
@@ -55,11 +56,7 @@ http://troydhanson.github.io/[I write lots of C code].
 Build and Install
 ~~~~~~~~~~~~~~~~~
 
-You can git clone https://github.com/troydhanson/pmtr.git. The 
-https://github.com/troydhanson/pmtr[pmtr Github page] has other options.
-
-Build and install:
-
+  git clone https://github.com/troydhanson/pmtr.git
   cd pmtr
   make
   sudo make install
@@ -77,22 +74,19 @@ You can use the system's service command to start or stop pmtr itself.
   service pmtr stop
 
 When you stop pmtr, it stops the jobs that it's supervising and then itself.
-
-[[logging]]
-Pmtr logs to syslog. This is `/var/log/syslog` or `/var/log/messages` typically.
+Pmtr logs to syslog. This is typically `/var/log/syslog` or `/var/log/messages`.
 
   Nov  7 1:38:10 ubuntu pmtr[477]: started job proxy [478]
   Nov  7 1:38:20 ubuntu pmtr[477]: job proxy [478] exited after 10 sec: exit status 0
 
-Normally pmtr forks into the background. You can tell it to stay in the
-foreground using `-F`. These are the full command options.
+Normally pmtr runs in the background. You can start it in the foreground using `-F`.
 
 .pmtr options
-[width="80%",cols="20m,20,50",grid="none",options="none"]
+[width="80%",cols="20m,50",grid="none",options="none"]
 |==========================================================================
+| -F        | stay in foreground 
 | -c <file> | specify alternate configuration file
-| -t        | parse config file and exit, implies -F
-| -F        | stay in foreground instead of detaching
+| -t        | test syntax (parse config file and exit)
 | -v        | verbose logging (repeatable), -vv shows parsing
 |==========================================================================
 

@@ -4,7 +4,7 @@
 <head>
 <meta http-equiv="Content-Type" content="application/xhtml+xml; charset=UTF-8" />
 <meta name="generator" content="AsciiDoc 8.6.9" />
-<title>pmtr: process supervisor</title>
+<title>pmtr: a Linux process supervisor</title>
 <style type="text/css">
 /* Shared CSS for AsciiDoc xhtml11 and html5 backends */
 
@@ -767,7 +767,7 @@ asciidoc.install(2);
 </head>
 <body class="article">
 <div id="header">
-<h1>pmtr: process supervisor</h1>
+<h1>pmtr: a Linux process supervisor</h1>
 <span id="author">Troy D. Hanson</span><br />
 <span id="email"><code>&lt;<a href="mailto:tdh@tkhanson.net">tdh@tkhanson.net</a>&gt;</code></span><br />
 <div id="toc">
@@ -782,14 +782,14 @@ asciidoc.install(2);
 </div>
 </div>
 <div class="sect1">
-<h2 id="_pmtr_a_linux_process_supervisor">pmtr: a Linux process supervisor</h2>
+<h2 id="_pmtr">pmtr</h2>
 <div class="sectionbody">
 <div class="paragraph"><p>Most Linux services start from initscripts. In some situations it&#8217;s easier to
 supervise a collection of processes through one configuration file.  I wrote
-pmtr to manage my appliance processes. It is meant to run permanent processes.
-It restarts processes if they exit.  It runs on Linux (Ubuntu, RHEL/CentOS,
-etc).  It is written in C. The pmtr config file <code>/etc/pmtr.conf</code> lists the
-services that pmtr should run and supervise.</p></div>
+pmtr to manage my appliance processes.</p></div>
+<div class="paragraph"><p>It is meant to run permanent processes.  It restarts processes that exit.  It
+is written in C, and runs on Linux- Ubuntu, RHEL/CentOS, etc. The pmtr config
+file <code>/etc/pmtr.conf</code> lists the services that pmtr should run and supervise.</p></div>
 <div class="listingblock">
 <div class="title">Example <code>/etc/pmtr.conf</code></div>
 <div class="content">
@@ -830,12 +830,10 @@ own way with pmtr whenever I wanted to hack in new features, and because, well,
 </div>
 <div class="sect2">
 <h3 id="_build_and_install">Build and Install</h3>
-<div class="paragraph"><p>You can git clone <a href="https://github.com/troydhanson/pmtr.git">https://github.com/troydhanson/pmtr.git</a>. The
-<a href="https://github.com/troydhanson/pmtr">pmtr Github page</a> has other options.</p></div>
-<div class="paragraph"><p>Build and install:</p></div>
 <div class="literalblock">
 <div class="content">
-<pre><code>cd pmtr
+<pre><code>git clone https://github.com/troydhanson/pmtr.git
+cd pmtr
 make
 sudo make install</code></pre>
 </div></div>
@@ -864,34 +862,38 @@ an OS-specific initscript that runs pmtr at boot
 <pre><code>service pmtr start
 service pmtr stop</code></pre>
 </div></div>
-<div class="paragraph"><p>When you stop pmtr, it stops the jobs that it&#8217;s supervising and then itself.</p></div>
-<div class="paragraph" id="logging"><p>Pmtr logs to syslog. This is <code>/var/log/syslog</code> or <code>/var/log/messages</code> typically.</p></div>
+<div class="paragraph"><p>When you stop pmtr, it stops the jobs that it&#8217;s supervising and then itself.
+Pmtr logs to syslog. This is typically <code>/var/log/syslog</code> or <code>/var/log/messages</code>.</p></div>
 <div class="literalblock">
 <div class="content">
 <pre><code>Nov  7 1:38:10 ubuntu pmtr[477]: started job proxy [478]
 Nov  7 1:38:20 ubuntu pmtr[477]: job proxy [478] exited after 10 sec: exit status 0</code></pre>
 </div></div>
-<div class="paragraph"><p>Normally pmtr forks into the background. You can tell it to stay in the
-foreground using <code>-F</code>. These are the full command options.</p></div>
+<div class="paragraph"><p>Normally pmtr runs in the background. You can start it in the foreground using <code>-F</code>.</p></div>
 <div class="tableblock">
 <table rules="none"
 width="80%"
 frame="border"
 cellspacing="0" cellpadding="4">
 <caption class="title">Table 1. pmtr options</caption>
-<col width="22%" />
-<col width="22%" />
-<col width="55%" />
+<col width="28%" />
+<col width="71%" />
 <tbody>
+<tr>
+<td align="left" valign="top"><p class="table"><code>-F</code></p></td>
+<td align="left" valign="top"><p class="table">stay in foreground</p></td>
+</tr>
 <tr>
 <td align="left" valign="top"><p class="table"><code>-c &lt;file&gt;</code></p></td>
 <td align="left" valign="top"><p class="table">specify alternate configuration file</p></td>
-<td align="left" valign="top"><p class="table">-t</p></td>
 </tr>
 <tr>
-<td align="left" valign="top"><p class="table"><code>parse config file and exit, implies -F</code></p></td>
-<td align="left" valign="top"><p class="table">-F</p></td>
-<td align="left" valign="top"><p class="table">stay in foreground instead of detaching</p></td>
+<td align="left" valign="top"><p class="table"><code>-t</code></p></td>
+<td align="left" valign="top"><p class="table">test syntax (parse config file and exit)</p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><code>-v</code></p></td>
+<td align="left" valign="top"><p class="table">verbose logging (repeatable), -vv shows parsing</p></td>
 </tr>
 </tbody>
 </table>
@@ -1359,7 +1361,7 @@ process. This is the dependency monitor that watches the config file.</p></div>
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2015-08-20 02:19:50 EDT
+Last updated 2015-08-20 02:29:08 EDT
 </div>
 </div>
 </body>
