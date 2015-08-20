@@ -8,11 +8,11 @@ pmtr
 ----
 Most Linux services start from initscripts. In some situations it's easier to
 supervise a collection of processes through one configuration file.  I wrote
-pmtr to manage my appliance processes. 
+pmtr to manage my appliance processes. With everything in one place I can see
+the overall configuration more easily and keep this file in source control.
 
-It is meant to run permanent processes.  It restarts processes that exit.  It
-is written in C, and runs on Linux- Ubuntu, RHEL/CentOS, etc. The pmtr config
-file `/etc/pmtr.conf` lists the services that pmtr should run and supervise.
+The config file `/etc/pmtr.conf` lists the services (jobs) for pmtr to run.
+It is meant to run permanent processes.  It restarts processes that exit.
 
 .Example `/etc/pmtr.conf`
 --------------------------------------------------------
@@ -49,9 +49,9 @@ Pmtr is free and open source. Here is the link:LICENSE.txt[LICENSE].
 About
 ~~~~~
 Pmtr is one of my hobby projects. I wrote it for managing appliances that had a
-a dozen or two related processes. I wanted to roll my own so that I could go my
-own way with pmtr whenever I wanted to hack in new features, and because, well,
-http://troydhanson.github.io/[I write lots of C code].
+a dozen or two related processes. It is written in C. I wanted to roll my own so
+that I could go my own way with pmtr whenever I wanted to hack in new features,
+and because, well, http://troydhanson.github.io/[I write lots of C code].
 
 Build and Install
 ~~~~~~~~~~~~~~~~~

@@ -786,10 +786,10 @@ asciidoc.install(2);
 <div class="sectionbody">
 <div class="paragraph"><p>Most Linux services start from initscripts. In some situations it&#8217;s easier to
 supervise a collection of processes through one configuration file.  I wrote
-pmtr to manage my appliance processes.</p></div>
-<div class="paragraph"><p>It is meant to run permanent processes.  It restarts processes that exit.  It
-is written in C, and runs on Linux- Ubuntu, RHEL/CentOS, etc. The pmtr config
-file <code>/etc/pmtr.conf</code> lists the services that pmtr should run and supervise.</p></div>
+pmtr to manage my appliance processes. With everything in one place I can see
+the overall configuration more easily and keep this file in source control.</p></div>
+<div class="paragraph"><p>The config file <code>/etc/pmtr.conf</code> lists the services (jobs) for pmtr to run.
+It is meant to run permanent processes.  It restarts processes that exit.</p></div>
 <div class="listingblock">
 <div class="title">Example <code>/etc/pmtr.conf</code></div>
 <div class="content">
@@ -824,9 +824,9 @@ file <code>/etc/pmtr.conf</code> lists the services that pmtr should run and sup
 <div class="sect2">
 <h3 id="_about">About</h3>
 <div class="paragraph"><p>Pmtr is one of my hobby projects. I wrote it for managing appliances that had a
-a dozen or two related processes. I wanted to roll my own so that I could go my
-own way with pmtr whenever I wanted to hack in new features, and because, well,
-<a href="http://troydhanson.github.io/">I write lots of C code</a>.</p></div>
+a dozen or two related processes. It is written in C. I wanted to roll my own so
+that I could go my own way with pmtr whenever I wanted to hack in new features,
+and because, well, <a href="http://troydhanson.github.io/">I write lots of C code</a>.</p></div>
 </div>
 <div class="sect2">
 <h3 id="_build_and_install">Build and Install</h3>
@@ -1361,7 +1361,7 @@ process. This is the dependency monitor that watches the config file.</p></div>
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2015-08-20 02:29:08 EDT
+Last updated 2015-08-20 02:37:11 EDT
 </div>
 </div>
 </body>
