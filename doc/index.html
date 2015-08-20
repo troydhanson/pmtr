@@ -535,40 +535,6 @@ body.manpage div.sectionbody {
 }
 
 
-@media screen {
-  body {
-    max-width: 50em; /* approximately 80 characters wide */
-    margin-left: 16em;
-  }
-
-  #toc {
-    position: fixed;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    width: 13em;
-    padding: 0.5em;
-    padding-bottom: 1.5em;
-    margin: 0;
-    overflow: auto;
-    border-right: 3px solid #f8f8f8;
-    background-color: white;
-  }
-
-  #toc .toclevel1 {
-    margin-top: 0.5em;
-  }
-
-  #toc .toclevel2 {
-    margin-top: 0.25em;
-    display: list-item;
-    color: #aaaaaa;
-  }
-
-  #toctitle {
-    margin-top: 0.5em;
-  }
-}
 </style>
 <script type="text/javascript">
 /*<![CDATA[*/
@@ -761,7 +727,7 @@ install: function(toclevels) {
 }
 
 }
-asciidoc.install(2);
+asciidoc.install();
 /*]]>*/
 </script>
 </head>
@@ -770,24 +736,20 @@ asciidoc.install(2);
 <h1>pmtr: a Linux process supervisor</h1>
 <span id="author">Troy D. Hanson</span><br />
 <span id="email"><code>&lt;<a href="mailto:tdh@tkhanson.net">tdh@tkhanson.net</a>&gt;</code></span><br />
-<div id="toc">
-  <div id="toctitle">Table of Contents</div>
-  <noscript><p><b>JavaScript must be enabled in your browser to display the table of contents.</b></p></noscript>
-</div>
 </div>
 <div id="content">
 <div id="preamble">
 <div class="sectionbody">
 <div class="paragraph"><p>Back to the <a href="https://github.com/troydhanson/pmtr">pmtr Github page</a>.</p></div>
+<div class="paragraph"><p>Most Linux services start from initscripts. In some situations it&#8217;s easier to
+supervise a collection of processes through one configuration file.  I wrote
+pmtr to manage my appliance processes. With everything in one place I can see
+the overall configuration more easily and keep this file in source control.</p></div>
 </div>
 </div>
 <div class="sect1">
 <h2 id="_pmtr">pmtr</h2>
 <div class="sectionbody">
-<div class="paragraph"><p>Most Linux services start from initscripts. In some situations it&#8217;s easier to
-supervise a collection of processes through one configuration file.  I wrote
-pmtr to manage my appliance processes. With everything in one place I can see
-the overall configuration more easily and keep this file in source control.</p></div>
 <div class="paragraph"><p>The config file <code>/etc/pmtr.conf</code> lists the services (jobs) for pmtr to run.
 It is meant to run permanent processes.  It restarts processes that exit.</p></div>
 <div class="listingblock">
@@ -1361,7 +1323,7 @@ process. This is the dependency monitor that watches the config file.</p></div>
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2015-08-20 02:37:11 EDT
+Last updated 2015-08-20 02:38:46 EDT
 </div>
 </div>
 </body>

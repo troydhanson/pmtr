@@ -1,7 +1,8 @@
 all: index.html
 
 index.html: index.txt
-	asciidoc -a toc2 $<
+	#asciidoc -a toc2 $<
+	asciidoc $<
 
 TMP=/tmp/pmtr-gh-pages
 stage:

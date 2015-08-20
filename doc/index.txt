@@ -4,13 +4,13 @@ Troy D. Hanson <tdh@tkhanson.net>
 
 Back to the https://github.com/troydhanson/pmtr[pmtr Github page].
 
-pmtr
-----
 Most Linux services start from initscripts. In some situations it's easier to
 supervise a collection of processes through one configuration file.  I wrote
 pmtr to manage my appliance processes. With everything in one place I can see
 the overall configuration more easily and keep this file in source control.
 
+pmtr
+----
 The config file `/etc/pmtr.conf` lists the services (jobs) for pmtr to run.
 It is meant to run permanent processes.  It restarts processes that exit.
 
@@ -41,6 +41,7 @@ It is meant to run permanent processes.  It restarts processes that exit.
     }
   }
 --------------------------------------------------------
+
 
 License
 ~~~~~~~
