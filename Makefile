@@ -7,7 +7,7 @@ CFLAGS+=-g
 $(SUBDIRS) doc:
 	$(MAKE) -C $@
 
-cfg.c cfg.h: cfg.y
+cfg.c cfg.h: cfg.y $(SUBDIRS)
 	lemon/lemon $<
 
 # TODO force rebuild of c files if any h files change
