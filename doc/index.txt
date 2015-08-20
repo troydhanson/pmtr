@@ -8,10 +8,11 @@ Back to the https://github.com/troydhanson/pmtr[pmtr Github page].
 pmtr: a Linux process supervisor
 --------------------------------
 Most Linux services start from initscripts. In some situations it's easier to
-have a single configuration file that governs a whole collection of processes.
-I wrote pmtr to have a unified configuration file for a collection of services.
-It runs on Ubuntu, Redhat/CentOS, and others. It is meant for daemon processes.
-It is written in C. The pmtr config file is a list of jobs. It looks like this:
+have one configuration file that governs a collection of processes.  I wrote
+pmtr to manage all my appliance processes through a single configuration file.
+It runs on Ubuntu, Redhat/CentOS, and others.  It is written in C. It is meant
+to run processes that run permanently. It restarts processes that exit.  The
+pmtr config file lists the services (jobs) to run and their options.
 
 .Example `/etc/pmtr.conf`
 --------------------------------------------------------
@@ -114,6 +115,33 @@ When you edit and save `pmtr.conf`, it applies the changes immediately.
 
 To terminate a job, pmtr sends SIGTERM to it, then SIGKILL shortly afterward.
 
+Syntax 
+^^^^^^
+The configuration file contains any number of jobs. 
+
+* Each job is in a curly-brace delimited block.  
+* The order of options inside does not matter. 
+* Only the `name` and `cmd` are required.
+* Indentation is optional. 
+* Blank lines are ok.  
+* Comments start with `#` and must be on their own line.
+
+.Example job
+---------------------------------------------------
+  job {
+    name snmp-mon 
+    cmd /usr/bin/snmp-mon -c snmp.conf
+    env LD_LIBRARY_PATH=/opt/lib
+    ulimit -n infinity
+    bounce every 1d
+    user daemon
+    depends {
+      snmp.conf
+      device.oid
+    }
+  }
+---------------------------------------------------
+
 These options may appear in a job definition.
 
 [[options]]
@@ -203,7 +231,7 @@ ulimit
 * If there is an error setting the ulimits, it's logged to syslog.
 
 Restarts
-~~~~~~~~
+^^^^^^^^
 Since pmtr is designed to keep things running, if a job exits, pmtr restarts it.
 
 * If a job exits quickly (within ten seconds of when it started) pmtr 
@@ -211,45 +239,20 @@ Since pmtr is designed to keep things running, if a job exits, pmtr restarts it.
   job probably has some sort of configuration problem if it exits quickly.
 * Exit status 33 can be returned from a process to tell pmtr not to restart it.
 
-Syntax summary
-~~~~~~~~~~~~~~
-The configuration file contains any number of jobs. 
-
-* Each job is in a curly-brace delimited block.  
-* The order of options inside does not matter. 
-* Only the `name` and `cmd` are required.
-* Indentation is optional. 
-* Blank lines are ok.  
-* Comments start with `#` and must be on their own line.
-
-.Several options 
----------------------------------------------------
-  job {
-    name snmp-mon 
-    cmd /usr/bin/snmp-mon -c snmp.conf
-    env LD_LIBRARY_PATH=/opt/lib
-    ulimit -n infinity
-    bounce every 1d
-    user daemon
-    depends {
-      snmp.conf
-      device.oid
-    }
-  }
----------------------------------------------------
-
 One-time jobs
 ^^^^^^^^^^^^^
-For "initial setup" situations, pmtr has limited support for one-time jobs. The
-`wait` option makes pmtr wait for the job to exit before starting subsequent
-jobs. To keep pmtr from restarting it, use the `once` option. 
+Normally pmtr runs permanent processes. However pmtr supports one-time "setup"
+jobs using the `wait` and `once` options.
 
   job {
-    name setup
-    cmd /bin/mkdir -p /dev/shm/ws
+    name setup-ramdisk
+    cmd /bin/mkdir /dev/shm/ss
     wait
     once
   }
+
+With `wait`, pmtr waits for the job to exit before starting subsequent jobs. The
+`once` option prevents pmtr from restarting it. 
 
 Experimental 
 ~~~~~~~~~~~~

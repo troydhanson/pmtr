@@ -786,10 +786,11 @@ asciidoc.install(2);
 <h2 id="_pmtr_a_linux_process_supervisor">pmtr: a Linux process supervisor</h2>
 <div class="sectionbody">
 <div class="paragraph"><p>Most Linux services start from initscripts. In some situations it&#8217;s easier to
-have a single configuration file that governs a whole collection of processes.
-I wrote pmtr to have a unified configuration file for a collection of services.
-It runs on Ubuntu, Redhat/CentOS, and others. It is meant for daemon processes.
-It is written in C. The pmtr config file is a list of jobs. It looks like this:</p></div>
+have one configuration file that governs a collection of processes.  I wrote
+pmtr to manage all my appliance processes through a single configuration file.
+It runs on Ubuntu, Redhat/CentOS, and others.  It is written in C. It is meant
+to run processes that run permanently. It restarts processes that exit.  The
+pmtr config file lists the services (jobs) to run and their options.</p></div>
 <div class="listingblock">
 <div class="title">Example <code>/etc/pmtr.conf</code></div>
 <div class="content">
@@ -937,6 +938,57 @@ A changed job is restarted with its new configuration.
 </li>
 </ul></div>
 <div class="paragraph"><p>To terminate a job, pmtr sends SIGTERM to it, then SIGKILL shortly afterward.</p></div>
+<div class="sect3">
+<h4 id="_syntax">Syntax</h4>
+<div class="paragraph"><p>The configuration file contains any number of jobs.</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+Each job is in a curly-brace delimited block.
+</p>
+</li>
+<li>
+<p>
+The order of options inside does not matter.
+</p>
+</li>
+<li>
+<p>
+Only the <code>name</code> and <code>cmd</code> are required.
+</p>
+</li>
+<li>
+<p>
+Indentation is optional.
+</p>
+</li>
+<li>
+<p>
+Blank lines are ok.
+</p>
+</li>
+<li>
+<p>
+Comments start with <code>#</code> and must be on their own line.
+</p>
+</li>
+</ul></div>
+<div class="listingblock">
+<div class="title">Example job</div>
+<div class="content">
+<pre><code>  job {
+    name snmp-mon
+    cmd /usr/bin/snmp-mon -c snmp.conf
+    env LD_LIBRARY_PATH=/opt/lib
+    ulimit -n infinity
+    bounce every 1d
+    user daemon
+    depends {
+      snmp.conf
+      device.oid
+    }
+  }</code></pre>
+</div></div>
 <div class="paragraph"><p>These options may appear in a job definition.</p></div>
 <div class="tableblock" id="options">
 <table rules="none"
@@ -1004,6 +1056,7 @@ cellspacing="0" cellpadding="4">
 </table>
 </div>
 <div class="paragraph"><p>More details on each option follows.</p></div>
+</div>
 <div class="sect3">
 <h4 id="_cmd">cmd</h4>
 <div class="ulist"><ul>
@@ -1221,9 +1274,8 @@ If there is an error setting the ulimits, it&#8217;s logged to syslog.
 </li>
 </ul></div>
 </div>
-</div>
-<div class="sect2">
-<h3 id="_restarts">Restarts</h3>
+<div class="sect3">
+<h4 id="_restarts">Restarts</h4>
 <div class="paragraph"><p>Since pmtr is designed to keep things running, if a job exits, pmtr restarts it.</p></div>
 <div class="ulist"><ul>
 <li>
@@ -1240,71 +1292,21 @@ Exit status 33 can be returned from a process to tell pmtr not to restart it.
 </li>
 </ul></div>
 </div>
-<div class="sect2">
-<h3 id="_syntax_summary">Syntax summary</h3>
-<div class="paragraph"><p>The configuration file contains any number of jobs.</p></div>
-<div class="ulist"><ul>
-<li>
-<p>
-Each job is in a curly-brace delimited block.
-</p>
-</li>
-<li>
-<p>
-The order of options inside does not matter.
-</p>
-</li>
-<li>
-<p>
-Only the <code>name</code> and <code>cmd</code> are required.
-</p>
-</li>
-<li>
-<p>
-Indentation is optional.
-</p>
-</li>
-<li>
-<p>
-Blank lines are ok.
-</p>
-</li>
-<li>
-<p>
-Comments start with <code>#</code> and must be on their own line.
-</p>
-</li>
-</ul></div>
-<div class="listingblock">
-<div class="title">Several options</div>
-<div class="content">
-<pre><code>  job {
-    name snmp-mon
-    cmd /usr/bin/snmp-mon -c snmp.conf
-    env LD_LIBRARY_PATH=/opt/lib
-    ulimit -n infinity
-    bounce every 1d
-    user daemon
-    depends {
-      snmp.conf
-      device.oid
-    }
-  }</code></pre>
-</div></div>
 <div class="sect3">
 <h4 id="_one_time_jobs">One-time jobs</h4>
-<div class="paragraph"><p>For "initial setup" situations, pmtr has limited support for one-time jobs. The
-<code>wait</code> option makes pmtr wait for the job to exit before starting subsequent
-jobs. To keep pmtr from restarting it, use the <code>once</code> option.</p></div>
+<div class="paragraph"><p>Normally pmtr runs permanent processes. However pmtr supports one-time "setup"
+jobs using the <code>wait</code> and <code>once</code> options.</p></div>
 <div class="literalblock">
 <div class="content">
 <pre><code>job {
-  name setup
-  cmd /bin/mkdir -p /dev/shm/ws
+  name setup-ramdisk
+  cmd /bin/mkdir /dev/shm/ss
   wait
   once
 }</code></pre>
 </div></div>
+<div class="paragraph"><p>With <code>wait</code>, pmtr waits for the job to exit before starting subsequent jobs. The
+<code>once</code> option prevents pmtr from restarting it.</p></div>
 </div>
 </div>
 <div class="sect2">
@@ -1358,7 +1360,7 @@ process. This is the dependency monitor that watches the config file.</p></div>
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2015-08-20 01:33:30 EDT
+Last updated 2015-08-20 01:52:50 EDT
 </div>
 </div>
 </body>
