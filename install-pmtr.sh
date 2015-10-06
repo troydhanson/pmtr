@@ -2,11 +2,12 @@
 
 # 
 # this installer makes a guess whether this is RHEL/Centos, Ubuntu 
-# or Debian (sorry to other platforms, please send me improvements)
-# and tries to install a suitable init script for the platform.
+# (Upstart or Systemd) or Debian and tries to install a suitable 
+# init script for the platform.
 #
 # Troy D. Hanson <tdh@tkhanson.net>
 # 9/2012
+# 10/2015 updated for systemd on Ubuntu 15
 #
 
 if [ ! -x ./pmtr ]
@@ -54,8 +55,18 @@ case "$OS" in
     /etc/init.d/pmtr start
     ;;
   ubuntu)
-    cp initscripts/ubuntu /etc/init/pmtr.conf
-    /sbin/start pmtr
+    INITSYS=$(ps -p1 | grep -q systemd && echo systemd || echo upstart)
+    case "$INITSYS" in
+      upstart)
+        cp initscripts/ubuntu /etc/init/pmtr.conf
+        /sbin/start pmtr
+        ;;
+      systemd)
+        cp initscripts/pmtr.service /lib/systemd/system/pmtr.service
+        systemctl enable pmtr
+        systemctl start pmtr
+        ;;
+    esac
     ;;
   debian)
     cp initscripts/debian /etc/init.d/pmtr
