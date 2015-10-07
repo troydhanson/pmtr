@@ -9,7 +9,7 @@ supervise a collection of processes through one configuration file.  I wrote
 pmtr to manage my appliance processes. With everything in one place I can see
 the overall configuration more easily and keep this file in source control.
 
-I use pmtr primarily on Ubuntu (versions 12 through 15) and CentOS (versions 5-6).
+Platforms: pmtr runs on Ubuntu, CentOS, Raspbian, Debian and probably others.
 
 pmtr
 ----
