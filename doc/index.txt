@@ -29,19 +29,18 @@ Pmtr is written in C and targets Linux only. It runs on:
 * Ubuntu
 * CentOS/RHEL
 * Debian 
-* Raspberry Pi (Raspbian) and Intel Edison (Yocto)
+* Raspberry Pi- Raspbian
+* Intel Edison 
 * probably others...
 
-License
-~~~~~~~
-Pmtr is free and open source. Here is the link:LICENSE.txt[LICENSE].
+Pmtr is free and open source. Here is the link:LICENSE.txt[license].
 
 About
-~~~~~
-I wrote pmtr in 2011. I've used it year in and year out on hundreds of systems.
-If you have a favorite init system, you should use it. For me, pmtr does the
-job, insulating me from the next great new init replacement. And really I like
-being able to hack http://troydhanson.github.io/[my own stuff].
+
+I wrote pmtr in 2011. I've used it year after year on hundreds of systems.
+If you have a favorite init system, you should use it. For me, pmtr insulates 
+me from the next great init replacement, and I like being able to hack on
+http://troydhanson.github.io/[my own stuff].
 
 pmtr
 ----
@@ -57,18 +56,15 @@ is meant to run permanent processes.  It restarts processes that exit.
   }
 
   job {
-    name snmp-mon 
-    cmd /usr/bin/snmp-mon -c snmp.conf
-    env LD_LIBRARY_PATH=/opt/lib
-    ulimit -n infinity
-    bounce every 1d
-    user daemon
-    depends {
-      snmp.conf
-      device.oid
-    }
+    name web-pub
+    dir /opt
+    cmd /usr/bin/kvsp-bpub -b cast -s -web tcp://0.0.0.0:9003
+    err web.err
   }
+
 --------------------------------------------------------
+
+It takes lots of other options shown further below.
 
 Build and Install
 ~~~~~~~~~~~~~~~~~
@@ -99,22 +95,44 @@ Or on systemd-based systems,
   systemctl status pmtr 
   systemctl stop pmtr 
 
-When you stop pmtr, it stops the jobs that it's managing and then itself.
+Logs/Status
+~~~~~~~~~~~
 Pmtr logs to syslog. This is typically `/var/log/syslog` or `/var/log/messages`.
 
   Nov  7 1:38:10 ubuntu pmtr[477]: started job proxy [478]
-  Nov  7 1:38:20 ubuntu pmtr[477]: job proxy [478] exited after 10 sec: exit status 0
 
-Normally pmtr runs in the background. You can start it in the foreground using `-F`.
+To get a nice visual confirmation of the jobs you have running under pmtr, you
+can use the `pstree` utility, if you have it installed.  Here is the output of
+`pstree -p` truncated to show only pmtr's process tree.
 
-.pmtr options
-[width="80%",cols="20m,50",grid="none",options="none"]
-|==========================================================================
-| -F        | stay in foreground 
-| -c <file> | specify alternate configuration file
-| -t        | test syntax (parse config file and exit)
-| -v        | verbose logging (repeatable), -vv shows parsing
-|==========================================================================
+.Example pstree output
+----------------------------------------
+        ├─pmtr(2830)─┬─pmtr(2834)
+        │            ├─proxy(2831)
+        │            ├─sshd(2832)
+        │            └─python(2833)
+----------------------------------------
+
+systemd-based systems
+^^^^^^^^^^^^^^^^^^^^^
+On systemd-based systems, `systemctl` gives a nice view of pmtr and its sub-jobs:
+
+----------------------------------------------------------------------------
+systemctl status pmtr
+● pmtr.service - pmtr process manager
+   Loaded: loaded (/lib/systemd/system/pmtr.service; enabled)
+   Active: active (running) since Mon 2015-11-23 02:18:58 UTC; 12min ago
+     Docs: http://troydhanson.github.io/pmtr
+ Main PID: 1463 (pmtr)
+   CGroup: /system.slice/pmtr.service
+           ├─1463 /usr/bin/pmtr -F -c /etc/pmtr.conf
+           ├─1470 /usr/bin/pmtr -F -c /etc/pmtr.conf
+           └─1556 /bin/sleep 8
+----------------------------------------------------------------------------
+
+You can also view logs using:
+
+    journalctl -u pmtr
 
 Jobs
 ~~~~
@@ -134,8 +152,8 @@ When you edit and save `pmtr.conf`, it applies the changes immediately.
 
 To terminate a job, pmtr sends SIGTERM to it, then SIGKILL shortly afterward.
 
-Syntax 
-^^^^^^
+Config file
+~~~~~~~~~~~
 The configuration file contains any number of jobs. 
 
 * Each job is in a curly-brace delimited block.  
@@ -148,16 +166,16 @@ The configuration file contains any number of jobs.
 .Example job
 ---------------------------------------------------
   job {
-    name snmp-mon 
+    name snmpmonitor
     cmd /usr/bin/snmp-mon -c snmp.conf
-    env LD_LIBRARY_PATH=/opt/lib
-    ulimit -n infinity
-    bounce every 1d
     user daemon
     depends {
       snmp.conf
       device.oid
     }
+    env LD_LIBRARY_PATH=/opt/lib
+    ulimit -n infinity
+    bounce every 1d
   }
 ---------------------------------------------------
 
@@ -273,6 +291,25 @@ jobs using the `wait` and `once` options.
 With `wait`, pmtr waits for the job to exit before starting subsequent jobs. The
 `once` option prevents pmtr from restarting it. 
 
+pmtr command line options
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+These are not normally used. The OS-specific initsystem (systemd, etc) normally runs
+pmtr at system boot. However you can run pmtr manually. If you do, these are the 
+command line options that pmtr accepts. 
+
+.pmtr options
+[width="80%",cols="20m,50",grid="none",options="none"]
+|==========================================================================
+| -h        | show help    
+| -F        | stay in foreground 
+| -c <file> | specify configuration file
+| -t        | test syntax (parse config file and exit)
+| -v        | verbose logging (repeatable), -vv shows parsing
+| -p <file> | make pidfile
+|==========================================================================
+
+
 Experimental 
 ~~~~~~~~~~~~
 These features are disabled by default.
@@ -285,7 +322,7 @@ These configuration options may appear in `pmtr.conf` at the global scope.
 The `report to` option designates a remote address and port to which pmtr should
 send a a UDP packet every ten seconds.  The packet payload lists the job names,
 enabled or disabled status, and elapsed runtimes in simple text. (An included
-script `pmtr/utils/pmtr-rptserver` can receive these reports and write updates
+script `utils/pmtr-rptserver` can receive these reports and write updates
 to a text file summarizing the received status messages. This script is invoked
 like `pmtr-rptserver -p 9999 -f status.txt`).  If the `report to` address falls
 in the multicast UDP range (e.g.  239.0.0.1, etc), the specification may include
@@ -296,29 +333,9 @@ The `listen on` option allows jobs to be remotely enabled or disabled. It
 specifies a UDP address and port that pmtr should listen on for datagrams of
 form `enable abc` or `disable abc`, where 'abc' is a job name.  The address
 0.0.0.0 can be used as a shortcut to denote "any address" on this system. (A
-script in `pmtr/utils/pmtr-ctl` may be used to send the datagrams, for example 
+script in `utils/pmtr-ctl` may be used to send the datagrams, for example 
 `pmtr-ctl -s 192.168.0.22 -p 10000 enable abc`). The effect is temporary; the
 settings in pmtr.conf resume precedence when it's edited or pmtr is restarted.
-
-Tips
-~~~~
-
-pstree
-^^^^^^
-To get a nice visual confirmation of the jobs you have running under pmtr, you
-can use the `pstree` utility, if you have it installed.  Here is the output of
-`pstree -p`.
-
-.Example pstree output
-----------------------------------------
-        ├─pmtr(2830)─┬─pmtr(2834)
-        │            ├─proxy(2831)
-        │            ├─sshd(2832)
-        │            └─python(2833)
-----------------------------------------
-
-The other system processes have been omitted. Note that pmtr has its own child
-process. This is the dependency monitor that watches the config file.
 
 // vim: set tw=80 wm=2 syntax=asciidoc: 
 
