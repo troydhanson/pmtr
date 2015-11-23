@@ -1,10 +1,9 @@
 [Unit]
-Description=pmtr process monitor
+Description=pmtr process manager
 Documentation=http://troydhanson.github.io/pmtr
 
 [Service]
-Type=forking
-ExecStart=/usr/bin/pmtr -c /etc/pmtr.conf
+ExecStart=/usr/bin/pmtr -F -c /etc/pmtr.conf
 
 [Install]
 WantedBy=multi-user.target

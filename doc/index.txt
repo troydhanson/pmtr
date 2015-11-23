@@ -4,26 +4,52 @@ Troy D. Hanson <tdh@tkhanson.net>
 
 Back to the https://github.com/troydhanson/pmtr[pmtr Github page].
 
-Most Linux services start from initscripts. In some situations it's easier to
-supervise a collection of processes through one configuration file.  I wrote
-pmtr to manage my appliance processes. With everything in one place I can see
-the overall configuration more easily and keep this file in source control.
+How do you run services at boot on Linux? Usually, the answer is initscripts.
+(Or, for a hack, you can run them from /etc/rc.local). One of the more modern
+and beautiful init systems is systemd. Ubuntu 15/16 and RHEL7 have adopted it.
 
-Platforms: pmtr runs on Ubuntu, CentOS, Raspbian, Debian and probably others.
+Why on earth would I write my own manager for background services? Here's why:
+
+I wanted 'one configuration file' for all the jobs that make up my appliance.
+
+The one configuration file would ...
+
+** react immediately to changes when edited
+** abstract the OS-dependent init system away
+** co-exist with the OS-dependent init system 
+** be easily checked into git version control
+
+Rather than competing with systemd, upstart and all the other init systems 
+out there, pmtr is just my idiosyncratic take on process management for an
+appliance made of many cooperating processes. Pmtr itself starts up using
+the underlying init system (upstart, systemd, or traditional initscripts).
+
+Pmtr is written in C and targets Linux only. It runs on:
+
+* Ubuntu
+* CentOS/RHEL
+* Debian 
+* Raspberry Pi (Raspbian) and Intel Edison (Yocto)
+* probably others...
+
+License
+~~~~~~~
+Pmtr is free and open source. Here is the link:LICENSE.txt[LICENSE].
+
+About
+~~~~~
+I wrote pmtr in 2011. I've used it year in and year out on hundreds of systems.
+If you have a favorite init system, you should use it. For me, pmtr does the
+job, insulating me from the next great new init replacement. And really I like
+being able to hack http://troydhanson.github.io/[my own stuff].
 
 pmtr
 ----
-The config file `/etc/pmtr.conf` lists the services (jobs) for pmtr to run.
-It is meant to run permanent processes.  It restarts processes that exit.
+The config file `/etc/pmtr.conf` lists the processes (jobs) for pmtr to run.  It
+is meant to run permanent processes.  It restarts processes that exit.
 
 .Example `/etc/pmtr.conf`
 --------------------------------------------------------
-
-  job {
-    name application-proxy
-    cmd /bin/aproxy -j 10 -l 127.0.0.1
-    err /var/log/aproxy.err
-  }
 
   job {
     name ssh-tunnel
@@ -44,18 +70,6 @@ It is meant to run permanent processes.  It restarts processes that exit.
   }
 --------------------------------------------------------
 
-
-License
-~~~~~~~
-Pmtr is free and open source. Here is the link:LICENSE.txt[LICENSE].
-
-About
-~~~~~
-Pmtr is one of my hobby projects. I wrote it for managing appliances that had a
-a dozen or two related processes. It is written in C. I wanted to roll my own so
-that I could go my own way with pmtr whenever I wanted to hack in new features,
-and because, well, http://troydhanson.github.io/[I write lots of C code].
-
 Build and Install
 ~~~~~~~~~~~~~~~~~
 
@@ -64,19 +78,28 @@ Build and Install
   make
   sudo make install
 
-Afterward pmtr should already be running. Verify using `service pmtr status`. 
-The result of installation is:
+Afterward pmtr should already be running. Verify using `service pmtr status` or
+`systemd status pmtr`.  The result of installation is:
 
  * the executable: `/usr/bin/pmtr` 
  * the configuration file: `/etc/pmtr.conf` 
  * an OS-specific initscript that runs pmtr at boot 
+
+Start/stop
+~~~~~~~~~~
 
 You can use the system's service command to start or stop pmtr itself.
 
   service pmtr start
   service pmtr stop
 
-When you stop pmtr, it stops the jobs that it's supervising and then itself.
+Or on systemd-based systems,
+
+  systemctl start pmtr 
+  systemctl status pmtr 
+  systemctl stop pmtr 
+
+When you stop pmtr, it stops the jobs that it's managing and then itself.
 Pmtr logs to syslog. This is typically `/var/log/syslog` or `/var/log/messages`.
 
   Nov  7 1:38:10 ubuntu pmtr[477]: started job proxy [478]
