@@ -68,6 +68,7 @@ case "$TYPE" in
     systemctl enable pmtr
     systemctl start pmtr
     systemctl status pmtr
+    ;;
   rhel)
     cp initscripts/rhel /etc/rc.d/init.d/pmtr
     /sbin/chkconfig --add pmtr
