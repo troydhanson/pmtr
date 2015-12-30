@@ -1,8 +1,0 @@
-job {
-  name echoer
-  cmd /bin/echo out
-  out /tmp/e.out 
-  err /tmp/e.err
-  dir /tmp
-}
-

@@ -1,9 +1,0 @@
-job {
-  name job1
-  cmd /usr/local/bin/job
-  #tmp /var/log/
-  dir /tmp
-  out out.txt
-  err err.txt
-  user root
-}

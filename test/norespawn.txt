@@ -1,4 +1,0 @@
-job {
-  name no-respawn
-  cmd /bin/bash -c "sleep 10; exit 33;"
-}
