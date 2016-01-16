@@ -5,6 +5,5 @@ m4_ifdef([AM_SILENT_RULES],
     ])
 AC_PROG_CC
 AC_CONFIG_FILES([Makefile
-   src/Makefile
-   src/lemon/Makefile])
+   src/Makefile])
 AC_OUTPUT
