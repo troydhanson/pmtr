@@ -5,5 +5,6 @@ m4_ifdef([AM_SILENT_RULES],
     ])
 AC_PROG_CC
 AC_CONFIG_FILES([Makefile
-   src/Makefile])
+   src/Makefile
+   conf/Makefile])
 AC_OUTPUT
