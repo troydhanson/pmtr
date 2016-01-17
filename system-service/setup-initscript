@@ -58,14 +58,14 @@ $cfg{rhel6}{mode}=    0755;
 $cfg{upstart}{enable} = "/bin/true";
 $cfg{upstart}{disable} = "/bin/true";
 $cfg{upstart}{start}  = "/sbin/start proctab";
-$cfg{upstart}{stop}  = "/sbin/start proctab";
+$cfg{upstart}{stop}  = "/sbin/stop proctab";
 $cfg{upstart}{service}= "/etc/init/proctab.conf";
 $cfg{upstart}{mode}=    0644;
 
 $cfg{debian}{enable}  = "/usr/sbin/update-rc.d proctab defaults";
-$cfg{debian}{disable}  = "/usr/sbin/update-rc.d proctab disable";
+$cfg{debian}{disable}  = "/usr/sbin/update-rc.d -f proctab remove";
 $cfg{debian}{start}   = "/usr/sbin/service proctab start";
-$cfg{debian}{stop}   = "/usr/sbin/service proctab start";
+$cfg{debian}{stop}   = "/usr/sbin/service proctab stop";
 $cfg{debian}{service} = "/etc/init.d/proctab";
 $cfg{debian}{mode}=    0755;
 
@@ -177,8 +177,8 @@ sub stop_service {
 
 guess_initsystem if $initsys eq "auto";
 guess_bindir if $bindir eq "auto";
+stop_service if $stop;
 install_service if $install;
 uninstall_service if $uninstall;
 start_service if $start;
-stop_service if $stop;
 
