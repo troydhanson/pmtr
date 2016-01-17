@@ -1,0 +1,184 @@
+#!/usr/bin/perl
+
+##############################################################################
+#
+# This tool installs an initscript that runs proctab as a system service.
+# Since initscripts vary by platform, this script can attempt to figure out
+# the initsystem (if unspecified), or it can be told explicitly (systemd,
+# upstart, etc to use). To see the supported options run:
+#
+# ./setup-initscript --help
+#
+# a typical usage looks like:
+#
+# sudo ./setup-initscript --initsys systemd --install-service --start-service
+#
+##############################################################################
+
+use strict;
+use warnings;
+use Getopt::Long;
+
+sub usage {
+  print STDERR "usage: $0 [options]\n";
+  print STDERR "options: --verbose\n";
+  print STDERR "         --dry-run\n";
+  print STDERR "         --start-service\n";
+  print STDERR "         --install-service\n";
+  print STDERR "         --initsys <auto|systemd|debian|upstart|rhel6>\n";
+  print STDERR "         --bindir <auto|dir> (e.g. /usr/bin)\n";
+  exit -1;
+}
+
+our $dry_run = 0;
+our $start = 0;
+our $stop = 0;
+our $install = 0;
+our $uninstall = 0;
+our $verbose = 0;
+our $initsys = "auto";
+our $bindir = "auto";
+our $help = 0;
+
+my %cfg;
+$cfg{systemd}{enable} = "systemctl enable proctab";
+$cfg{systemd}{disable} = "systemctl disable proctab";
+$cfg{systemd}{start}  = "systemctl start proctab";
+$cfg{systemd}{stop}  = "systemctl stop proctab";
+$cfg{systemd}{service}= "/lib/systemd/system/proctab.service";
+$cfg{systemd}{mode}=    0644;
+
+$cfg{rhel6}{enable}   = "/sbin/chkconfig --add proctab";
+$cfg{rhel6}{disable}   = "/sbin/chkconfig proctab off";
+$cfg{rhel6}{start}    = "/etc/init.d/proctab start";
+$cfg{rhel6}{stop}    = "/etc/init.d/proctab stop";
+$cfg{rhel6}{service}  = "/etc/rc.d/init.d/proctab";
+$cfg{rhel6}{mode}=    0755;
+
+$cfg{upstart}{enable} = "/bin/true";
+$cfg{upstart}{disable} = "/bin/true";
+$cfg{upstart}{start}  = "/sbin/start proctab";
+$cfg{upstart}{stop}  = "/sbin/start proctab";
+$cfg{upstart}{service}= "/etc/init/proctab.conf";
+$cfg{upstart}{mode}=    0644;
+
+$cfg{debian}{enable}  = "/usr/sbin/update-rc.d proctab defaults";
+$cfg{debian}{disable}  = "/usr/sbin/update-rc.d proctab disable";
+$cfg{debian}{start}   = "/usr/sbin/service proctab start";
+$cfg{debian}{stop}   = "/usr/sbin/service proctab start";
+$cfg{debian}{service} = "/etc/init.d/proctab";
+$cfg{debian}{mode}=    0755;
+
+usage unless GetOptions( "verbose+"          => \$verbose,
+                         "dry-run"           => \$dry_run,
+                         "bindir=s"          => \$bindir,
+                         "initsys=s"         => \$initsys,
+                         "start-service"     => \$start,
+                         "stop-service"      => \$stop,
+                         "install-service"   => \$install,
+                         "uninstall-service" => \$uninstall,
+                         "help"              => \$help);
+usage if $help;
+usage unless ($install or $start or $stop or $uninstall);
+
+die "Please run as root. Exiting.\n" unless ($dry_run or ($> == 0));
+
+sub guess_bindir {
+  my @dirs = qw(/bin /usr/bin /sbin /usr/sbin /usr/local/bin);
+  for my $dir (@dirs) {
+    if (-x "$dir/proctab") {
+      $bindir = $dir;
+      return;
+    }
+  }
+  die "can't locate proctab executable: try using --bindir\n";
+}
+
+sub guess_initsystem {
+  my $target = readlink "/sbin/init";
+
+  if ((-l "/sbin/init") and ($target =~ /systemd/)) { $initsys = "systemd"; }
+  elsif (-f "/etc/redhat-release")                  { $initsys = "rhel6";   }
+  elsif (-f "/etc/debian_version")                  { $initsys = "debian";  }
+  elsif (-d "/usr/lib/upstart")                     { $initsys = "upstart"; }
+  else { die "can't guess initsystem"; }
+  print "Initsystem: $initsys\n" if $verbose;
+}
+
+sub install_service {
+  my $cmd;
+  local $/; # slurp mode
+
+  if ($dry_run) {
+    print STDERR "dry-run: write $cfg{$initsys}{service}\n";
+    print STDERR "dry-run: run $cfg{$initsys}{enable}\n";
+    return;
+  }
+
+  # resolve any binary installation references in the template
+  open TEMPLATE, "<${initsys}.template" or 
+     die "can't open ${initsys}.template: $!";
+  my $script = <TEMPLATE>;
+  $script =~ s/__SYSBINDIR__/$bindir/g;
+  close TEMPLATE;
+
+  open SCRIPT, ">$cfg{$initsys}{service}" or 
+     die "can't open $cfg{$initsys}{service}: $!\n";
+  print SCRIPT $script;
+  close SCRIPT;
+  chmod $cfg{$initsys}{mode}, $cfg{$initsys}{service};
+
+  # enable the new service
+  $cmd = $cfg{$initsys}{enable};
+  print "$cmd\n" if $verbose;
+  die "error enabling iniscript" if system $cmd;
+}
+
+sub uninstall_service {
+  my $cmd;
+  local $/; # slurp mode
+
+  if ($dry_run) {
+    print STDERR "dry-run: run $cfg{$initsys}{disable}\n";
+    print STDERR "dry-run: delete $cfg{$initsys}{service}\n";
+    return;
+  }
+
+  # disable the service
+  $cmd = $cfg{$initsys}{disable};
+  print "$cmd\n" if $verbose;
+  die "error disabling iniscript" if system $cmd;
+
+  # remove its script
+  unlink $cfg{$initsys}{service} or 
+     die "can't unlink $cfg{$initsys}{service}: $!\n";
+
+}
+
+sub start_service {
+  my $cmd = $cfg{$initsys}{start};
+  if ($dry_run) {
+    print STDERR "dry-run: run $cmd\n";
+    return;
+  }
+  print "$cmd\n" if $verbose;
+  die "error starting service" if system $cmd;
+}
+
+sub stop_service {
+  my $cmd = $cfg{$initsys}{stop};
+  if ($dry_run) {
+    print STDERR "dry-run: run $cmd\n";
+    return;
+  }
+  print "$cmd\n" if $verbose;
+  die "error stopping service" if system $cmd;
+}
+
+guess_initsystem if $initsys eq "auto";
+guess_bindir if $bindir eq "auto";
+install_service if $install;
+uninstall_service if $uninstall;
+start_service if $start;
+stop_service if $stop;
+

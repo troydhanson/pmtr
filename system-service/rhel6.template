@@ -10,7 +10,7 @@
 start()
 {
     echo -n $"Starting proctab: "
-    daemon --pidfile=/var/run/proctab.pid /usr/bin/proctab -p /var/run/proctab.pid 
+    daemon --pidfile=/var/run/proctab.pid __SYSBINDIR__/proctab -p /var/run/proctab.pid 
     touch /var/lock/subsys/proctab
     echo
 }
@@ -23,7 +23,7 @@ stop()
     echo
 }
 
-[ -f /usr/bin/proctab ] || exit 0
+[ -f __SYSBINDIR__/proctab ] || exit 0
 
 # see how we were called
 case "$1" in

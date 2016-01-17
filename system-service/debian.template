@@ -17,7 +17,7 @@
 PATH=/sbin:/usr/sbin:/bin:/usr/bin
 DESC="proctab process monitor"
 NAME=proctab
-DAEMON=/usr/bin/$NAME
+DAEMON=__SYSBINDIR__/$NAME
 DAEMON_ARGS="-F"
 PIDFILE=/var/run/$NAME.pid
 SCRIPTNAME=/etc/init.d/$NAME
