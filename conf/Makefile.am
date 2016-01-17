@@ -1,6 +1,11 @@
-# Installs sample $(sysconfdir)/proctab file 
-# To install in /etc/proctab use ./configure --sysconfdir=/etc
+# Installs sample $(sysconfdir)/proctab.conf file.
+#
+# To install in 
+#   /etc/proctab.conf 
+# use 
+#   ./configure --sysconfdir=/etc
+#
 # By default autotools installs to /usr/local/etc
 
 confdir = $(sysconfdir)
-conf_DATA=proctab
+conf_DATA=proctab.conf

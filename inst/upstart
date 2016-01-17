@@ -1,20 +1,20 @@
-# pmtr.conf
+# proctab.conf
 # This is an upstart(8) configuration file.
 # upstart is the init replacement on Ubuntu.
-# This file gets installed in /etc/init/pmtr.conf
+# This file gets installed in /etc/init/proctab.conf
 #
-# to start the service manually, "service pmtr start".
+# to start the service manually, "service proctab start".
 #
 # The syntax for this file is documented in init(5).
 # The upstart log messages go to /var/log/daemon.log
 
-description	"pmtr process manager"
+description	"proctab process manager"
 
 start on runlevel [2345]
 stop on runlevel [!2345]
 
 respawn
 
-#next line is commented out when using pmtr -F
+#next line is commented out when using proctab -F
 #expect fork
-exec /usr/bin/pmtr -F -c /etc/pmtr.conf
+exec /usr/bin/proctab -F -c /etc/proctab.conf

@@ -1,0 +1,9 @@
+[Unit]
+Description=proctab process manager
+Documentation=http://troydhanson.github.io/proctab
+
+[Service]
+ExecStart=/usr/bin/proctab -F -c /etc/proctab.conf
+
+[Install]
+WantedBy=multi-user.target

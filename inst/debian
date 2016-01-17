@@ -1,13 +1,13 @@
 #! /bin/sh
 ### BEGIN INIT INFO
-# Provides:          pmtr
+# Provides:          proctab
 # Required-Start:    $remote_fs $syslog
 # Required-Stop:     $remote_fs $syslog
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
-# Short-Description: initscript to boot up pmtr 
-# Description:       pmtr is a process monitor, for more information see
-#                    http://troydhanson.github.io/pmtr
+# Short-Description: initscript to boot up proctab 
+# Description:       proctab is a process monitor, for more information see
+#                    http://troydhanson.github.io/proctab
 ### END INIT INFO
 
 # Author: Troy D. Hanson <tdh@tkhanson.net>
@@ -15,8 +15,8 @@
 
 # PATH should only include /usr/* if it runs after the mountnfs.sh script
 PATH=/sbin:/usr/sbin:/bin:/usr/bin
-DESC="pmtr process monitor"
-NAME=pmtr
+DESC="proctab process monitor"
+NAME=proctab
 DAEMON=/usr/bin/$NAME
 DAEMON_ARGS="-F"
 PIDFILE=/var/run/$NAME.pid

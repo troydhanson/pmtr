@@ -1,9 +1,0 @@
-[Unit]
-Description=pmtr process manager
-Documentation=http://troydhanson.github.io/pmtr
-
-[Service]
-ExecStart=/usr/bin/pmtr -F -c /etc/pmtr.conf
-
-[Install]
-WantedBy=multi-user.target
