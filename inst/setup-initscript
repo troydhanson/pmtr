@@ -25,18 +25,22 @@ my %cfg;
 $cfg{systemd}{enable} = "systemctl enable proctab";
 $cfg{systemd}{start}  = "systemctl start proctab";
 $cfg{systemd}{service}= "/lib/systemd/system/proctab.service";
+$cfg{systemd}{mode}=    0644;
 
 $cfg{rhel6}{enable}   = "/sbin/chkconfig --add proctab";
 $cfg{rhel6}{start}    = "/etc/init.d/proctab start";
 $cfg{rhel6}{service}  = "/etc/rc.d/init.d/proctab";
+$cfg{rhel6}{mode}=    0755;
 
 $cfg{upstart}{enable} = "/bin/true";
 $cfg{upstart}{start}  = "/sbin/start proctab";
 $cfg{upstart}{service}= "/etc/init/proctab.conf";
+$cfg{upstart}{mode}=    0644;
 
 $cfg{debian}{enable}  = "/usr/sbin/update-rc.d proctab defaults";
 $cfg{debian}{start}   = "/usr/sbin/service proctab start";
 $cfg{debian}{service} = "/etc/init.d/proctab";
+$cfg{debian}{mode}=    0755;
 
 usage unless GetOptions( "verbose+"          => \$verbose,
                          "bindir=s"          => \$bindir,
@@ -63,10 +67,17 @@ sub guess_initsystem {
 sub install_service {
   my $cmd;
   local $/; # slurp mode
-  open SCRIPT, "<${initsys}";
-  $cmd = "cp  $cfg{$initsys}{$service}";
-  print "$cmd\n";
-  die "error installing initscript" if system $cmd;
+
+  open TEMPLATE, "<${initsys}" or die "can't open $initsys: $!";
+  my $script = <TEMPLATE>;
+  close TEMPLATE;
+
+  my $output = $cfg{$initsys}{$service};
+  open SCRIPT, ">$output" or die "can't open $output: $!\n";
+  print SCRIPT $script;
+  close SCRIPT;
+
+  # enable the new service
   $cmd = $cfg{$initsys}{enable};
   print "$cmd\n";
   die "error enabling iniscript" if system $cmd;
