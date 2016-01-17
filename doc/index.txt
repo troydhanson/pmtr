@@ -1,46 +1,78 @@
-pmtr: a Linux process supervisor
-================================
+proctab
+=======
 Troy D. Hanson <tdh@tkhanson.net>
 
-Back to the https://github.com/troydhanson/pmtr[pmtr Github page].
+Back to the https://github.com/troydhanson/proctab[proctab Github page].
 
-How do you run services at boot on Linux? Usually, the answer is initscripts.
-(Or, for a hack, you can run them from /etc/rc.local). One of the more modern
-and beautiful init systems is systemd. Ubuntu 15/16 and RHEL7 have adopted it.
+How do you run services at boot on Linux? How do you manage them afterward?
+In a word, initscripts. The init mechanism varies from one Linux distro to
+another- providing commands like 'service', 'chkconfig', and 'systemctl' that 
+variously set up services to run in certain runlevels, start or stop them
+or check their status. By 2016 'systemd' supplanted 'upstart' and traditional
+'sysvinit' scripts - it's the best one yet, deeply integrated with Linux.
+Ubuntu 15/16, RHEL7, Arch, Yocto, among others, use 'systemd'.
 
-Why on earth would I write my own manager for background services? Here's why:
+.proctab
 
-I wanted 'one configuration file' for all the jobs that make up my appliance.
+I wrote 'proctab' to run as an umbrella service under the system init process.
+It complements it, rather than replacing it. It has its own configuration file
+where you can define any number of jobs. I wrote it for appliance or embedded
+systems where a set of cooperating processes were most easily defined in a 
+single configuration file. 
 
-The one configuration file would ...
+So to summarize, proctab:
 
-** react immediately to changes when edited
-** abstract the OS-dependent init system away
-** co-exist with the OS-dependent init system 
-** be easily checked into git version control
+* is a service that runs under the existing init system (systemd, upstart, etc)
+* is an umbrella that runs the processes listed in its configuration file
+* is an "abstraction layer" compatible with several init systems
+* lets you list your application services under one proctab configuration
+* complements the existing init system, running under it
+* lets the existing OS init system run all the usual services 
+* is my "hobby" where I hack process control features in to suit my needs :)
 
-Rather than competing with systemd, upstart and all the other init systems 
-out there, pmtr is just my idiosyncratic take on process management for an
-appliance made of many cooperating processes. Pmtr itself starts up using
-the underlying init system (upstart, systemd, or traditional initscripts).
+Rather than competing with 'systemd', 'upstart' and all the other init systems
+out there, proctab is just my idiosyncratic take on process management for an
+appliance made of many cooperating processes. Anything you can do under proctab,
+could also be done directly as a system service; proctab is just a way to treat
+a collection of processes as a single service under the parent init mechanism.
 
-Pmtr is written in C and targets Linux only. It runs on:
+Proctab is written in C and targets Linux only. It runs on:
 
-* Ubuntu
-* CentOS/RHEL
+* Ubuntu (12, 13, 14, 15, 16)
+* CentOS/RHEL (5, 6, 7)
 * Debian 
-* Raspberry Pi- Raspbian
-* Intel Edison 
-* probably others...
+* Arch
+* Embedded systems- it has a Yocto layer
+* Maker and embedded boards: Raspberry Pi, Intel Edison, etc
 
-Pmtr is free and open source. Here is the link:LICENSE.txt[license].
+Proctab is free and open source. Here is the link:LICENSE.txt[license].
 
 About
 
-I wrote pmtr in 2011. I've used it year after year on hundreds of systems.
-If you have a favorite init system, you should use it. For me, pmtr insulates 
-me from the next great init replacement, and I like being able to hack on
-http://troydhanson.github.io/[my own stuff].
+Proctab is a remix of pmtr that I wrote in 2011. I use it for several projects.
+It's one of http://troydhanson.github.io/[a bunch of C projects] I keep.
+
+Build & Install
+
+To build it from the git repository, 
+
+    git clone https://github.com/troydhanson/proctab.git
+    cd proctab
+    ./autogen.sh
+    ./configure --prefix=/usr --sysconfdir=/etc
+    make
+    sudo make install
+
+To set up the system service manager to run proctab, you can then do:
+
+    cd system-service
+    sudo ./setup-initscript --install-service --bindir /usr/bin
+    sudo ./setup-initscript --start-service 
+
+TODO:
+
+* you can now edit /etc/proctab.conf
+* yocto layer documentation  (yocto layer invokes configure and setup-initscript)
 
 pmtr
 ----
