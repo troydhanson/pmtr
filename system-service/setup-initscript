@@ -98,9 +98,9 @@ sub guess_initsystem {
   my $target = readlink "/sbin/init";
 
   if ((-l "/sbin/init") and ($target =~ /systemd/)) { $initsys = "systemd"; }
+  elsif (-d "/usr/lib/upstart")                     { $initsys = "upstart"; }
   elsif (-f "/etc/redhat-release")                  { $initsys = "rhel6";   }
   elsif (-f "/etc/debian_version")                  { $initsys = "debian";  }
-  elsif (-d "/usr/lib/upstart")                     { $initsys = "upstart"; }
   else { die "can't guess initsystem"; }
   print "Initsystem: $initsys\n" if $verbose;
 }
