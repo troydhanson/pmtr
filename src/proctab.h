@@ -13,7 +13,6 @@
 #endif
 #define DEFAULT_PROCTAB_CONFIG CFGDIR "/proctab.conf"
 #define SHORT_DELAY 10
-#define PROCTAB_VERSION "1.7"
 
 typedef struct {
   char *file;

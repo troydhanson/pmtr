@@ -39,7 +39,6 @@ void usage(char *prog) {
   fprintf(stderr, "   -F           (stay in foreground)\n");
   fprintf(stderr, "   -t           (just test config file)\n");
   fprintf(stderr, "\n");
-  fprintf(stderr, " Version       : %s\n", PROCTAB_VERSION);
   fprintf(stderr, " Default config: %s\n", DEFAULT_PROCTAB_CONFIG);
   fprintf(stderr, "\n");
   exit(-1);
