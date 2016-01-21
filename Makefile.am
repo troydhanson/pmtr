@@ -1,5 +1,3 @@
-confdir = $(sysconfdir)
-conf_DATA = proctab.conf
+EXTRA_DIST = LICENSE doc
 
 SUBDIRS = src
-EXTRA_DIST = LICENSE doc 
