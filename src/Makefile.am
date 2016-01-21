@@ -16,5 +16,5 @@ nodist_proctab_SOURCES = cfg.c cfg.h
 tok.c pmtr.c job.c net.c: cfg.h
 
 cfg.c cfg.h: cfg.y cfg.lt lemon
-	./lemon $(srcdir)/cfg.y
+	@./lemon $(srcdir)/cfg.y
 
