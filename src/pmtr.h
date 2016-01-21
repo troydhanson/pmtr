@@ -5,7 +5,13 @@
 #include "utarray.h"
 #include "utstring.h"
 
-#define DEFAULT_PM_CONFIG "/etc/pmtr.conf" 
+/* pmtr.conf is expected in /etc by default. This expectation can be overridden
+ * at build time using ./configure --sysconfdir=/dir. The end user can also tell
+ * proctab to look for its config file elsewhere using command line options. */
+#ifndef CFGDIR
+#define CFGDIR "/etc"
+#endif
+#define DEFAULT_PM_CONFIG CFGDIR "/pmtr.conf"
 #define SHORT_DELAY 10
 #define PMTR_VERSION "1.7"
 
