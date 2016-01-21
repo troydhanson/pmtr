@@ -9,3 +9,6 @@
 
 confdir = $(sysconfdir)
 conf_DATA=proctab.conf
+
+# not sure why this is needed, but it is for make dist to produce a buildable result
+EXTRA_DIST = proctab.conf
