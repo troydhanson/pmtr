@@ -17,7 +17,7 @@
 #include <time.h>
 #include "utstring.h"
 #include "utarray.h"
-#include "pmtr.h"
+#include "proctab.h"
 #include "job.h"
 #include "net.h"
 
@@ -25,7 +25,7 @@
 static struct timespec half = {.tv_sec = 0, .tv_nsec=500000000}; /* half-sec */
 sigjmp_buf jmp;
 
-pmtr_t cfg = {
+proctab_t cfg = {
   .verbose = 0,
   .foreground = 0,
 };
@@ -39,8 +39,8 @@ void usage(char *prog) {
   fprintf(stderr, "   -F           (stay in foreground)\n");
   fprintf(stderr, "   -t           (just test config file)\n");
   fprintf(stderr, "\n");
-  fprintf(stderr, " Version       : %s\n", PMTR_VERSION);
-  fprintf(stderr, " Default config: %s\n", DEFAULT_PM_CONFIG);
+  fprintf(stderr, " Version       : %s\n", PROCTAB_VERSION);
+  fprintf(stderr, " Default config: %s\n", DEFAULT_PROCTAB_CONFIG);
   fprintf(stderr, "\n");
   exit(-1);
 }
@@ -60,7 +60,7 @@ pid_t dep_monitor(char *file) {
       ( (fd=inotify_init()) == -1)                       ||
       ( (wd=inotify_add_watch(fd,file, events )) == -1)) {
     syslog(LOG_ERR,"can't watch %s: %s", file, strerror(errno)); 
-    sleep(SHORT_DELAY); // pmtr.conf deleted, let pmtr respawn us 
+    sleep(SHORT_DELAY); // proctab.conf deleted, let proctab respawn us 
     exit(-1);
   }
 
@@ -71,7 +71,7 @@ pid_t dep_monitor(char *file) {
     char **dep=NULL;
     while ( (dep=(char**)utarray_next(&job->depv,dep))) {
       if (inotify_add_watch(fd, fpath(job,*dep), IN_CLOSE_WRITE) == -1) {
-        // proceed despite error, pmtr disables job if dep missing
+        // proceed despite error, proctab disables job if dep missing
         syslog(LOG_ERR,"can't watch %s: %s", *dep, strerror(errno));
       }
     }
@@ -196,8 +196,8 @@ int main (int argc, char *argv[]) {
       case 'h': default: usage(argv[0]); break;
     }
   }
-  openlog("pmtr", LOG_PID | (cfg.foreground ? LOG_PERROR : 0), LOG_LOCAL0);
-  if (!cfg.file) cfg.file = strdup(DEFAULT_PM_CONFIG);
+  openlog("proctab", LOG_PID | (cfg.foreground ? LOG_PERROR : 0), LOG_LOCAL0);
+  if (!cfg.file) cfg.file = strdup(DEFAULT_PROCTAB_CONFIG);
 
   if (!cfg.foreground) {       /* daemon init */
     if (fork() != 0) exit(0);  /* parent exit */
@@ -228,7 +228,7 @@ int main (int argc, char *argv[]) {
   }
 
   if (cfg.test_only) goto final;
-  syslog(LOG_INFO,"pmtr: starting");
+  syslog(LOG_INFO,"proctab: starting");
 
   /* define a smaller set of signals to block within sigsuspend. */
   sigset_t ss;
@@ -270,7 +270,7 @@ int main (int argc, char *argv[]) {
       do_jobs(&cfg);
       break;
     default:
-      syslog(LOG_INFO,"pmtr: exiting on signal %d", signo);
+      syslog(LOG_INFO,"proctab: exiting on signal %d", signo);
       goto done;
       break;
   }

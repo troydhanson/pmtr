@@ -18,7 +18,7 @@
 #include "utarray.h"
 #include "net.h"
 
-static int parse_spec(pmtr_t *cfg, UT_string *em, char *spec, 
+static int parse_spec(proctab_t *cfg, UT_string *em, char *spec, 
                       in_addr_t *addr, int *port, char **iface) {
   char *proto = spec, *colon, *host, *at;
   struct hostent *h;
@@ -193,7 +193,7 @@ void set_report(parse_t *ps, char *dest) {
  * enable job1 [job2 ...] 
  * disable job1 [job2 ...]
 */
-static void decode_msg(pmtr_t *cfg, char *buf, size_t n) {
+static void decode_msg(proctab_t *cfg, char *buf, size_t n) {
   char *pos=buf, *job, *eob = &buf[n];
   enum {err, enable, disable} mode=err;
   job_t *j;
@@ -242,7 +242,7 @@ static void decode_msg(pmtr_t *cfg, char *buf, size_t n) {
 #define BUF_SZ 2000
 static char buf[BUF_SZ+1];
 /* called when we have datagrams to read */
-void service_socket(pmtr_t *cfg) {
+void service_socket(proctab_t *cfg) {
   ssize_t rc;
   int *fd = (int*)utarray_front(cfg->listen); assert(fd);
   do {
@@ -251,7 +251,7 @@ void service_socket(pmtr_t *cfg) {
   } while (rc >= 0);
 }
 
-void close_sockets(pmtr_t *cfg) {
+void close_sockets(proctab_t *cfg) {
   int *fd;
   fd=NULL; while( (fd=(int*)utarray_next(cfg->listen,fd))) close(*fd);
   fd=NULL; while( (fd=(int*)utarray_next(cfg->report,fd))) close(*fd);
@@ -260,7 +260,7 @@ void close_sockets(pmtr_t *cfg) {
 }
 
 /* report to all configured destinations */
-void report_status(pmtr_t *cfg) {
+void report_status(proctab_t *cfg) {
   int rc;
   time_t now = time(NULL);
 

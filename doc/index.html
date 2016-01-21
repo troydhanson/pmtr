@@ -4,7 +4,7 @@
 <head>
 <meta http-equiv="Content-Type" content="application/xhtml+xml; charset=UTF-8" />
 <meta name="generator" content="AsciiDoc 8.6.9" />
-<title>pmtr: a Linux process supervisor</title>
+<title>proctab</title>
 <style type="text/css">
 /* Shared CSS for AsciiDoc xhtml11 and html5 backends */
 
@@ -733,56 +733,79 @@ asciidoc.install();
 </head>
 <body class="article">
 <div id="header">
-<h1>pmtr: a Linux process supervisor</h1>
+<h1>proctab</h1>
 <span id="author">Troy D. Hanson</span><br />
 <span id="email"><code>&lt;<a href="mailto:tdh@tkhanson.net">tdh@tkhanson.net</a>&gt;</code></span><br />
 </div>
 <div id="content">
 <div id="preamble">
 <div class="sectionbody">
-<div class="paragraph"><p>Back to the <a href="https://github.com/troydhanson/pmtr">pmtr Github page</a>.</p></div>
-<div class="paragraph"><p>How do you run services at boot on Linux? Usually, the answer is initscripts.
-(Or, for a hack, you can run them from /etc/rc.local). One of the more modern
-and beautiful init systems is systemd. Ubuntu 15/16 and RHEL7 have adopted it.</p></div>
-<div class="paragraph"><p>Why on earth would I write my own manager for background services? Here&#8217;s why:</p></div>
-<div class="paragraph"><p>I wanted <em>one configuration file</em> for all the jobs that make up my appliance.</p></div>
-<div class="paragraph"><p>The one configuration file would &#8230;</p></div>
+<div class="paragraph"><p>Back to the <a href="https://github.com/troydhanson/proctab">proctab Github page</a>.</p></div>
+<div class="paragraph"><p>How do you run services at boot on Linux? How do you manage them afterward?
+In a word, initscripts. The init mechanism varies from one Linux distro to
+another- providing commands like <em>service</em>, <em>chkconfig</em>, and <em>systemctl</em> that
+variously set up services to run in certain runlevels, start or stop them
+or check their status. By 2016 <em>systemd</em> supplanted <em>upstart</em> and traditional
+<em>sysvinit</em> scripts - it&#8217;s the best one yet, deeply integrated with Linux.
+Ubuntu 15/16, RHEL7, Arch, Yocto, among others, use <em>systemd</em>.</p></div>
+<div class="paragraph"><div class="title">proctab</div><p>I wrote <em>proctab</em> to run as an umbrella service under the system init process.
+It complements it, rather than replacing it. It has its own configuration file
+where you can define any number of jobs. I wrote it for appliance or embedded
+systems where a set of cooperating processes were most easily defined in a
+single configuration file.</p></div>
+<div class="paragraph"><p>So to summarize, proctab:</p></div>
 <div class="ulist"><ul>
 <li>
 <p>
-react immediately to changes when edited
+is a service that runs under the existing init system (systemd, upstart, etc)
 </p>
 </li>
 <li>
 <p>
-abstract the OS-dependent init system away
+is an umbrella that runs the processes listed in its configuration file
 </p>
 </li>
 <li>
 <p>
-co-exist with the OS-dependent init system
+is an "abstraction layer" compatible with several init systems
 </p>
 </li>
 <li>
 <p>
-be easily checked into git version control
+lets you list your application services under one proctab configuration
+</p>
+</li>
+<li>
+<p>
+complements the existing init system, running under it
+</p>
+</li>
+<li>
+<p>
+lets the existing OS init system run all the usual services
+</p>
+</li>
+<li>
+<p>
+is my "hobby" where I hack process control features in to suit my needs :)
 </p>
 </li>
 </ul></div>
-<div class="paragraph"><p>Rather than competing with systemd, upstart and all the other init systems
-out there, pmtr is just my idiosyncratic take on process management for an
-appliance made of many cooperating processes. Pmtr itself starts up using
-the underlying init system (upstart, systemd, or traditional initscripts).</p></div>
-<div class="paragraph"><p>Pmtr is written in C and targets Linux only. It runs on:</p></div>
+<div class="paragraph"><p>Rather than competing with <em>systemd</em>, <em>upstart</em> and all the other init systems
+out there, proctab is just my idiosyncratic take on process management for an
+appliance made of many cooperating processes. Anything you can do under proctab,
+could also be done directly as a system service; proctab is just a way to treat
+a collection of processes as a single service under the parent init mechanism.</p></div>
+<div class="paragraph"><p>Proctab is written in C and targets Linux only. It runs on:</p></div>
 <div class="ulist"><ul>
 <li>
 <p>
-Ubuntu
+Ubuntu (12, 13, 14, 15, 16)
 </p>
 </li>
 <li>
 <p>
-CentOS/RHEL
+CentOS/RHEL (5, 6, 7)
 </p>
 </li>
 <li>
@@ -792,35 +815,64 @@ Debian
 </li>
 <li>
 <p>
-Raspberry Pi- Raspbian
+Arch
 </p>
 </li>
 <li>
 <p>
-Intel Edison
+Embedded systems- it has a Yocto layer
 </p>
 </li>
 <li>
 <p>
-probably others&#8230;
+Maker and embedded boards: Raspberry Pi, Intel Edison, etc
 </p>
 </li>
 </ul></div>
-<div class="paragraph"><p>Pmtr is free and open source. Here is the <a href="LICENSE.txt">license</a>.</p></div>
+<div class="paragraph"><p>Proctab is free and open source. Here is the <a href="LICENSE.txt">license</a>.</p></div>
 <div class="paragraph"><p>About</p></div>
-<div class="paragraph"><p>I wrote pmtr in 2011. I&#8217;ve used it year after year on hundreds of systems.
-If you have a favorite init system, you should use it. For me, pmtr insulates
-me from the next great init replacement, and I like being able to hack on
-<a href="http://troydhanson.github.io/">my own stuff</a>.</p></div>
+<div class="paragraph"><p>Proctab is a remix of pmtr that I wrote in 2011. I use it for several projects.
+It&#8217;s one of <a href="http://troydhanson.github.io/">a bunch of C projects</a> I keep.</p></div>
+<div class="paragraph"><p>Build &amp; Install</p></div>
+<div class="paragraph"><p>To build it from the git repository,</p></div>
+<div class="literalblock">
+<div class="content">
+<pre><code>git clone https://github.com/troydhanson/proctab.git
+cd proctab
+./autogen.sh
+./configure --prefix=/usr --sysconfdir=/etc
+make
+sudo make install</code></pre>
+</div></div>
+<div class="paragraph"><p>To set up the system service manager to run proctab, you can then do:</p></div>
+<div class="literalblock">
+<div class="content">
+<pre><code>cd system-service
+sudo ./setup-initscript --install-service --bindir /usr/bin
+sudo ./setup-initscript --start-service</code></pre>
+</div></div>
+<div class="paragraph"><p>TODO:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+you can now edit /etc/proctab.conf
+</p>
+</li>
+<li>
+<p>
+yocto layer documentation  (yocto layer invokes configure and setup-initscript)
+</p>
+</li>
+</ul></div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="_pmtr">pmtr</h2>
+<h2 id="_proctab">proctab</h2>
 <div class="sectionbody">
-<div class="paragraph"><p>The config file <code>/etc/pmtr.conf</code> lists the processes (jobs) for pmtr to run.  It
+<div class="paragraph"><p>The config file <code>/etc/proctab.conf</code> lists the processes (jobs) for proctab to run.  It
 is meant to run permanent processes.  It restarts processes that exit.</p></div>
 <div class="listingblock">
-<div class="title">Example <code>/etc/pmtr.conf</code></div>
+<div class="title">Example <code>/etc/proctab.conf</code></div>
 <div class="content">
 <pre><code>  job {
     name ssh-tunnel
@@ -839,91 +891,91 @@ is meant to run permanent processes.  It restarts processes that exit.</p></div>
 <h3 id="_build_and_install">Build and Install</h3>
 <div class="literalblock">
 <div class="content">
-<pre><code>git clone https://github.com/troydhanson/pmtr.git
-cd pmtr
+<pre><code>git clone https://github.com/troydhanson/proctab.git
+cd proctab
 make
 sudo make install</code></pre>
 </div></div>
-<div class="paragraph"><p>Afterward pmtr should already be running. Verify using <code>service pmtr status</code> or
-<code>systemd status pmtr</code>.  The result of installation is:</p></div>
+<div class="paragraph"><p>Afterward proctab should already be running. Verify using <code>service proctab status</code> or
+<code>systemd status proctab</code>.  The result of installation is:</p></div>
 <div class="ulist"><ul>
 <li>
 <p>
-the executable: <code>/usr/bin/pmtr</code>
+the executable: <code>/usr/bin/proctab</code>
 </p>
 </li>
 <li>
 <p>
-the configuration file: <code>/etc/pmtr.conf</code>
+the configuration file: <code>/etc/proctab.conf</code>
 </p>
 </li>
 <li>
 <p>
-an OS-specific initscript that runs pmtr at boot
+an OS-specific initscript that runs proctab at boot
 </p>
 </li>
 </ul></div>
 </div>
 <div class="sect2">
 <h3 id="_start_stop">Start/stop</h3>
-<div class="paragraph"><p>You can use the system&#8217;s service command to start or stop pmtr itself.</p></div>
+<div class="paragraph"><p>You can use the system&#8217;s service command to start or stop proctab itself.</p></div>
 <div class="literalblock">
 <div class="content">
-<pre><code>service pmtr start
-service pmtr stop</code></pre>
+<pre><code>service proctab start
+service proctab stop</code></pre>
 </div></div>
 <div class="paragraph"><p>Or on systemd-based systems,</p></div>
 <div class="literalblock">
 <div class="content">
-<pre><code>systemctl start pmtr
-systemctl status pmtr
-systemctl stop pmtr</code></pre>
+<pre><code>systemctl start proctab
+systemctl status proctab
+systemctl stop proctab</code></pre>
 </div></div>
 </div>
 <div class="sect2">
 <h3 id="_logs_status">Logs/Status</h3>
-<div class="paragraph"><p>Pmtr logs to syslog. This is typically <code>/var/log/syslog</code> or <code>/var/log/messages</code>.</p></div>
+<div class="paragraph"><p>proctab logs to syslog. This is typically <code>/var/log/syslog</code> or <code>/var/log/messages</code>.</p></div>
 <div class="literalblock">
 <div class="content">
-<pre><code>Nov  7 1:38:10 ubuntu pmtr[477]: started job proxy [478]</code></pre>
+<pre><code>Nov  7 1:38:10 ubuntu proctab[477]: started job proxy [478]</code></pre>
 </div></div>
-<div class="paragraph"><p>To get a nice visual confirmation of the jobs you have running under pmtr, you
+<div class="paragraph"><p>To get a nice visual confirmation of the jobs you have running under proctab, you
 can use the <code>pstree</code> utility, if you have it installed.  Here is the output of
-<code>pstree -p</code> truncated to show only pmtr&#8217;s process tree.</p></div>
+<code>pstree -p</code> truncated to show only proctab&#8217;s process tree.</p></div>
 <div class="listingblock">
 <div class="title">Example pstree output</div>
 <div class="content">
-<pre><code>        ├─pmtr(2830)─┬─pmtr(2834)
-        │            ├─proxy(2831)
-        │            ├─sshd(2832)
-        │            └─python(2833)</code></pre>
+<pre><code>        ├─proctab(2830)─┬─proctab(2834)
+        │               ├─proxy(2831)
+        │               ├─sshd(2832)
+        │               └─python(2833)</code></pre>
 </div></div>
 <div class="sect3">
 <h4 id="_systemd_based_systems">systemd-based systems</h4>
-<div class="paragraph"><p>On systemd-based systems, <code>systemctl</code> gives a nice view of pmtr and its sub-jobs:</p></div>
+<div class="paragraph"><p>On systemd-based systems, <code>systemctl</code> gives a nice view of proctab and its sub-jobs:</p></div>
 <div class="listingblock">
 <div class="content">
-<pre><code>systemctl status pmtr
-● pmtr.service - pmtr process manager
-   Loaded: loaded (/lib/systemd/system/pmtr.service; enabled)
+<pre><code>systemctl status proctab
+● proctab.service - proctab process manager
+   Loaded: loaded (/lib/systemd/system/proctab.service; enabled)
    Active: active (running) since Mon 2015-11-23 02:18:58 UTC; 12min ago
-     Docs: http://troydhanson.github.io/pmtr
- Main PID: 1463 (pmtr)
-   CGroup: /system.slice/pmtr.service
-           ├─1463 /usr/bin/pmtr -F -c /etc/pmtr.conf
-           ├─1470 /usr/bin/pmtr -F -c /etc/pmtr.conf
+     Docs: http://troydhanson.github.io/proctab
+ Main PID: 1463 (proctab)
+   CGroup: /system.slice/proctab.service
+           ├─1463 /usr/bin/proctab -F -c /etc/proctab.conf
+           ├─1470 /usr/bin/proctab -F -c /etc/proctab.conf
            └─1556 /bin/sleep 8</code></pre>
 </div></div>
 <div class="paragraph"><p>You can also view logs using:</p></div>
 <div class="literalblock">
 <div class="content">
-<pre><code>journalctl -u pmtr</code></pre>
+<pre><code>journalctl -u proctab</code></pre>
 </div></div>
 </div>
 </div>
 <div class="sect2">
 <h3 id="_jobs">Jobs</h3>
-<div class="paragraph"><p>Processes that run under pmtr should,</p></div>
+<div class="paragraph"><p>Processes that run under proctab should,</p></div>
 <div class="ulist"><ul>
 <li>
 <p>
@@ -941,8 +993,8 @@ clean up their own sub-processes
 </p>
 </li>
 </ul></div>
-<div class="paragraph"><p>The default pmtr configuration file is <code>/etc/pmtr.conf</code>.</p></div>
-<div class="paragraph"><p>When you edit and save <code>pmtr.conf</code>, it applies the changes immediately.</p></div>
+<div class="paragraph"><p>The default proctab configuration file is <code>/etc/proctab.conf</code>.</p></div>
+<div class="paragraph"><p>When you edit and save <code>proctab.conf</code>, it applies the changes immediately.</p></div>
 <div class="ulist"><ul>
 <li>
 <p>
@@ -960,7 +1012,7 @@ A changed job is restarted with its new configuration.
 </p>
 </li>
 </ul></div>
-<div class="paragraph"><p>To terminate a job, pmtr sends SIGTERM to it, then SIGKILL shortly afterward.</p></div>
+<div class="paragraph"><p>To terminate a job, proctab sends SIGTERM to it, then SIGKILL shortly afterward.</p></div>
 </div>
 <div class="sect2">
 <h3 id="_config_file">Config file</h3>
@@ -1175,12 +1227,12 @@ The <code>user</code> option is the unix username that should be the process own
 </li>
 <li>
 <p>
-The <code>user</code> defaults to root usually, when pmtr is running as a service.
+The <code>user</code> defaults to root usually, when proctab is running as a service.
 </p>
 </li>
 <li>
 <p>
-The <code>user</code> defaults to whoever started pmtr, if pmtr was run manually.
+The <code>user</code> defaults to whoever started proctab, if proctab was run manually.
 </p>
 </li>
 </ul></div>
@@ -1195,7 +1247,7 @@ Use a <code>depends</code> block to specify files, one per line, that the job de
 </li>
 <li>
 <p>
-If the content of any of the dependencies changes, pmtr restarts the job.
+If the content of any of the dependencies changes, proctab restarts the job.
 </p>
 </li>
 </ul></div>
@@ -1287,7 +1339,7 @@ To see the current kernel limits on a process, run <code>cat /proc/&lt;pid&gt;/l
 </li>
 <li>
 <p>
-pmtr sets both the "hard" and "soft" ulimit to the same value.
+proctab sets both the "hard" and "soft" ulimit to the same value.
 </p>
 </li>
 <li>
@@ -1299,25 +1351,25 @@ If there is an error setting the ulimits, it&#8217;s logged to syslog.
 </div>
 <div class="sect3">
 <h4 id="_restarts">Restarts</h4>
-<div class="paragraph"><p>Since pmtr is designed to keep things running, if a job exits, pmtr restarts it.</p></div>
+<div class="paragraph"><p>Since proctab is designed to keep things running, if a job exits, proctab restarts it.</p></div>
 <div class="ulist"><ul>
 <li>
 <p>
-If a job exits quickly (within ten seconds of when it started) pmtr
+If a job exits quickly (within ten seconds of when it started) proctab
   waits ten seconds then restarts it. This avoids rapid restart cycles. The
   job probably has some sort of configuration problem if it exits quickly.
 </p>
 </li>
 <li>
 <p>
-Exit status 33 can be returned from a process to tell pmtr not to restart it.
+Exit status 33 can be returned from a process to tell proctab not to restart it.
 </p>
 </li>
 </ul></div>
 </div>
 <div class="sect3">
 <h4 id="_one_time_jobs">One-time jobs</h4>
-<div class="paragraph"><p>Normally pmtr runs permanent processes. However pmtr supports one-time "setup"
+<div class="paragraph"><p>Normally proctab runs permanent processes. However proctab supports one-time "setup"
 jobs using the <code>wait</code> and <code>once</code> options.</p></div>
 <div class="literalblock">
 <div class="content">
@@ -1328,77 +1380,53 @@ jobs using the <code>wait</code> and <code>once</code> options.</p></div>
   once
 }</code></pre>
 </div></div>
-<div class="paragraph"><p>With <code>wait</code>, pmtr waits for the job to exit before starting subsequent jobs. The
-<code>once</code> option prevents pmtr from restarting it.</p></div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="_pmtr_command_line_options">pmtr command line options</h3>
-<div class="paragraph"><p>These are not normally used. The OS-specific initsystem (systemd, etc) normally runs
-pmtr at system boot. However you can run pmtr manually. If you do, these are the
-command line options that pmtr accepts.</p></div>
-<div class="tableblock">
-<table rules="none"
-width="80%"
-frame="border"
-cellspacing="0" cellpadding="4">
-<caption class="title">Table 1. pmtr options</caption>
-<col width="28%" />
-<col width="71%" />
-<tbody>
-<tr>
-<td align="left" valign="top"><p class="table"><code>-h</code></p></td>
-<td align="left" valign="top"><p class="table">show help</p></td>
-</tr>
-<tr>
-<td align="left" valign="top"><p class="table"><code>-F</code></p></td>
-<td align="left" valign="top"><p class="table">stay in foreground</p></td>
-</tr>
-<tr>
-<td align="left" valign="top"><p class="table"><code>-c &lt;file&gt;</code></p></td>
-<td align="left" valign="top"><p class="table">specify configuration file</p></td>
-</tr>
-<tr>
-<td align="left" valign="top"><p class="table"><code>-t</code></p></td>
-<td align="left" valign="top"><p class="table">test syntax (parse config file and exit)</p></td>
-</tr>
-<tr>
-<td align="left" valign="top"><p class="table"><code>-v</code></p></td>
-<td align="left" valign="top"><p class="table">verbose logging (repeatable), -vv shows parsing</p></td>
-</tr>
-<tr>
-<td align="left" valign="top"><p class="table"><code>-p &lt;file&gt;</code></p></td>
-<td align="left" valign="top"><p class="table">make pidfile</p></td>
-</tr>
-</tbody>
-</table>
-</div>
-</div>
-<div class="sect2">
-<h3 id="_experimental">Experimental</h3>
+<div class="paragraph"><p>With <code>wait</code>, proctab waits for the job to exit before starting subsequent jobs. The
+<code>once</code> option prevents proctab from restarting it.</p></div>
+<div class="paragraph"><p>proctab command line options</p></div>
+<div class="listingblock">
+<div class="content">
+<pre><code>These are not normally used. The OS-specific initsystem (systemd, etc) normally runs
+proctab at system boot. However you can run proctab manually. If you do, these are the
+command line options that proctab accepts.
+
+.proctab options
+[width="80%",cols="20m,50",grid="none",options="none"]
+|==========================================================================
+| -h        | show help
+| -F        | stay in foreground
+| -c <file> | specify configuration file
+| -t        | test syntax (parse config file and exit)
+| -v        | verbose logging (repeatable), -vv shows parsing
+| -p <file> | make pidfile
+|==========================================================================
+
+
+Experimental</code></pre>
+</div></div>
 <div class="paragraph"><p>These features are disabled by default.</p></div>
-<div class="paragraph"><p>These configuration options may appear in <code>pmtr.conf</code> at the global scope.</p></div>
+<div class="paragraph"><p>These configuration options may appear in <code>proctab.conf</code> at the global scope.</p></div>
 <div class="literalblock">
 <div class="content">
 <pre><code>report to udp://127.0.0.1:9999
 listen on udp://0.0.0.0:10000</code></pre>
 </div></div>
-<div class="paragraph"><p>The <code>report to</code> option designates a remote address and port to which pmtr should
+<div class="paragraph"><p>The <code>report to</code> option designates a remote address and port to which proctab should
 send a a UDP packet every ten seconds.  The packet payload lists the job names,
 enabled or disabled status, and elapsed runtimes in simple text. (An included
-script <code>utils/pmtr-rptserver</code> can receive these reports and write updates
+script <code>utils/proctab-rptserver</code> can receive these reports and write updates
 to a text file summarizing the received status messages. This script is invoked
-like <code>pmtr-rptserver -p 9999 -f status.txt</code>).  If the <code>report to</code> address falls
+like <code>proctab-rptserver -p 9999 -f status.txt</code>).  If the <code>report to</code> address falls
 in the multicast UDP range (e.g.  239.0.0.1, etc), the specification may include
 a trailing interface, e.g., <code>report to udp://239.0.0.1:9999@eth2</code> to explicitly
 designate the interface from which the multicast UDP datagrams should egress.</p></div>
 <div class="paragraph"><p>The <code>listen on</code> option allows jobs to be remotely enabled or disabled. It
-specifies a UDP address and port that pmtr should listen on for datagrams of
+specifies a UDP address and port that proctab should listen on for datagrams of
 form <code>enable abc</code> or <code>disable abc</code>, where <em>abc</em> is a job name.  The address
 0.0.0.0 can be used as a shortcut to denote "any address" on this system. (A
-script in <code>utils/pmtr-ctl</code> may be used to send the datagrams, for example
-<code>pmtr-ctl -s 192.168.0.22 -p 10000 enable abc</code>). The effect is temporary; the
-settings in pmtr.conf resume precedence when it&#8217;s edited or pmtr is restarted.</p></div>
+script in <code>utils/proctab-ctl</code> may be used to send the datagrams, for example
+<code>proctab-ctl -s 192.168.0.22 -p 10000 enable abc</code>). The effect is temporary; the
+settings in proctab.conf resume precedence when it&#8217;s edited or proctab is restarted.</p></div>
+</div>
 </div>
 </div>
 </div>
@@ -1406,7 +1434,7 @@ settings in pmtr.conf resume precedence when it&#8217;s edited or pmtr is restar
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2015-11-22 21:55:23 EST
+Last updated 2016-01-20 22:24:17 EST
 </div>
 </div>
 </body>

@@ -4,7 +4,7 @@ index.html: index.txt
 	#asciidoc -a toc2 $<
 	asciidoc $<
 
-TMP=/tmp/pmtr-gh-pages
+TMP=/tmp/proctab-gh-pages
 stage:
 	mkdir -p ${TMP}
 	rm -if ${TMP}/*

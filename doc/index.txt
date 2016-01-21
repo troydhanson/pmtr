@@ -74,12 +74,12 @@ TODO:
 * you can now edit /etc/proctab.conf
 * yocto layer documentation  (yocto layer invokes configure and setup-initscript)
 
-pmtr
-----
-The config file `/etc/pmtr.conf` lists the processes (jobs) for pmtr to run.  It
+proctab
+-------
+The config file `/etc/proctab.conf` lists the processes (jobs) for proctab to run.  It
 is meant to run permanent processes.  It restarts processes that exit.
 
-.Example `/etc/pmtr.conf`
+.Example `/etc/proctab.conf`
 --------------------------------------------------------
 
   job {
@@ -101,88 +101,88 @@ It takes lots of other options shown further below.
 Build and Install
 ~~~~~~~~~~~~~~~~~
 
-  git clone https://github.com/troydhanson/pmtr.git
-  cd pmtr
+  git clone https://github.com/troydhanson/proctab.git
+  cd proctab
   make
   sudo make install
 
-Afterward pmtr should already be running. Verify using `service pmtr status` or
-`systemd status pmtr`.  The result of installation is:
+Afterward proctab should already be running. Verify using `service proctab status` or
+`systemd status proctab`.  The result of installation is:
 
- * the executable: `/usr/bin/pmtr` 
- * the configuration file: `/etc/pmtr.conf` 
- * an OS-specific initscript that runs pmtr at boot 
+ * the executable: `/usr/bin/proctab` 
+ * the configuration file: `/etc/proctab.conf` 
+ * an OS-specific initscript that runs proctab at boot 
 
 Start/stop
 ~~~~~~~~~~
 
-You can use the system's service command to start or stop pmtr itself.
+You can use the system's service command to start or stop proctab itself.
 
-  service pmtr start
-  service pmtr stop
+  service proctab start
+  service proctab stop
 
 Or on systemd-based systems,
 
-  systemctl start pmtr 
-  systemctl status pmtr 
-  systemctl stop pmtr 
+  systemctl start proctab 
+  systemctl status proctab 
+  systemctl stop proctab 
 
 Logs/Status
 ~~~~~~~~~~~
-Pmtr logs to syslog. This is typically `/var/log/syslog` or `/var/log/messages`.
+proctab logs to syslog. This is typically `/var/log/syslog` or `/var/log/messages`.
 
-  Nov  7 1:38:10 ubuntu pmtr[477]: started job proxy [478]
+  Nov  7 1:38:10 ubuntu proctab[477]: started job proxy [478]
 
-To get a nice visual confirmation of the jobs you have running under pmtr, you
+To get a nice visual confirmation of the jobs you have running under proctab, you
 can use the `pstree` utility, if you have it installed.  Here is the output of
-`pstree -p` truncated to show only pmtr's process tree.
+`pstree -p` truncated to show only proctab's process tree.
 
 .Example pstree output
 ----------------------------------------
-        ├─pmtr(2830)─┬─pmtr(2834)
-        │            ├─proxy(2831)
-        │            ├─sshd(2832)
-        │            └─python(2833)
+        ├─proctab(2830)─┬─proctab(2834)
+        │               ├─proxy(2831)
+        │               ├─sshd(2832)
+        │               └─python(2833)
 ----------------------------------------
 
 systemd-based systems
 ^^^^^^^^^^^^^^^^^^^^^
-On systemd-based systems, `systemctl` gives a nice view of pmtr and its sub-jobs:
+On systemd-based systems, `systemctl` gives a nice view of proctab and its sub-jobs:
 
 ----------------------------------------------------------------------------
-systemctl status pmtr
-● pmtr.service - pmtr process manager
-   Loaded: loaded (/lib/systemd/system/pmtr.service; enabled)
+systemctl status proctab
+● proctab.service - proctab process manager
+   Loaded: loaded (/lib/systemd/system/proctab.service; enabled)
    Active: active (running) since Mon 2015-11-23 02:18:58 UTC; 12min ago
-     Docs: http://troydhanson.github.io/pmtr
- Main PID: 1463 (pmtr)
-   CGroup: /system.slice/pmtr.service
-           ├─1463 /usr/bin/pmtr -F -c /etc/pmtr.conf
-           ├─1470 /usr/bin/pmtr -F -c /etc/pmtr.conf
+     Docs: http://troydhanson.github.io/proctab
+ Main PID: 1463 (proctab)
+   CGroup: /system.slice/proctab.service
+           ├─1463 /usr/bin/proctab -F -c /etc/proctab.conf
+           ├─1470 /usr/bin/proctab -F -c /etc/proctab.conf
            └─1556 /bin/sleep 8
 ----------------------------------------------------------------------------
 
 You can also view logs using:
 
-    journalctl -u pmtr
+    journalctl -u proctab
 
 Jobs
 ~~~~
-Processes that run under pmtr should,
+Processes that run under proctab should,
 
  * stay in the foreground
  * exit on SIGTERM or SIGKILL 
  * clean up their own sub-processes
 
-The default pmtr configuration file is `/etc/pmtr.conf`. 
+The default proctab configuration file is `/etc/proctab.conf`. 
 
-When you edit and save `pmtr.conf`, it applies the changes immediately.
+When you edit and save `proctab.conf`, it applies the changes immediately.
 
  * A newly-added job gets started.
  * A deleted job is terminated.
  * A changed job is restarted with its new configuration.
 
-To terminate a job, pmtr sends SIGTERM to it, then SIGKILL shortly afterward.
+To terminate a job, proctab sends SIGTERM to it, then SIGKILL shortly afterward.
 
 Config file
 ~~~~~~~~~~~
@@ -263,13 +263,13 @@ out, err, in
 user
 ^^^^
 * The `user` option is the unix username that should be the process owner.
-* The `user` defaults to root usually, when pmtr is running as a service.
-* The `user` defaults to whoever started pmtr, if pmtr was run manually.
+* The `user` defaults to root usually, when proctab is running as a service.
+* The `user` defaults to whoever started proctab, if proctab was run manually.
 
 depends
 ^^^^^^^
 * Use a `depends` block to specify files, one per line, that the job depends on.
-* If the content of any of the dependencies changes, pmtr restarts the job.
+* If the content of any of the dependencies changes, proctab restarts the job.
 
 bounce every
 ^^^^^^^^^^^^
@@ -296,21 +296,21 @@ ulimit
 * In bash, type `man prlimit` to see the more technical description and the units.
 * The values are all numeric or the keyword `infinity`.
 * To see the current kernel limits on a process, run `cat /proc/<pid>/limits`.
-* pmtr sets both the "hard" and "soft" ulimit to the same value.
+* proctab sets both the "hard" and "soft" ulimit to the same value.
 * If there is an error setting the ulimits, it's logged to syslog.
 
 Restarts
 ^^^^^^^^
-Since pmtr is designed to keep things running, if a job exits, pmtr restarts it.
+Since proctab is designed to keep things running, if a job exits, proctab restarts it.
 
-* If a job exits quickly (within ten seconds of when it started) pmtr 
+* If a job exits quickly (within ten seconds of when it started) proctab 
   waits ten seconds then restarts it. This avoids rapid restart cycles. The
   job probably has some sort of configuration problem if it exits quickly.
-* Exit status 33 can be returned from a process to tell pmtr not to restart it.
+* Exit status 33 can be returned from a process to tell proctab not to restart it.
 
 One-time jobs
 ^^^^^^^^^^^^^
-Normally pmtr runs permanent processes. However pmtr supports one-time "setup"
+Normally proctab runs permanent processes. However proctab supports one-time "setup"
 jobs using the `wait` and `once` options.
 
   job {
@@ -320,17 +320,17 @@ jobs using the `wait` and `once` options.
     once
   }
 
-With `wait`, pmtr waits for the job to exit before starting subsequent jobs. The
-`once` option prevents pmtr from restarting it. 
+With `wait`, proctab waits for the job to exit before starting subsequent jobs. The
+`once` option prevents proctab from restarting it. 
 
-pmtr command line options
+proctab command line options
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 These are not normally used. The OS-specific initsystem (systemd, etc) normally runs
-pmtr at system boot. However you can run pmtr manually. If you do, these are the 
-command line options that pmtr accepts. 
+proctab at system boot. However you can run proctab manually. If you do, these are the 
+command line options that proctab accepts. 
 
-.pmtr options
+.proctab options
 [width="80%",cols="20m,50",grid="none",options="none"]
 |==========================================================================
 | -h        | show help    
@@ -346,28 +346,28 @@ Experimental
 ~~~~~~~~~~~~
 These features are disabled by default.
 
-These configuration options may appear in `pmtr.conf` at the global scope.
+These configuration options may appear in `proctab.conf` at the global scope.
 
   report to udp://127.0.0.1:9999
   listen on udp://0.0.0.0:10000
 
-The `report to` option designates a remote address and port to which pmtr should
+The `report to` option designates a remote address and port to which proctab should
 send a a UDP packet every ten seconds.  The packet payload lists the job names,
 enabled or disabled status, and elapsed runtimes in simple text. (An included
-script `utils/pmtr-rptserver` can receive these reports and write updates
+script `utils/proctab-rptserver` can receive these reports and write updates
 to a text file summarizing the received status messages. This script is invoked
-like `pmtr-rptserver -p 9999 -f status.txt`).  If the `report to` address falls
+like `proctab-rptserver -p 9999 -f status.txt`).  If the `report to` address falls
 in the multicast UDP range (e.g.  239.0.0.1, etc), the specification may include
 a trailing interface, e.g., `report to udp://239.0.0.1:9999@eth2` to explicitly
 designate the interface from which the multicast UDP datagrams should egress. 
 
 The `listen on` option allows jobs to be remotely enabled or disabled. It
-specifies a UDP address and port that pmtr should listen on for datagrams of
+specifies a UDP address and port that proctab should listen on for datagrams of
 form `enable abc` or `disable abc`, where 'abc' is a job name.  The address
 0.0.0.0 can be used as a shortcut to denote "any address" on this system. (A
-script in `utils/pmtr-ctl` may be used to send the datagrams, for example 
-`pmtr-ctl -s 192.168.0.22 -p 10000 enable abc`). The effect is temporary; the
-settings in pmtr.conf resume precedence when it's edited or pmtr is restarted.
+script in `utils/proctab-ctl` may be used to send the datagrams, for example 
+`proctab-ctl -s 192.168.0.22 -p 10000 enable abc`). The effect is temporary; the
+settings in proctab.conf resume precedence when it's edited or proctab is restarted.
 
 // vim: set tw=80 wm=2 syntax=asciidoc: 
 
