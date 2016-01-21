@@ -31,13 +31,17 @@ pmtr_t cfg = {
 };
 
 void usage(char *prog) {
-  fprintf(stderr, "%s version %s\n\n", prog, PMTR_VERSION);
-  fprintf(stderr, "usage: %s [-v] [-p <file>] [-F] [-c cfg] [-t]\n", prog);
-  fprintf(stderr, "  -v verbose\n");
-  fprintf(stderr, "  -p <pidfile> make pidfile\n");
-  fprintf(stderr, "  -F foreground\n");
-  fprintf(stderr, "  -c <cfg> specify configuration file\n");
-  fprintf(stderr, "  -t test only; parse config file only (implies -F)\n");
+  fprintf(stderr, "usage: %s [options]\n\n", prog);
+  fprintf(stderr, " options:\n");
+  fprintf(stderr, "   -v           (verbose)\n");
+  fprintf(stderr, "   -c <file>    (config file)\n");
+  fprintf(stderr, "   -p <file>    (make pidfile)\n");
+  fprintf(stderr, "   -F           (stay in foreground)\n");
+  fprintf(stderr, "   -t           (just test config file)\n");
+  fprintf(stderr, "\n");
+  fprintf(stderr, " Version       : %s\n", PMTR_VERSION);
+  fprintf(stderr, " Default config: %s\n", DEFAULT_PM_CONFIG);
+  fprintf(stderr, "\n");
   exit(-1);
 }
 

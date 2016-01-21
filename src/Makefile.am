@@ -6,7 +6,7 @@ noinst_PROGRAMS = lemon
 lemon_SOURCES = lemon.c
 EXTRA_DIST = cfg.lt cfg.y
 
-proctab_CPPFLAGS = -DCFGDIR="\"$(sysconfdir)\"" -I$(srcdir)/include
+proctab_CPPFLAGS = -DCFGDIR=\"$(sysconfdir)\" -I$(srcdir)/include
 proctab_SOURCES = job.c job.h net.c net.h tok.c pmtr.c pmtr.h
 noinst_HEADERS = include
 
