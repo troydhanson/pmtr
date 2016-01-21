@@ -1,0 +1,39 @@
+# Typical build
+
+If the "configure" script is absent from the top-level proctab directory, first
+generate it using:
+
+    ./autogen.sh
+
+The proctab build process is simple. It uses autotools. Most users just need to:
+
+    ./configure --sysconfdir=/etc --bindir=/usr
+    make
+    sudo make install
+
+This results in installing proctab in /usr/bin and its config file in /etc.
+If you were to omit the arguments to configure, the defaults would install 
+proctab in /usr/local/bin and its configuration file in /usr/local/etc.
+
+To set up proctab to boot at system startup, there is a script to install 
+an appropriate initscript or service definition. It supports systemd, upstart
+or traditional initscripts. Run it this way to auto-detect the initsystem:
+
+    cd system-service
+    sudo ./setup-initscript --install-service --start-service
+
+You can run setup-initscript with the --help option to get more information.
+
+# Out of tree builds
+
+Out of tree builds can be done (as is typical with autotools-based builds) by
+simply changing into a different directory (a build directory), then running
+configure using a relative path to the source directory.
+
+    mkdir /tmp/build
+    cd /tmp/build
+    ../path/to/proctab/configure --sysconfdir=/etc --bindir=/usr
+    make
+    sudo make install
+
+A tarball produced by 'make dist' can be built by the usual steps as well.
