@@ -19,7 +19,7 @@ To set up proctab to boot at system startup, there is a script to install
 an appropriate initscript or service definition. It supports systemd, upstart
 or traditional initscripts. Run it this way to auto-detect the initsystem:
 
-    cd system-service
+    cd initscripts
     sudo ./setup-initscript --install-service --start-service
 
 You can run setup-initscript with the --help option to get more information.

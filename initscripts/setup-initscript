@@ -45,7 +45,7 @@ $cfg{systemd}{enable} = "systemctl enable proctab";
 $cfg{systemd}{disable} = "systemctl disable proctab";
 $cfg{systemd}{start}  = "systemctl start proctab";
 $cfg{systemd}{stop}  = "systemctl stop proctab";
-$cfg{systemd}{service}= "/lib/systemd/system/proctab.service";
+$cfg{systemd}{service}= "/etc/systemd/system/proctab.service";
 $cfg{systemd}{mode}=    0644;
 
 $cfg{rhel6}{enable}   = "/sbin/chkconfig --add proctab";
