@@ -27,6 +27,7 @@ sub usage {
   print STDERR "         --install-service\n";
   print STDERR "         --initsys <auto|systemd|debian|upstart|rhel6>\n";
   print STDERR "         --bindir <auto|dir> (e.g. /usr/bin)\n";
+  print STDERR "         --systemd-unit-dir <dir> (e.g. /etc/systemd/system)\n";
   exit -1;
 }
 
@@ -38,6 +39,7 @@ our $uninstall = 0;
 our $verbose = 0;
 our $initsys = "auto";
 our $bindir = "auto";
+our $systemd_unit_dir = "/etc/systemd/system";
 our $help = 0;
 
 my %cfg;
@@ -45,7 +47,7 @@ $cfg{systemd}{enable} = "systemctl enable proctab";
 $cfg{systemd}{disable} = "systemctl disable proctab";
 $cfg{systemd}{start}  = "systemctl start proctab";
 $cfg{systemd}{stop}  = "systemctl stop proctab";
-$cfg{systemd}{service}= "/etc/systemd/system/proctab.service";
+$cfg{systemd}{service}= "proctab.service";
 $cfg{systemd}{mode}=    0644;
 
 $cfg{rhel6}{enable}   = "/sbin/chkconfig --add proctab";
@@ -77,9 +79,13 @@ usage unless GetOptions( "verbose+"          => \$verbose,
                          "stop-service"      => \$stop,
                          "install-service"   => \$install,
                          "uninstall-service" => \$uninstall,
+                         "systemd-unit-dir"  => \$systemd_unit_dir,
                          "help"              => \$help);
 usage if $help;
 usage unless ($install or $start or $stop or $uninstall);
+
+# patch up any variables based on options
+$cfg{systemd}{service}= $systemd_unit_dir . "/proctab.service";
 
 die "Please run as root. Exiting.\n" unless ($dry_run or ($> == 0));
 
