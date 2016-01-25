@@ -17,14 +17,16 @@
 
 use strict;
 use warnings;
+use FindBin qw($RealBin);
 use Getopt::Long;
 
 sub usage {
   print STDERR "usage: $0 [options]\n";
   print STDERR "options: --verbose\n";
   print STDERR "         --dry-run\n";
-  print STDERR "         --start-service\n";
   print STDERR "         --install-service\n";
+  print STDERR "         --enable-service\n";
+  print STDERR "         --start-service\n";
   print STDERR "         --initsys <auto|systemd|debian|upstart|rhel6>\n";
   print STDERR "         --bindir <auto|dir> (e.g. /usr/bin)\n";
   print STDERR "         --systemd-unit-dir <dir> (e.g. /etc/systemd/system)\n";
@@ -33,6 +35,7 @@ sub usage {
 
 our $dry_run = 0;
 our $start = 0;
+our $enable = 0;
 our $stop = 0;
 our $install = 0;
 our $uninstall = 0;
@@ -76,6 +79,7 @@ usage unless GetOptions( "verbose+"          => \$verbose,
                          "bindir=s"          => \$bindir,
                          "initsys=s"         => \$initsys,
                          "start-service"     => \$start,
+                         "enable-service"    => \$enable,
                          "stop-service"      => \$stop,
                          "install-service"   => \$install,
                          "uninstall-service" => \$uninstall,
@@ -117,13 +121,16 @@ sub install_service {
 
   if ($dry_run) {
     print STDERR "dry-run: write $cfg{$initsys}{service}\n";
-    print STDERR "dry-run: run $cfg{$initsys}{enable}\n";
     return;
   }
 
-  # resolve any binary installation references in the template
-  open TEMPLATE, "<${initsys}.template" or 
-     die "can't open ${initsys}.template: $!";
+  # we need to replace __SYSBINDIR__ references in the initscript
+  # template with the actual value (e.g. /usr/bin) provided to us.
+  # The templates are in the same directory with this script. Since
+  # we may be invoked from a third directory, we need to use $RealBin
+  # to find the directory where this script is running from.
+  my $template = "${RealBin}/${initsys}.template";
+  open TEMPLATE, "<$template" or die "can't open $template: $!";
   my $script = <TEMPLATE>;
   $script =~ s/__SYSBINDIR__/$bindir/g;
   close TEMPLATE;
@@ -133,6 +140,15 @@ sub install_service {
   print SCRIPT $script;
   close SCRIPT;
   chmod $cfg{$initsys}{mode}, $cfg{$initsys}{service};
+}
+
+sub enable_service {
+  my $cmd;
+
+  if ($dry_run) {
+    print STDERR "dry-run: run $cfg{$initsys}{enable}\n";
+    return;
+  }
 
   # enable the new service
   $cmd = $cfg{$initsys}{enable};
@@ -185,6 +201,7 @@ guess_initsystem if $initsys eq "auto";
 guess_bindir if $bindir eq "auto";
 stop_service if $stop;
 install_service if $install;
+enable_service if $enable;
 uninstall_service if $uninstall;
 start_service if $start;
 
