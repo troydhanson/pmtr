@@ -24,12 +24,11 @@ sub usage {
   print STDERR "usage: $0 [options]\n";
   print STDERR "options: --verbose\n";
   print STDERR "         --dry-run\n";
-  print STDERR "         --install-service\n";
+  print STDERR "         --install-service <auto|path-to-file>\n";
   print STDERR "         --enable-service\n";
   print STDERR "         --start-service\n";
   print STDERR "         --initsys <auto|systemd|debian|upstart|rhel6>\n";
   print STDERR "         --bindir <auto|dir> (e.g. /usr/bin)\n";
-  print STDERR "         --systemd-unit-dir <dir> (e.g. /etc/systemd/system)\n";
   exit -1;
 }
 
@@ -37,12 +36,11 @@ our $dry_run = 0;
 our $start = 0;
 our $enable = 0;
 our $stop = 0;
-our $install = 0;
+our $install;
 our $uninstall = 0;
 our $verbose = 0;
 our $initsys = "auto";
 our $bindir = "auto";
-our $systemd_unit_dir = "/etc/systemd/system";
 our $help = 0;
 
 my %cfg;
@@ -50,7 +48,7 @@ $cfg{systemd}{enable} = "systemctl enable proctab";
 $cfg{systemd}{disable} = "systemctl disable proctab";
 $cfg{systemd}{start}  = "systemctl start proctab";
 $cfg{systemd}{stop}  = "systemctl stop proctab";
-$cfg{systemd}{service}= "proctab.service";
+$cfg{systemd}{service}= "/etc/systemd/system/proctab.service";
 $cfg{systemd}{mode}=    0644;
 
 $cfg{rhel6}{enable}   = "/sbin/chkconfig --add proctab";
@@ -81,17 +79,13 @@ usage unless GetOptions( "verbose+"          => \$verbose,
                          "start-service"     => \$start,
                          "enable-service"    => \$enable,
                          "stop-service"      => \$stop,
-                         "install-service"   => \$install,
+                         "install-service=s" => \$install,
                          "uninstall-service" => \$uninstall,
-                         "systemd-unit-dir"  => \$systemd_unit_dir,
                          "help"              => \$help);
 usage if $help;
 usage unless ($install or $start or $stop or $uninstall);
 
-# patch up any variables based on options
-$cfg{systemd}{service}= $systemd_unit_dir . "/proctab.service";
-
-die "Please run as root. Exiting.\n" unless ($dry_run or ($> == 0));
+#die "Please run as root. Exiting.\n" unless ($dry_run or ($> == 0));
 
 sub guess_bindir {
   my @dirs = qw(/bin /usr/bin /sbin /usr/sbin /usr/local/bin);
@@ -119,8 +113,11 @@ sub install_service {
   my $cmd;
   local $/; # slurp mode
 
+  my $path = $install;
+  $path = $cfg{$initsys}{service} if ($path eq "auto");
+
   if ($dry_run) {
-    print STDERR "dry-run: write $cfg{$initsys}{service}\n";
+    print STDERR "dry-run: write $path\n";
     return;
   }
 
@@ -135,11 +132,10 @@ sub install_service {
   $script =~ s/__SYSBINDIR__/$bindir/g;
   close TEMPLATE;
 
-  open SCRIPT, ">$cfg{$initsys}{service}" or 
-     die "can't open $cfg{$initsys}{service}: $!\n";
+  open SCRIPT, ">$path" or die "can't open $path: $!\n";
   print SCRIPT $script;
   close SCRIPT;
-  chmod $cfg{$initsys}{mode}, $cfg{$initsys}{service};
+  chmod $cfg{$initsys}{mode}, $path;
 }
 
 sub enable_service {
