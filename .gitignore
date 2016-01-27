@@ -12,8 +12,6 @@ depcomp
 install-sh
 missing
 Makefile.in
-cfg.c
-cfg.h
 cfg.out
 Makefile
 config.log
