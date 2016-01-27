@@ -10,8 +10,9 @@ The proctab build process is simple. It uses autotools. Most users just need to:
     ./configure --sysconfdir=/etc --bindir=/usr
     make
     sudo make install
+    sudo touch /etc/proctab.conf
 
-This results in installing proctab in /usr/bin and its config file in /etc.
+This installs proctab in /usr/bin and puts an empty config file in /etc.
 If you were to omit the arguments to configure, the defaults would install 
 proctab in /usr/local/bin and its configuration file in /usr/local/etc.
 
@@ -20,7 +21,7 @@ an appropriate initscript or service definition. It supports systemd, upstart
 or traditional initscripts. Run it this way to auto-detect the initsystem:
 
     cd initscripts
-    sudo ./setup-initscript --install-service --start-service
+    sudo ./setup-initscript --install-service auto --enable-service --start-service
 
 You can run setup-initscript with the --help option to get more information.
 
