@@ -19,6 +19,7 @@ use strict;
 use warnings;
 use FindBin qw($RealBin);
 use Getopt::Long;
+use File::Basename;
 
 sub usage {
   print STDERR "usage: $0 [options]\n";
@@ -132,10 +133,15 @@ sub install_service {
   $script =~ s/__SYSBINDIR__/$bindir/g;
   close TEMPLATE;
 
+  my $dir = dirname($path);
+  $cmd = "install -d $dir";
+  die "error creating $dir: $!" if system $cmd;
+
   open SCRIPT, ">$path" or die "can't open $path: $!\n";
   print SCRIPT $script;
   close SCRIPT;
   chmod $cfg{$initsys}{mode}, $path;
+
 }
 
 sub enable_service {
