@@ -7,7 +7,7 @@ generate it using:
 
 The proctab build process is simple. It uses autotools. Most users just need to:
 
-    ./configure --sysconfdir=/etc --bindir=/usr
+    ./configure --sysconfdir=/etc --bindir=/usr/bin
     make
     sudo make install
     sudo touch /etc/proctab.conf
@@ -35,7 +35,7 @@ configure using a relative path to the source directory.
 
     mkdir /tmp/build
     cd /tmp/build
-    ../path/to/proctab/configure --sysconfdir=/etc --bindir=/usr
+    ../path/to/proctab/configure --sysconfdir=/etc --bindir=/usr/bin
     make
     sudo make install
 
