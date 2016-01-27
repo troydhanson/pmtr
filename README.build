@@ -21,9 +21,11 @@ an appropriate initscript or service definition. It supports systemd, upstart
 or traditional initscripts. Run it this way to auto-detect the initsystem:
 
     cd initscripts
-    sudo ./setup-initscript --install-service auto --enable-service --start-service
+    sudo ./setup-initscript --install-service auto --bindir /usr/bin \
+         --enable-service --start-service
 
 You can run setup-initscript with the --help option to get more information.
+Notice that bindir should match the bindir used in the configure step.
 
 # Out of tree builds
 
