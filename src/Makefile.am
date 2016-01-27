@@ -1,20 +1,9 @@
 srcdir = @srcdir@
 
 bin_PROGRAMS = proctab
-noinst_PROGRAMS = lemon
-
-lemon_SOURCES = lemon.c
-EXTRA_DIST = cfg.lt cfg.y
 
 proctab_CPPFLAGS = -DCFGDIR=\"$(sysconfdir)\" -I$(srcdir)/include
-proctab_SOURCES = job.c job.h net.c net.h tok.c proctab.c proctab.h
+proctab_SOURCES = job.c job.h net.c net.h tok.c proctab.c proctab.h cfg.c cfg.h 
 noinst_HEADERS = include
 
-# generated build products
-nodist_proctab_SOURCES = cfg.c cfg.h
-
-tok.c proctab.c job.c net.c: cfg.h
-
-cfg.c cfg.h: cfg.y cfg.lt lemon
-	@./lemon $(srcdir)/cfg.y
 
