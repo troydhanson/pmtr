@@ -4,37 +4,16 @@ Troy D. Hanson <tdh@tkhanson.net>
 
 Back to the https://github.com/troydhanson/proctab[proctab Github page].
 
-How do you run services at boot on Linux? How do you manage them afterward?
-In a word, initscripts. The init mechanism varies from one Linux distro to
-another- providing commands like 'service', 'chkconfig', and 'systemctl' that 
-variously set up services to run in certain runlevels, start or stop them
-or check their status. By 2016 'systemd' supplanted 'upstart' and traditional
-'sysvinit' scripts - it's the best one yet, deeply integrated with Linux.
-Ubuntu 15/16, RHEL7, Arch, Yocto, among others, use 'systemd'.
+To run services on Linux systems one typically writes an initscript. The init
+mechanism, and the syntax of initscripts, vary depending on the distribution.
 
 .proctab
 
-I wrote 'proctab' to run as an umbrella service under the system init process.
-It complements it, rather than replacing it. It has its own configuration file
-where you can define any number of jobs. I wrote it for appliance or embedded
-systems where a set of cooperating processes were most easily defined in a 
-single configuration file. 
-
-So to summarize, proctab:
-
-* is a service that runs under the existing init system (systemd, upstart, etc)
-* is an umbrella that runs the processes listed in its configuration file
-* is an "abstraction layer" compatible with several init systems
-* lets you list your application services under one proctab configuration
-* complements the existing init system, running under it
-* lets the existing OS init system run all the usual services 
-* is my "hobby" where I hack process control features in to suit my needs :)
-
-Rather than competing with 'systemd', 'upstart' and all the other init systems
-out there, proctab is just my idiosyncratic take on process management for an
-appliance made of many cooperating processes. Anything you can do under proctab,
-could also be done directly as a system service; proctab is just a way to treat
-a collection of processes as a single service under the parent init mechanism.
+I wrote 'proctab' to complement rather than replace the sysinit mechanism
+It runs under the existing init system- systemd, upstart, or sysvinit-
+that already exists on a Linux host. The `/etc/proctac.conf` configuration
+file lists the services it should start at boot, and restart if they exit. 
+Proctab detects and applies edits to its configuration file immediately. 
 
 Proctab is written in C and targets Linux only. It runs on:
 
@@ -42,115 +21,121 @@ Proctab is written in C and targets Linux only. It runs on:
 * CentOS/RHEL (5, 6, 7)
 * Debian 
 * Arch
-* Embedded systems- it has a Yocto layer
-* Maker and embedded boards: Raspberry Pi, Intel Edison, etc
+* Yocto-based distributions - https://github.com/troydhanson/meta-proctab[Yocto layer]
+* Raspberry Pi, Intel Edison, Gizmo2 boards
 
-Proctab is free and open source. Here is the link:LICENSE.txt[license].
+Proctab is free and open source. Here is the link:LICENSE.txt[MIT license].
 
-About
+.About
 
-Proctab is a remix of pmtr that I wrote in 2011. I use it for several projects.
-It's one of http://troydhanson.github.io/[a bunch of C projects] I keep.
+Proctab is one of my http://troydhanson.github.io/[many C projects]. I wrote it
+for sensors and appliances that have lots of related jobs that are easier to
+manage through one configuration file. Also, to insulate the developer from
+the underlying init system which varies widely.
 
-Build & Install
+Download, build and install
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Build
+^^^^^
 
 To build it from the git repository, 
 
     git clone https://github.com/troydhanson/proctab.git
     cd proctab
     ./autogen.sh
-    ./configure --prefix=/usr --sysconfdir=/etc
+    ./configure --bindir=/usr/bin --sysconfdir=/etc
     make
+
+Install
+^^^^^^^
+
+To install the executable `/usr/bin/proctab` and the configuration file `/etc/proctab.conf`:
+
     sudo make install
+    sudo touch /etc/proctab.conf
 
-To set up the system service manager to run proctab, you can then do:
+Initscript
+^^^^^^^^^^
 
-    cd system-service
-    sudo ./setup-initscript --install-service --bindir /usr/bin
-    sudo ./setup-initscript --start-service 
+To have proctab installed a service, detecting the host init system automatically:
 
-TODO:
+    cd initscripts
+    sudo ./setup-initscript --install-service auto --bindir /usr/bin \
+       --enable-service --start-service 
 
-* you can now edit /etc/proctab.conf
-* yocto layer documentation  (yocto layer invokes configure and setup-initscript)
+Note that `--bindir` should match the one given to "configure" in the build
+step. You can also run `./setup-initscript -h` to see its full set of options.
 
-proctab
--------
-The config file `/etc/proctab.conf` lists the processes (jobs) for proctab to run.  It
-is meant to run permanent processes.  It restarts processes that exit.
+proctab.conf
+~~~~~~~~~~~~
+
+The config file `/etc/proctab.conf` lists the processes for proctab to run. It
+uses the term "job" to mean a service or a process.
 
 .Example `/etc/proctab.conf`
 --------------------------------------------------------
+job {
+  name set-audio-source
+  cmd /usr/bin/Record_from_lineIn.sh
+  wait
+  once
+}
 
-  job {
-    name ssh-tunnel
-    cmd /usr/bin/ssh -i key -TNL 5901:127.0.0.1:5901 box
+job {
+  name send-audio-to-icecast
+  cmd /usr/bin/darkice -c /etc/darkice.cfg
+  depends {
+      /etc/darkice.cfg
   }
+}
 
-  job {
-    name web-pub
-    dir /opt
-    cmd /usr/bin/kvsp-bpub -b cast -s -web tcp://0.0.0.0:9003
-    err web.err
-  }
+job {
+  name tunnel
+  cmd /usr/bin/ssh -i key -TNL 5901:127.0.0.1:5901 192.168.0.1
+}
 
 --------------------------------------------------------
 
-It takes lots of other options shown further below.
+Here we have a proctab configuration that runs three jobs. The
+first one is a one-time, setup job that proctab won't restart. The
+next two are a Darkice audio streamer and a persistent SSH tunnel.
+Since Darkice depends on `/etc/darkice.cfg` proctab restarts it if
+that file gets edited. It uses inotify to efficiently watch for 
+changes to dependent files. A change means a "content change"- a
+hash of the file is stored, and recalculated to check for changes.
+There are many <<config_options,proctab configuration options>>.
 
-Build and Install
-~~~~~~~~~~~~~~~~~
+Status, control and logs
+~~~~~~~~~~~~~~~~~~~~~~~~
 
-  git clone https://github.com/troydhanson/proctab.git
-  cd proctab
-  make
-  sudo make install
+To start, stop or get status of proctab, use the service control
+commands of the host system. 
 
-Afterward proctab should already be running. Verify using `service proctab status` or
-`systemd status proctab`.  The result of installation is:
+.On a systemd-based host
 
- * the executable: `/usr/bin/proctab` 
- * the configuration file: `/etc/proctab.conf` 
- * an OS-specific initscript that runs proctab at boot 
+  systemctl status proctab 
+  systemctl start proctab 
+  systemctl stop proctab 
 
-Start/stop
-~~~~~~~~~~
+.On many other systems
 
-You can use the system's service command to start or stop proctab itself.
-
+  service proctab status
   service proctab start
   service proctab stop
 
-Or on systemd-based systems,
+Proctab logs to syslog, typically sent by the host system into the file
+`/var/log/syslog` or `/var/log/messages`. Look there for messages about
+proctab starting or restarting jobs, or errors in parsing `proctab.conf`.
+You can also run `proctab -t` to check the syntax and report any errors. 
 
-  systemctl start proctab 
-  systemctl status proctab 
-  systemctl stop proctab 
-
-Logs/Status
-~~~~~~~~~~~
-proctab logs to syslog. This is typically `/var/log/syslog` or `/var/log/messages`.
-
-  Nov  7 1:38:10 ubuntu proctab[477]: started job proxy [478]
-
-To get a nice visual confirmation of the jobs you have running under proctab, you
-can use the `pstree` utility, if you have it installed.  Here is the output of
-`pstree -p` truncated to show only proctab's process tree.
-
-.Example pstree output
-----------------------------------------
-        ├─proctab(2830)─┬─proctab(2834)
-        │               ├─proxy(2831)
-        │               ├─sshd(2832)
-        │               └─python(2833)
-----------------------------------------
-
-systemd-based systems
-^^^^^^^^^^^^^^^^^^^^^
-On systemd-based systems, `systemctl` gives a nice view of proctab and its sub-jobs:
+systemd features
+^^^^^^^^^^^^^^^^
+On systemd-based hosts, `systemctl` gives a nice tree view of the proctab
+process hierarchy. You can get a similar view on other systems using pstree.
 
 ----------------------------------------------------------------------------
-systemctl status proctab
+% systemctl status proctab
 ● proctab.service - proctab process manager
    Loaded: loaded (/lib/systemd/system/proctab.service; enabled)
    Active: active (running) since Mon 2015-11-23 02:18:58 UTC; 12min ago
@@ -158,11 +143,11 @@ systemctl status proctab
  Main PID: 1463 (proctab)
    CGroup: /system.slice/proctab.service
            ├─1463 /usr/bin/proctab -F -c /etc/proctab.conf
-           ├─1470 /usr/bin/proctab -F -c /etc/proctab.conf
-           └─1556 /bin/sleep 8
+           └─1556 /usr/bin/darkice -c /etc/darkice.cfg
+           └─1557 /usr/bin/ssh -i key -TNL 5901:127.0.0.1:5901 192.168.0.1
 ----------------------------------------------------------------------------
 
-You can also view logs using:
+There is also `journalctl` to view logs on a systemd-based host:
 
     journalctl -u proctab
 
@@ -184,6 +169,7 @@ When you edit and save `proctab.conf`, it applies the changes immediately.
 
 To terminate a job, proctab sends SIGTERM to it, then SIGKILL shortly afterward.
 
+[[config_options]]
 Config file
 ~~~~~~~~~~~
 The configuration file contains any number of jobs. 
