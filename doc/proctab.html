@@ -1023,10 +1023,10 @@ job does not have the <code>once</code> option), proctab restarts it. However, i
 died within 10 seconds of starting, proctab waits 10 seconds to restart it.</p></div>
 <div class="paragraph"><div class="title">Restart management</div><p>This has two benefits: a job that is waiting for some resource (say, to connect
 to a remote server that is temporarily offline) can exit, counting on being
-restarted periodically, so it does not have to embed retry logic itself.
-Secondly, a job that is misconfigured (say, with a typo in its command
-string) has little impact on the host because proctab only tries to restart
-every 10 seconds.</p></div>
+restarted periodically. It does not need its own retry logic. Secondly, a job
+that is misconfigured (say, with a typo in its command string, causing it to
+die immediately) has little impact on the host because proctab only tries to
+restart it every 10 seconds. The restarts are visible in the log.</p></div>
 </div>
 <div class="sect2">
 <h3 id="_status_control_and_logs">Status, control and logs</h3>
@@ -1453,7 +1453,7 @@ edited or proctab is restarted.</p></div>
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2016-01-29 00:18:48 EST
+Last updated 2016-01-29 00:23:09 EST
 </div>
 </div>
 </body>

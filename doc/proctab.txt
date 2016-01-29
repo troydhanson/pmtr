@@ -208,10 +208,10 @@ died within 10 seconds of starting, proctab waits 10 seconds to restart it.
 
 This has two benefits: a job that is waiting for some resource (say, to connect
 to a remote server that is temporarily offline) can exit, counting on being
-restarted periodically, so it does not have to embed retry logic itself.
-Secondly, a job that is misconfigured (say, with a typo in its command
-string) has little impact on the host because proctab only tries to restart
-every 10 seconds.
+restarted periodically. It does not need its own retry logic. Secondly, a job
+that is misconfigured (say, with a typo in its command string, causing it to
+die immediately) has little impact on the host because proctab only tries to
+restart it every 10 seconds. The restarts are visible in the log.
 
 Status, control and logs
 ~~~~~~~~~~~~~~~~~~~~~~~~
