@@ -1026,13 +1026,11 @@ to a remote server that is temporarily offline) can exit, counting on being
 restarted periodically. It does not need its own retry logic. Secondly, a job
 that is misconfigured (say, with a typo in its command string, causing it to
 die immediately) has little impact on the host because proctab only tries to
-restart it every 10 seconds. The restarts are visible in the log.</p></div>
+restart it every 10 seconds. Restarts are visible in the log.</p></div>
 </div>
 <div class="sect2">
 <h3 id="_status_control_and_logs">Status, control and logs</h3>
-<div class="paragraph"><p>To start, stop or get status of proctab, use the host system management commands.
-Note that when you start proctab, it starts up all its jobs, just like at boot.
-When you stop proctab, it signals all its jobs to terminate before it exits.</p></div>
+<div class="paragraph"><p>To start, stop or get status of proctab, use the host system management commands.</p></div>
 <div class="literalblock">
 <div class="title">On a systemd-based host</div>
 <div class="content">
@@ -1047,6 +1045,8 @@ systemctl stop proctab</code></pre>
 service proctab start
 service proctab stop</code></pre>
 </div></div>
+<div class="paragraph"><p>Note that when you start proctab, it starts all its jobs, just like at boot.
+When you stop proctab, it signals the jobs to terminate, then exits itself.</p></div>
 <div class="paragraph"><div class="title">Logs</div><p>Proctab logs to syslog, typically sent by the host system into the file
 <code>/var/log/syslog</code> or <code>/var/log/messages</code>. Look there for messages about
 proctab starting or restarting jobs, or errors in parsing <code>proctab.conf</code>.
@@ -1453,7 +1453,7 @@ edited or proctab is restarted.</p></div>
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2016-01-29 00:23:09 EST
+Last updated 2016-01-29 00:26:23 EST
 </div>
 </div>
 </body>

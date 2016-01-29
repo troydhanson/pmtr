@@ -211,14 +211,12 @@ to a remote server that is temporarily offline) can exit, counting on being
 restarted periodically. It does not need its own retry logic. Secondly, a job
 that is misconfigured (say, with a typo in its command string, causing it to
 die immediately) has little impact on the host because proctab only tries to
-restart it every 10 seconds. The restarts are visible in the log.
+restart it every 10 seconds. Restarts are visible in the log.
 
 Status, control and logs
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
 To start, stop or get status of proctab, use the host system management commands.
-Note that when you start proctab, it starts up all its jobs, just like at boot.
-When you stop proctab, it signals all its jobs to terminate before it exits.  
 
 .On a systemd-based host
 
@@ -231,6 +229,9 @@ When you stop proctab, it signals all its jobs to terminate before it exits.
   service proctab status
   service proctab start
   service proctab stop
+
+Note that when you start proctab, it starts all its jobs, just like at boot.
+When you stop proctab, it signals the jobs to terminate, then exits itself.  
 
 .Logs
 
