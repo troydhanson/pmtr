@@ -188,6 +188,12 @@ When you edit and save `proctab.conf`, proctab applies the changes immediately.
  * A deleted job is terminated.
  * A changed job is restarted with its new configuration.
 
+.Testing the configuration
+
+You can run `proctab -t` to check the config file syntax and report any errors. 
+This checks the file without running any jobs.  In normal background operation,
+proctab logs syntax errors to syslog.
+
 Job termination
 ~~~~~~~~~~~~~~~
 
@@ -235,11 +241,12 @@ When you stop proctab, it signals the jobs to terminate, then exits itself.
 
 .Logs
 
-Proctab logs to syslog. Typically the host sends the log messages to
-`/var/log/syslog` or `/var/log/messages`. Look there for messages about
-proctab starting or restarting jobs. Any errors in parsing `proctab.conf`
-are logged. It's a good idea to check the log after making edits.
-You can also run `proctab -t` to check the syntax and report any errors. 
+Proctab logs to syslog. Typically the host puts them in `/var/log/syslog` or
+`/var/log/messages`. 
+
+Look there for messages about proctab starting or restarting jobs. Any errors in
+parsing `proctab.conf` are logged. It's a good idea to check the log after
+making edits. 
 
 .systemd features
 

@@ -1011,6 +1011,9 @@ A changed job is restarted with its new configuration.
 </p>
 </li>
 </ul></div>
+<div class="paragraph"><div class="title">Testing the configuration</div><p>You can run <code>proctab -t</code> to check the config file syntax and report any errors.
+This checks the file without running any jobs.  In normal background operation,
+proctab logs syntax errors to syslog.</p></div>
 </div>
 <div class="sect2">
 <h3 id="_job_termination">Job termination</h3>
@@ -1047,11 +1050,11 @@ service proctab stop</code></pre>
 </div></div>
 <div class="paragraph"><p>Note that when you start proctab, it starts all its jobs, just like at boot.
 When you stop proctab, it signals the jobs to terminate, then exits itself.</p></div>
-<div class="paragraph"><div class="title">Logs</div><p>Proctab logs to syslog. Typically the host sends the log messages to
-<code>/var/log/syslog</code> or <code>/var/log/messages</code>. Look there for messages about
-proctab starting or restarting jobs. Any errors in parsing <code>proctab.conf</code>
-are logged. It&#8217;s a good idea to check the log after making edits.
-You can also run <code>proctab -t</code> to check the syntax and report any errors.</p></div>
+<div class="paragraph"><div class="title">Logs</div><p>Proctab logs to syslog. Typically the host puts them in <code>/var/log/syslog</code> or
+<code>/var/log/messages</code>.</p></div>
+<div class="paragraph"><p>Look there for messages about proctab starting or restarting jobs. Any errors in
+parsing <code>proctab.conf</code> are logged. It&#8217;s a good idea to check the log after
+making edits.</p></div>
 <div class="paragraph"><div class="title">systemd features</div><p>On systemd-based hosts, <code>systemctl status proctab</code> gives a nice view of the
 proctab process hierarchy, as shown at the bottom of this command output.</p></div>
 <div class="listingblock">
@@ -1454,7 +1457,7 @@ edited or proctab is restarted.</p></div>
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2016-01-29 00:31:31 EST
+Last updated 2016-01-29 00:35:50 EST
 </div>
 </div>
 </body>
