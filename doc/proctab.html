@@ -895,14 +895,16 @@ first one is a one-time, setup job that proctab won&#8217;t restart. The
 next two are a Darkice audio streamer and a persistent SSH tunnel.</p></div>
 <div class="paragraph"><p>There are many <a href="#config_options">proctab configuration options</a>.
 The minimal requirement is that each job has a name and a cmd.</p></div>
-<div class="paragraph"><div class="title">Depends</div><p>Darkice depends on <code>/etc/darkice.cfg</code>, so proctab restarts it if
-that file gets edited. It uses inotify to efficiently watch for
-these file events. It verifies that the file content changed
-changed (using a hash) and restarts the job in that case.</p></div>
-<div class="paragraph"><div class="title">No shell</div><p>The commands are executed by fork and execv; there is no shell
-interpretation of the command and its arguments. There is no
-PATH searching for the command. Use absolute paths on commands.
-The only quoting support is double-quotes in cmd options such as</p></div>
+<div class="paragraph"><div class="title">depends</div><p>In the example above, darkice depends on <code>/etc/darkice.cfg</code>. This makes proctab
+restart darkice whenever darkice.cfg is edited. Proctab watches for these file
+events efficiently using inotify. It restarts darkice if the content (thus, the
+hash) of darkice.cfg changes. A simple open/close of darkice.cfg with no changes
+will not restart the job. A job can depend on multiple files, listed one per
+line.</p></div>
+<div class="paragraph"><div class="title">No shell</div><p>The commands are executed by fork and execv; there is no shell interpretation of
+the command and its arguments. There is no PATH searching for the command. Use
+absolute paths on commands.  The only quoting support is double-quotes in cmd
+options such as</p></div>
 <div class="literalblock">
 <div class="content">
 <pre><code>cmd /bin/bash -c "killall Xvnc; vncserver :1"</code></pre>
@@ -1449,7 +1451,7 @@ edited or proctab is restarted.</p></div>
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2016-01-28 23:17:33 EST
+Last updated 2016-01-28 23:28:52 EST
 </div>
 </div>
 </body>
