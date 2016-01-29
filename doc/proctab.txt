@@ -12,7 +12,7 @@ mechanism, and the syntax of initscripts, vary depending on the distribution.
 Proctab is one of my http://troydhanson.github.io/[many C projects]. I wrote it
 for sensors and appliances that have lots of related jobs that are easier to
 manage through one configuration file. Also, to insulate the developer from
-the underlying init system which varies widely.
+the underlying init system.
 
 I wrote 'proctab' to complement rather than replace the underlying init system.
 It runs under systemd, sysvinit or upstart that already exists on a Linux host.
