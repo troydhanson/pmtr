@@ -167,9 +167,9 @@ periodic restart. It also takes hour or minute units e.g. `2h` or `5m`.
 .ulimit
 
 The job above can open infinite file descriptors (well, it can try) because
-`ulimit -n infinite` allows it. These are system resource limits managed by
-Linux on the process. Many limits can be explicitly set this way.
-To see them, type `ulimit -a` or `help limit` in a bash shell.
+`ulimit -n infinite` allows it. These are process limits enforced by Linux. Many
+limits can be explicitly set this way.  To see them, type `ulimit -a` or `help
+limit` in a bash shell.
 
 .stdout and stderr
 
@@ -195,8 +195,8 @@ Job termination
 
 To terminate a job, proctab sends SIGTERM to it, then SIGKILL shortly afterward.
 (That is, if it's still running). Proctab terminates a job when that job is
-deleted, disabled, needs to be restarted due to changes to its command or
-arguments, is being bounced, or proctab itself is shutting down.
+deleted, disabled, needs to be restarted due to changes to its command or other
+options, is being bounced, or proctab itself is shutting down.
 
 .Externally-induced
 

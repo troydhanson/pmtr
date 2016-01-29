@@ -987,9 +987,9 @@ job {
 This options is for scripts or other processes that might benefit from a
 periodic restart. It also takes hour or minute units e.g. <code>2h</code> or <code>5m</code>.</p></div>
 <div class="paragraph"><div class="title">ulimit</div><p>The job above can open infinite file descriptors (well, it can try) because
-<code>ulimit -n infinite</code> allows it. These are system resource limits managed by
-Linux on the process. Many limits can be explicitly set this way.
-To see them, type <code>ulimit -a</code> or <code>help limit</code> in a bash shell.</p></div>
+<code>ulimit -n infinite</code> allows it. These are process limits enforced by Linux. Many
+limits can be explicitly set this way.  To see them, type <code>ulimit -a</code> or <code>help
+limit</code> in a bash shell.</p></div>
 <div class="paragraph"><div class="title">stdout and stderr</div><p>As shown the stdout and stderr can be redirected to files. Otherwise they
 are sent to <code>/dev/null</code>.</p></div>
 <div class="paragraph"><div class="title">Environment variables</div><p>Environment variables can be set for a job by lines of the form <code>env VAR=value</code>.</p></div>
@@ -1016,8 +1016,8 @@ A changed job is restarted with its new configuration.
 <h3 id="_job_termination">Job termination</h3>
 <div class="paragraph"><div class="title">Proctab-induced</div><p>To terminate a job, proctab sends SIGTERM to it, then SIGKILL shortly afterward.
 (That is, if it&#8217;s still running). Proctab terminates a job when that job is
-deleted, disabled, needs to be restarted due to changes to its command or
-arguments, is being bounced, or proctab itself is shutting down.</p></div>
+deleted, disabled, needs to be restarted due to changes to its command or other
+options, is being bounced, or proctab itself is shutting down.</p></div>
 <div class="paragraph"><div class="title">Externally-induced</div><p>If a job terminates by itself, when proctab did not signal it to exit, (and the
 job does not have the <code>once</code> option), proctab restarts it. However, if the job
 died within 10 seconds of starting, proctab waits 10 seconds to restart it.</p></div>
@@ -1453,7 +1453,7 @@ edited or proctab is restarted.</p></div>
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2016-01-29 00:07:59 EST
+Last updated 2016-01-29 00:11:24 EST
 </div>
 </div>
 </body>
