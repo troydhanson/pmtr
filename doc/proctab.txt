@@ -18,7 +18,9 @@ I wrote 'proctab' to complement rather than replace the underlying init system.
 It runs under systemd, sysvinit or upstart that already exists on a Linux host.
 Its configuration file `/etc/proctab.conf` lists the services it should start.
 It starts them at boot, and restarts them as needed.  Proctab is written in C,
-for Linux only, and is link:LICENSE.txt[MIT licensed]. It's been used on,
+Linux only, and is link:LICENSE.txt[MIT] licensed.
+
+.Platforms
 
 * Ubuntu (12, 13, 14, 15, 16)
 * CentOS/RHEL (5, 6, 7)
