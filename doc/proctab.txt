@@ -9,29 +9,23 @@ mechanism, and the syntax of initscripts, vary depending on the distribution.
 
 .proctab
 
-I wrote 'proctab' to complement rather than replace the sysinit mechanism
-It runs under the existing init system- systemd, upstart, or sysvinit-
-that already exists on a Linux host. The `/etc/proctac.conf` configuration
-file lists the services it should start at boot, and restart if they exit. 
-Proctab detects and applies edits to its configuration file immediately. 
-
-Proctab is written in C and targets Linux only. It runs on:
-
-* Ubuntu (12, 13, 14, 15, 16)
-* CentOS/RHEL (5, 6, 7)
-* Debian 
-* Arch
-* Yocto-based distributions - https://github.com/troydhanson/meta-proctab[Yocto layer]
-* SoC boards including Raspberry Pi, Intel Edison
-
-Proctab is free and open source. Here is the link:LICENSE.txt[MIT license].
-
-.About
-
 Proctab is one of my http://troydhanson.github.io/[many C projects]. I wrote it
 for sensors and appliances that have lots of related jobs that are easier to
 manage through one configuration file. Also, to insulate the developer from
 the underlying init system which varies widely.
+
+I wrote 'proctab' to complement rather than replace the underlying init system.
+It runs under systemd, sysvinit or upstart that already exists on a Linux host.
+Its configuration file `/etc/proctab.conf` lists the services it should start.
+It starts them at boot, and restarts them as needed.  Proctab is written in C,
+for Linux only, and is link:LICENSE.txt[MIT licensed]. It's been used on,
+
+* Ubuntu (12, 13, 14, 15, 16)
+* CentOS/RHEL (5, 6, 7)
+* Raspberry Pi (Raspbian)
+* Debian 
+* Arch
+* Yocto https://github.com/troydhanson/meta-proctab[(layer)]
 
 Guide
 -----

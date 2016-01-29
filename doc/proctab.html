@@ -781,12 +781,15 @@ asciidoc.install(2);
 <div class="paragraph"><p>Back to the <a href="https://github.com/troydhanson/proctab">proctab Github page</a>.</p></div>
 <div class="paragraph"><p>To run services on Linux systems one typically writes an initscript. The init
 mechanism, and the syntax of initscripts, vary depending on the distribution.</p></div>
-<div class="paragraph"><div class="title">proctab</div><p>I wrote <em>proctab</em> to complement rather than replace the sysinit mechanism
-It runs under the existing init system- systemd, upstart, or sysvinit-
-that already exists on a Linux host. The <code>/etc/proctac.conf</code> configuration
-file lists the services it should start at boot, and restart if they exit.
-Proctab detects and applies edits to its configuration file immediately.</p></div>
-<div class="paragraph"><p>Proctab is written in C and targets Linux only. It runs on:</p></div>
+<div class="paragraph"><div class="title">proctab</div><p>Proctab is one of my <a href="http://troydhanson.github.io/">many C projects</a>. I wrote it
+for sensors and appliances that have lots of related jobs that are easier to
+manage through one configuration file. Also, to insulate the developer from
+the underlying init system which varies widely.</p></div>
+<div class="paragraph"><p>I wrote <em>proctab</em> to complement rather than replace the underlying init system.
+It runs under systemd, sysvinit or upstart that already exists on a Linux host.
+Its configuration file <code>/etc/proctab.conf</code> lists the services it should start.
+It starts them at boot, and restarts them as needed.  Proctab is written in C,
+for Linux only, and is <a href="LICENSE.txt">MIT licensed</a>. It&#8217;s been used on,</p></div>
 <div class="ulist"><ul>
 <li>
 <p>
@@ -796,6 +799,11 @@ Ubuntu (12, 13, 14, 15, 16)
 <li>
 <p>
 CentOS/RHEL (5, 6, 7)
+</p>
+</li>
+<li>
+<p>
+Raspberry Pi (Raspbian)
 </p>
 </li>
 <li>
@@ -810,20 +818,10 @@ Arch
 </li>
 <li>
 <p>
-Yocto-based distributions - <a href="https://github.com/troydhanson/meta-proctab">Yocto layer</a>
-</p>
-</li>
-<li>
-<p>
-SoC boards including Raspberry Pi, Intel Edison
+Yocto <a href="https://github.com/troydhanson/meta-proctab">(layer)</a>
 </p>
 </li>
 </ul></div>
-<div class="paragraph"><p>Proctab is free and open source. Here is the <a href="LICENSE.txt">MIT license</a>.</p></div>
-<div class="paragraph"><div class="title">About</div><p>Proctab is one of my <a href="http://troydhanson.github.io/">many C projects</a>. I wrote it
-for sensors and appliances that have lots of related jobs that are easier to
-manage through one configuration file. Also, to insulate the developer from
-the underlying init system which varies widely.</p></div>
 </div>
 </div>
 <div class="sect1">
@@ -1451,7 +1449,7 @@ edited or proctab is restarted.</p></div>
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2016-01-28 22:25:57 EST
+Last updated 2016-01-28 23:12:32 EST
 </div>
 </div>
 </body>
