@@ -1430,22 +1430,20 @@ cellspacing="0" cellpadding="4">
 <pre><code>report to udp://127.0.0.1:9999
 listen on udp://0.0.0.0:10000</code></pre>
 </div></div>
-<div class="paragraph"><p>The <code>report to</code> option designates a remote address and port to which proctab should
-send a a UDP packet every ten seconds.  The packet payload lists the job names,
-enabled or disabled status, and elapsed runtimes in simple text. (An included
-script <code>utils/proctab-rptserver</code> can receive these reports and write updates
-to a text file summarizing the received status messages. This script is invoked
-like <code>proctab-rptserver -p 9999 -f status.txt</code>).  If the <code>report to</code> address falls
-in the multicast UDP range (e.g.  239.0.0.1, etc), the specification may include
-a trailing interface, e.g., <code>report to udp://239.0.0.1:9999@eth2</code> to explicitly
-designate the interface from which the multicast UDP datagrams should egress.</p></div>
+<div class="paragraph"><p>The <code>report to</code> option designates a remote address and port to which proctab
+should send a a UDP packet every ten seconds.  The packet payload lists the job
+names, enabled or disabled status, and elapsed runtimes in simple text. If the
+<code>report to</code> address falls in the multicast UDP range (e.g. 239.0.0.1, etc), the
+specification may include a trailing interface, e.g., <code>report to
+udp://239.0.0.1:9999@eth2</code> to designate the interface from which the multicast
+UDP datagrams should egress.</p></div>
 <div class="paragraph"><p>The <code>listen on</code> option allows jobs to be remotely enabled or disabled. It
 specifies a UDP address and port that proctab should listen on for datagrams of
 form <code>enable abc</code> or <code>disable abc</code>, where <em>abc</em> is a job name.  The address
-0.0.0.0 can be used as a shortcut to denote "any address" on this system. (A
-script in <code>utils/proctab-ctl</code> may be used to send the datagrams, for example
-<code>proctab-ctl -s 192.168.0.22 -p 10000 enable abc</code>). The effect is temporary; the
-settings in proctab.conf resume precedence when it&#8217;s edited or proctab is restarted.</p></div>
+0.0.0.0 can be used as a shortcut to denote "any address" on this system.  The
+effect is temporary; the settings in proctab.conf resume precedence when it&#8217;s
+edited or proctab is restarted.</p></div>
+<div class="paragraph"><p>These options are considered experimental and may be replaced or removed.</p></div>
 </div>
 </div>
 </div>
@@ -1453,7 +1451,7 @@ settings in proctab.conf resume precedence when it&#8217;s edited or proctab is 
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2016-01-28 20:19:38 EST
+Last updated 2016-01-28 22:25:57 EST
 </div>
 </div>
 </body>

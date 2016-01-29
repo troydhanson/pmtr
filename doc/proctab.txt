@@ -388,23 +388,22 @@ These configuration options may appear in `proctab.conf` at the global scope.
   report to udp://127.0.0.1:9999
   listen on udp://0.0.0.0:10000
 
-The `report to` option designates a remote address and port to which proctab should
-send a a UDP packet every ten seconds.  The packet payload lists the job names,
-enabled or disabled status, and elapsed runtimes in simple text. (An included
-script `utils/proctab-rptserver` can receive these reports and write updates
-to a text file summarizing the received status messages. This script is invoked
-like `proctab-rptserver -p 9999 -f status.txt`).  If the `report to` address falls
-in the multicast UDP range (e.g.  239.0.0.1, etc), the specification may include
-a trailing interface, e.g., `report to udp://239.0.0.1:9999@eth2` to explicitly
-designate the interface from which the multicast UDP datagrams should egress. 
+The `report to` option designates a remote address and port to which proctab
+should send a a UDP packet every ten seconds.  The packet payload lists the job
+names, enabled or disabled status, and elapsed runtimes in simple text. If the
+`report to` address falls in the multicast UDP range (e.g. 239.0.0.1, etc), the
+specification may include a trailing interface, e.g., `report to
+udp://239.0.0.1:9999@eth2` to designate the interface from which the multicast
+UDP datagrams should egress. 
 
 The `listen on` option allows jobs to be remotely enabled or disabled. It
 specifies a UDP address and port that proctab should listen on for datagrams of
 form `enable abc` or `disable abc`, where 'abc' is a job name.  The address
-0.0.0.0 can be used as a shortcut to denote "any address" on this system. (A
-script in `utils/proctab-ctl` may be used to send the datagrams, for example 
-`proctab-ctl -s 192.168.0.22 -p 10000 enable abc`). The effect is temporary; the
-settings in proctab.conf resume precedence when it's edited or proctab is restarted.
+0.0.0.0 can be used as a shortcut to denote "any address" on this system.  The
+effect is temporary; the settings in proctab.conf resume precedence when it's
+edited or proctab is restarted.
+
+These options are considered experimental and may be replaced or removed.
 
 // vim: set tw=80 wm=2 syntax=asciidoc: 
 
