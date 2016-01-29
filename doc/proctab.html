@@ -892,19 +892,24 @@ job {
 </div></div>
 <div class="paragraph"><p>Here we have a proctab configuration that runs three jobs. The
 first one is a one-time, setup job that proctab won&#8217;t restart. The
-next two are a Darkice audio streamer and a persistent SSH tunnel.</p></div>
-<div class="paragraph"><p>There are many <a href="#config_options">proctab configuration options</a>.
+next two are a Darkice audio streamer and a persistent SSH tunnel.
+There are many <a href="#config_options">proctab configuration options</a>.
 The minimal requirement is that each job has a name and a cmd.</p></div>
+<div class="paragraph"><div class="title">No shell expansion or $PATH searching</div><p>There is no shell interpretation of the command or its arguments. There is no
+searching for the command in $PATH. Use absolute paths on commands.  Proctab is
+a C program and it starts these jobs directly using <code>execv</code>.</p></div>
+<div class="paragraph"><div class="title">One time setup jobs (wait and once)</div><p>As a concession to real life, proctab has basic support for one-time setup jobs.
+The first job in the example above uses <code>once</code> and <code>wait</code> to prevent proctab
+from restarting the job, and to delay starting the subsequent jobs until the
+setup job has finished.</p></div>
 <div class="paragraph"><div class="title">depends</div><p>In the example above, darkice depends on <code>/etc/darkice.cfg</code>. This makes proctab
 restart darkice whenever darkice.cfg is edited. Proctab watches for these file
 events efficiently using inotify. It restarts darkice if the content (thus, the
 hash) of darkice.cfg changes. A simple open/close of darkice.cfg with no changes
 will not restart the job. A job can depend on multiple files, listed one per
 line.</p></div>
-<div class="paragraph"><div class="title">No shell or $PATH</div><p>There is no shell interpretation of the command or its arguments. There is no
-searching for the command in $PATH. Use absolute paths on commands.  The only
-quoting support is double-quotes in command options. For example you can pass
-a string into a shell this way:</p></div>
+<div class="paragraph"><div class="title">Quoting</div><p>Double-quotes make a single argument from the quoted content. Tip: this can be
+useful, in a pinch, to pass a script (as a quoted string) into a shell.</p></div>
 <div class="literalblock">
 <div class="content">
 <pre><code>cmd /bin/bash -c "killall Xvnc; vncserver :1"</code></pre>
@@ -963,8 +968,9 @@ clean up their own sub-processes
 </ul></div>
 </li>
 </ul></div>
-<div class="paragraph"><div class="title">Another example job</div><p>Here is another job with many options.</p></div>
+<div class="paragraph"><p>Here is another job with many options.</p></div>
 <div class="listingblock">
+<div class="title">Another example job</div>
 <div class="content">
 <pre><code># example of a process with lots of options
 job {
@@ -1055,7 +1061,7 @@ When you stop proctab, it signals the jobs to terminate, then exits itself.</p><
 <div class="paragraph"><p>Look there for messages about proctab starting or restarting jobs. Any errors in
 parsing <code>proctab.conf</code> are logged. It&#8217;s a good idea to check the log after
 making edits.</p></div>
-<div class="paragraph"><div class="title">systemd tips</div><p>On hosts based on <em>systemd</em>, use <code>journalctl -u proctab</code> to see proctab logs,
+<div class="paragraph"><div class="title">Tips on systemd-based hosts</div><p>On hosts based on <em>systemd</em>, use <code>journalctl -u proctab</code> to see proctab logs,
 and <code>systemctl status proctab</code> to view the process tree under proctab:</p></div>
 <div class="listingblock">
 <div class="content">
@@ -1135,6 +1141,14 @@ cellspacing="0" cellpadding="4">
 <tr>
 <td align="left" valign="top"><p class="table"><code>disable</code></p></td>
 <td align="left" valign="top"><p class="table">this keyword disables the job</p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><code>wait</code></p></td>
+<td align="left" valign="top"><p class="table">(special) wait for the job to finish before going on</p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><code>once</code></p></td>
+<td align="left" valign="top"><p class="table">(special) do not restart the job</p></td>
 </tr>
 </tbody>
 </table>
@@ -1321,20 +1335,29 @@ If there is an error setting the ulimits, it&#8217;s logged to syslog.
 </ul></div>
 </div>
 <div class="sect3">
-<h4 id="_one_time_jobs">One-time jobs</h4>
-<div class="paragraph"><p>Normally proctab runs permanent processes. However proctab supports one-time "setup"
-jobs using the <code>wait</code> and <code>once</code> options.  With <code>wait</code>, proctab waits for the
-job to exit before starting subsequent jobs. The <code>once</code> option prevents proctab
-from restarting it.</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>job {
-  name setup-ramdisk
-  cmd /bin/mkdir /dev/shm/ramdisk
-  wait
-  once
-}</code></pre>
-</div></div>
+<h4 id="_wait_once">wait/once</h4>
+<div class="ulist"><ul>
+<li>
+<p>
+Proctab has basic support for one-time setup jobs using <code>wait</code> and <code>once</code>.
+</p>
+</li>
+<li>
+<p>
+They are used together in setup jobs at the top of <code>proctab.conf</code>
+</p>
+</li>
+<li>
+<p>
+<code>once</code> prevents proctab from restarting the job when it exits
+</p>
+</li>
+<li>
+<p>
+<code>wait</code> delays subsequent jobs from starting until this one exits
+</p>
+</li>
+</ul></div>
 </div>
 </div>
 <div class="sect2">
@@ -1415,7 +1438,7 @@ edited or proctab is restarted.</p></div>
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2016-01-29 01:07:19 EST
+Last updated 2016-01-29 01:30:33 EST
 </div>
 </div>
 </body>
