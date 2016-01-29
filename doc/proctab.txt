@@ -168,7 +168,8 @@ periodic restart. It also takes hour or minute units e.g. `2h` or `5m`.
 
 The job above can open infinite file descriptors (well, it can try) because
 `ulimit -n infinite` allows it. The Linux kernel enforces the process ulimits.
-Many limits can be explicitly set this way- e.g. type `ulimit -a` in a shell.
+Many limits can be set this way- e.g. type `ulimit -a` to see them and their 
+values in a bash shell.
 
 .stdout and stderr
 
