@@ -9,7 +9,6 @@ stage:
 	rm -if ${TMP}/*
 	cp LICENSE.txt ${TMP}
 	cp *.html ${TMP}
-	cp *.png ${TMP}
 
 clean: 
 	rm -f proctab.html
