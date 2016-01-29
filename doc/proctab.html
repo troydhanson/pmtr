@@ -983,16 +983,15 @@ job {
   err /var/log/gen.err
 }</code></pre>
 </div></div>
-<div class="paragraph"><div class="title">bounce every</div><p>Among the options shown job above is <code>bounce every 1d</code>. This is useful
-for scripts or other processes that might benefit from a daily restart. It takes
-other units, like <code>bounce every 5m</code> for 5 minutes or <code>2h</code> for every 2 hours.</p></div>
+<div class="paragraph"><div class="title">bounce every</div><p>Among the options shown job above is <code>bounce every 1d</code>. (The <code>d</code> is for day).
+This options is for scripts or other processes that might benefit from a
+periodic restart. It also takes hour or minute units e.g. <code>2h</code> or <code>5m</code>.</p></div>
 <div class="paragraph"><div class="title">ulimit</div><p>The job above can open infinite file descriptors (well, it can try) because
 <code>ulimit -n infinite</code> allows it. There are many limits that can be explicitly set
 in this way.  Type <code>ulimit -a</code> or <code>help limit</code> in a bash shell to see them.</p></div>
-<div class="paragraph"><div class="title">environment variables</div><p>Environment variables can be set for a job by lines of the form <code>env VAR=value</code>.</p></div>
 <div class="paragraph"><div class="title">stdout and stderr</div><p>As shown the stdout and stderr can be redirected to files. Otherwise they
 are sent to <code>/dev/null</code>.</p></div>
-<div class="paragraph"><p>See the full list of <a href="#config_options">proctab configuration options</a>.</p></div>
+<div class="paragraph"><div class="title">Environment variables</div><p>Environment variables can be set for a job by lines of the form <code>env VAR=value</code>.</p></div>
 <div class="paragraph"><div class="title">Edits</div><p>When you edit and save <code>proctab.conf</code>, proctab applies the changes immediately.</p></div>
 <div class="ulist"><ul>
 <li>
@@ -1015,15 +1014,17 @@ A changed job is restarted with its new configuration.
 <div class="sect2">
 <h3 id="_job_termination">Job termination</h3>
 <div class="paragraph"><p>To terminate a job, proctab sends SIGTERM to it, then SIGKILL shortly afterward.
-If a job terminates by itself (when proctab did not signal it to exit), and the
-job does not have the <code>once</code> option, proctab restarts it. However, if the job
-dies within 10 seconds of starting, proctab restarts it after waiting 10 seconds.
-A job that dies immediately therefore undergoes a 10-second restart cycle (until
-it stays running, if it ever does). This has two benefits: a job that is waiting
-for some resource (say connection to a remote server) can die peacefully knowing
-it will be restarted periodically, so it does not have to embed that logic itself.
-Secondly, a process that is misconfigured (say, with a typo in its command string)
-has little impact on the host because it only tries to restart every 10 seconds.</p></div>
+This happens when a job is deleted, or needs to be restarted, or is being
+bounced, or proctab itself is shutting down.</p></div>
+<div class="paragraph"><p>If a job terminates by itself, when proctab did not signal it to exit, (and the
+job does not have the <code>once</code> option), proctab restarts it. However, if the job
+died within 10 seconds of starting, proctab waits 10 seconds to restart it.</p></div>
+<div class="paragraph"><p>This has two benefits: a job that is waiting for some resource (say, to connect
+to a remote server that is temporarily offline) can exit, counting on being
+restarted periodically, so it does not have to embed retry logic itself.
+Secondly, a process that is misconfigured (say, with a typo in its command
+string) has little impact on the host because proctab only tries to restart
+every 10 seconds.</p></div>
 </div>
 <div class="sect2">
 <h3 id="_status_control_and_logs">Status, control and logs</h3>
@@ -1450,7 +1451,7 @@ edited or proctab is restarted.</p></div>
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2016-01-28 23:39:21 EST
+Last updated 2016-01-28 23:51:10 EST
 </div>
 </div>
 </body>

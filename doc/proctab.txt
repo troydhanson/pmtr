@@ -160,9 +160,9 @@ job {
 
 .bounce every
 
-Among the options shown job above is `bounce every 1d`. This is useful
-for scripts or other processes that might benefit from a daily restart. It takes
-other units, like `bounce every 5m` for 5 minutes or `2h` for every 2 hours.
+Among the options shown job above is `bounce every 1d`. (The `d` is for day).
+This options is for scripts or other processes that might benefit from a
+periodic restart. It also takes hour or minute units e.g. `2h` or `5m`.
 
 .ulimit
 
@@ -170,16 +170,14 @@ The job above can open infinite file descriptors (well, it can try) because
 `ulimit -n infinite` allows it. There are many limits that can be explicitly set
 in this way.  Type `ulimit -a` or `help limit` in a bash shell to see them.
 
-.environment variables
-
-Environment variables can be set for a job by lines of the form `env VAR=value`.
-
 .stdout and stderr
 
 As shown the stdout and stderr can be redirected to files. Otherwise they
 are sent to `/dev/null`.
 
-See the full list of <<config_options,proctab configuration options>>.
+.Environment variables
+
+Environment variables can be set for a job by lines of the form `env VAR=value`.
 
 .Edits
 
@@ -193,15 +191,19 @@ Job termination
 ~~~~~~~~~~~~~~~
 
 To terminate a job, proctab sends SIGTERM to it, then SIGKILL shortly afterward.
-If a job terminates by itself (when proctab did not signal it to exit), and the
-job does not have the `once` option, proctab restarts it. However, if the job
-dies within 10 seconds of starting, proctab restarts it after waiting 10 seconds.
-A job that dies immediately therefore undergoes a 10-second restart cycle (until
-it stays running, if it ever does). This has two benefits: a job that is waiting
-for some resource (say connection to a remote server) can die peacefully knowing
-it will be restarted periodically, so it does not have to embed that logic itself.
-Secondly, a process that is misconfigured (say, with a typo in its command string)
-has little impact on the host because it only tries to restart every 10 seconds.
+This happens when a job is deleted, or needs to be restarted, or is being
+bounced, or proctab itself is shutting down.
+
+If a job terminates by itself, when proctab did not signal it to exit, (and the
+job does not have the `once` option), proctab restarts it. However, if the job
+died within 10 seconds of starting, proctab waits 10 seconds to restart it.
+
+This has two benefits: a job that is waiting for some resource (say, to connect
+to a remote server that is temporarily offline) can exit, counting on being
+restarted periodically, so it does not have to embed retry logic itself.
+Secondly, a process that is misconfigured (say, with a typo in its command
+string) has little impact on the host because proctab only tries to restart
+every 10 seconds.
 
 Status, control and logs
 ~~~~~~~~~~~~~~~~~~~~~~~~
