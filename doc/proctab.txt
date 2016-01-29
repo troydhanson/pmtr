@@ -250,9 +250,8 @@ making edits.
 
 .systemd tips
 
-Hosts based on 'systemd' have the `systemctl` and `journalctl` utilities.
-To see proctab logs, try `journalctl -u proctab`. Use systemctl to view the
-process hierarchy under proctab.
+On hosts based on 'systemd', use `journalctl -u proctab` to see proctab logs,
+and `systemctl status proctab` to view the process tree under proctab:
 
 ----------------------------------------------------------------------------
 % systemctl status proctab
