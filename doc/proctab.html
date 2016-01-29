@@ -1013,16 +1013,17 @@ A changed job is restarted with its new configuration.
 </div>
 <div class="sect2">
 <h3 id="_job_termination">Job termination</h3>
-<div class="paragraph"><p>To terminate a job, proctab sends SIGTERM to it, then SIGKILL shortly afterward.
-This happens when a job is deleted, or needs to be restarted, or is being
+<div class="paragraph"><div class="title">Proctab-induced</div><p>To terminate a job, proctab sends SIGTERM to it, then SIGKILL shortly afterward
+it it&#8217;s still running.  Proctab terminates a job when that job is deleted, disabled,
+needs to be restarted due to changes to its command or arguments, is being
 bounced, or proctab itself is shutting down.</p></div>
-<div class="paragraph"><p>If a job terminates by itself, when proctab did not signal it to exit, (and the
+<div class="paragraph"><div class="title">Externally-induced</div><p>If a job terminates by itself, when proctab did not signal it to exit, (and the
 job does not have the <code>once</code> option), proctab restarts it. However, if the job
 died within 10 seconds of starting, proctab waits 10 seconds to restart it.</p></div>
-<div class="paragraph"><p>This has two benefits: a job that is waiting for some resource (say, to connect
+<div class="paragraph"><div class="title">Restart management</div><p>This has two benefits: a job that is waiting for some resource (say, to connect
 to a remote server that is temporarily offline) can exit, counting on being
 restarted periodically, so it does not have to embed retry logic itself.
-Secondly, a process that is misconfigured (say, with a typo in its command
+Secondly, a job that is misconfigured (say, with a typo in its command
 string) has little impact on the host because proctab only tries to restart
 every 10 seconds.</p></div>
 </div>
@@ -1451,7 +1452,7 @@ edited or proctab is restarted.</p></div>
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2016-01-28 23:51:10 EST
+Last updated 2016-01-28 23:58:42 EST
 </div>
 </div>
 </body>
