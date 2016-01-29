@@ -317,8 +317,7 @@ out, err, in
 user
 ^^^^
 * The `user` option is the unix username that should be the process owner.
-* The `user` defaults to root usually, when proctab is running as a service.
-* The `user` defaults to whoever started proctab, if proctab was run manually.
+* The `user` defaults to root if proctab is running as root (it normally is)
 
 depends
 ^^^^^^^
@@ -331,23 +330,15 @@ bounce every
 * It's intended for jobs that don't behave well as long-running processes. 
 * It takes a number and unit, like `5m` to restart a job every five minutes. 
 * The units are `smhd`- (s)econds, (m)inutes, (h)ours or (d)ays. 
-* The interval should be more than 10 seconds. 
 * The exact timing of the restart is approximate.
 
 ulimit
 ^^^^^^
 * Use `ulimit` to modify the kernel-enforced resource limits for the job.
 * It takes a flag denoting which limit to set, and a value, e.g., `ulimit -n 30`.  
-* Alternatively, you can list a series of ulimit settings in a curly brace block:
-
-  ulimit {
-    -n infinity
-    -l 10000
-  }
-
 * In bash, type `ulimit -a` in bash to list flags, and the values in your shell;
 * In bash, type `help ulimit` for more information about the ulimits;
-* In bash, type `man prlimit` to see the more technical description and the units.
+* In bash, type `man prlimit` to see a more technical description and the units.
 * The values are all numeric or the keyword `infinity`.
 * To see the current kernel limits on a process, run `cat /proc/<pid>/limits`.
 * proctab sets both the "hard" and "soft" ulimit to the same value.
@@ -356,17 +347,17 @@ ulimit
 One-time jobs
 ^^^^^^^^^^^^^
 Normally proctab runs permanent processes. However proctab supports one-time "setup"
-jobs using the `wait` and `once` options.
+jobs using the `wait` and `once` options.  With `wait`, proctab waits for the
+job to exit before starting subsequent jobs. The `once` option prevents proctab
+from restarting it. 
 
   job {
     name setup-ramdisk
-    cmd /bin/mkdir /dev/shm/ss
+    cmd /bin/mkdir /dev/shm/ramdisk
     wait
     once
   }
 
-With `wait`, proctab waits for the job to exit before starting subsequent jobs. The
-`once` option prevents proctab from restarting it. 
 
 Appendix B: Proctab command-line options
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -1220,12 +1220,7 @@ The <code>user</code> option is the unix username that should be the process own
 </li>
 <li>
 <p>
-The <code>user</code> defaults to root usually, when proctab is running as a service.
-</p>
-</li>
-<li>
-<p>
-The <code>user</code> defaults to whoever started proctab, if proctab was run manually.
+The <code>user</code> defaults to root if proctab is running as root (it normally is)
 </p>
 </li>
 </ul></div>
@@ -1270,11 +1265,6 @@ The units are <code>smhd</code>- (s)econds, (m)inutes, (h)ours or (d)ays.
 </li>
 <li>
 <p>
-The interval should be more than 10 seconds.
-</p>
-</li>
-<li>
-<p>
 The exact timing of the restart is approximate.
 </p>
 </li>
@@ -1295,18 +1285,6 @@ It takes a flag denoting which limit to set, and a value, e.g., <code>ulimit -n 
 </li>
 <li>
 <p>
-Alternatively, you can list a series of ulimit settings in a curly brace block:
-</p>
-<div class="literalblock">
-<div class="content">
-<pre><code>ulimit {
-  -n infinity
-  -l 10000
-}</code></pre>
-</div></div>
-</li>
-<li>
-<p>
 In bash, type <code>ulimit -a</code> in bash to list flags, and the values in your shell;
 </p>
 </li>
@@ -1317,7 +1295,7 @@ In bash, type <code>help ulimit</code> for more information about the ulimits;
 </li>
 <li>
 <p>
-In bash, type <code>man prlimit</code> to see the more technical description and the units.
+In bash, type <code>man prlimit</code> to see a more technical description and the units.
 </p>
 </li>
 <li>
@@ -1345,18 +1323,18 @@ If there is an error setting the ulimits, it&#8217;s logged to syslog.
 <div class="sect3">
 <h4 id="_one_time_jobs">One-time jobs</h4>
 <div class="paragraph"><p>Normally proctab runs permanent processes. However proctab supports one-time "setup"
-jobs using the <code>wait</code> and <code>once</code> options.</p></div>
+jobs using the <code>wait</code> and <code>once</code> options.  With <code>wait</code>, proctab waits for the
+job to exit before starting subsequent jobs. The <code>once</code> option prevents proctab
+from restarting it.</p></div>
 <div class="literalblock">
 <div class="content">
 <pre><code>job {
   name setup-ramdisk
-  cmd /bin/mkdir /dev/shm/ss
+  cmd /bin/mkdir /dev/shm/ramdisk
   wait
   once
 }</code></pre>
 </div></div>
-<div class="paragraph"><p>With <code>wait</code>, proctab waits for the job to exit before starting subsequent jobs. The
-<code>once</code> option prevents proctab from restarting it.</p></div>
 </div>
 </div>
 <div class="sect2">
@@ -1437,7 +1415,7 @@ edited or proctab is restarted.</p></div>
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2016-01-29 01:01:39 EST
+Last updated 2016-01-29 01:07:19 EST
 </div>
 </div>
 </body>
