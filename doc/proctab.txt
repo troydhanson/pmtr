@@ -299,9 +299,6 @@ cmd
 * The `cmd` may contain double-quoted arguments e.g. `cmd /bin/echo "hello world"`
 * The `cmd` does no shell expansion: no wildcards, backticks, variables, etc. 
 * If you need shell features in your command, wrap it with a shell script. 
-* You can wrap a shell script around something using this trick too:
-
-  cmd /bin/bash -c "killall Xvnc; vncserver :1"
 
 env
 ^^^
@@ -310,9 +307,7 @@ env
 
 disable
 ^^^^^^^
-* Use `disable` to stop a job, without having to comment it out.
-* This is often helpful in debugging a job since it makes it easy to 
-  re-enable the job later (by commenting out the disable line, or removing it).
+* `disable` on a line by itself is like commenting the job out
 
 out, err, in
 ^^^^^^^^^^^^

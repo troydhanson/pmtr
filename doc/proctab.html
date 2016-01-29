@@ -1168,15 +1168,6 @@ The <code>cmd</code> does no shell expansion: no wildcards, backticks, variables
 If you need shell features in your command, wrap it with a shell script.
 </p>
 </li>
-<li>
-<p>
-You can wrap a shell script around something using this trick too:
-</p>
-<div class="literalblock">
-<div class="content">
-<pre><code>cmd /bin/bash -c "killall Xvnc; vncserver :1"</code></pre>
-</div></div>
-</li>
 </ul></div>
 </div>
 <div class="sect3">
@@ -1199,13 +1190,7 @@ Use <code>env</code> repeatedly to set multiple environment variables.
 <div class="ulist"><ul>
 <li>
 <p>
-Use <code>disable</code> to stop a job, without having to comment it out.
-</p>
-</li>
-<li>
-<p>
-This is often helpful in debugging a job since it makes it easy to
-  re-enable the job later (by commenting out the disable line, or removing it).
+<code>disable</code> on a line by itself is like commenting the job out
 </p>
 </li>
 </ul></div>
@@ -1452,7 +1437,7 @@ edited or proctab is restarted.</p></div>
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2016-01-29 00:55:24 EST
+Last updated 2016-01-29 01:01:39 EST
 </div>
 </div>
 </body>
