@@ -1,8 +1,7 @@
-all: index.html
+all: proctab.html
 
-index.html: index.txt
-	#asciidoc -a toc2 $<
-	asciidoc $<
+proctab.html: proctab.txt
+	asciidoc -a toc2 $<
 
 TMP=/tmp/proctab-gh-pages
 stage:
@@ -13,4 +12,4 @@ stage:
 	cp *.png ${TMP}
 
 clean: 
-	rm -f index.html
+	rm -f proctab.html

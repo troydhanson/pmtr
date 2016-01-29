@@ -22,7 +22,7 @@ Proctab is written in C and targets Linux only. It runs on:
 * Debian 
 * Arch
 * Yocto-based distributions - https://github.com/troydhanson/meta-proctab[Yocto layer]
-* Raspberry Pi, Intel Edison, Gizmo2 boards
+* SoC boards including Raspberry Pi, Intel Edison
 
 Proctab is free and open source. Here is the link:LICENSE.txt[MIT license].
 
@@ -32,6 +32,9 @@ Proctab is one of my http://troydhanson.github.io/[many C projects]. I wrote it
 for sensors and appliances that have lots of related jobs that are easier to
 manage through one configuration file. Also, to insulate the developer from
 the underlying init system which varies widely.
+
+Guide
+-----
 
 Download, build and install
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -100,17 +103,114 @@ job {
 Here we have a proctab configuration that runs three jobs. The
 first one is a one-time, setup job that proctab won't restart. The
 next two are a Darkice audio streamer and a persistent SSH tunnel.
-Since Darkice depends on `/etc/darkice.cfg` proctab restarts it if
-that file gets edited. It uses inotify to efficiently watch for 
-changes to dependent files. A change means a "content change"- a
-hash of the file is stored, and recalculated to check for changes.
+
 There are many <<config_options,proctab configuration options>>.
+The minimal requirement is that each job has a name and a cmd.
+
+.Depends
+
+Darkice depends on `/etc/darkice.cfg`, so proctab restarts it if
+that file gets edited. It uses inotify to efficiently watch for 
+these file events. It verifies that the file content changed
+changed (using a hash) and restarts the job in that case.
+
+.No shell
+
+The commands are executed by fork and execv; there is no shell
+interpretation of the command and its arguments. There is no
+PATH searching for the command. Use absolute paths on commands.
+The only quoting support is double-quotes in cmd options such as
+
+  cmd /bin/bash -c "killall Xvnc; vncserver :1"
+
+This technique- launching a shell to execute a string- is handy.
+
+.General rules
+
+* Each job is in a curly-brace delimited block.  
+* The order of options inside does not matter. 
+* Only the `name` and `cmd` are required.
+* Indentation is optional. 
+* Blank lines are ok.  
+* Comments start with `#` and must be on their own line.
+* Processes that run under proctab should,
+** stay in the foreground
+** exit on SIGTERM or SIGKILL 
+** clean up their own sub-processes
+
+
+.Example job (lots of options)
+---------------------------------------------------
+# example of a process with lots of options
+job {
+  name generate-data
+  dir /home/discovery
+  cmd /usr/bin/perl gen.pl --remotes /tmp/a /tmp/b
+  depends {
+    /tmp/a
+    /tmp/b
+  }
+  user daemon
+  env PERLLIB=/home/discovery/lib
+  ulimit -n infinity
+  bounce every 1d
+  out /var/log/gen.log
+  err /var/log/gen.err
+}
+
+---------------------------------------------------
+
+.Bounce every
+
+Among the options shown in the job above is `bounce every 1d`.  This is useful
+for scripts or other processes that might benefit from a periodic restart. It
+takes other units, like `5m` for five minutes.
+
+.ulimit
+
+The job above can open infinite file descriptors (well, it can try) because
+`ulimit -n infinite` allows it too. There are many limits (type `ulimit -a`
+in the shell, or `help limit`) that can be explicitly set in this way.
+
+.Environment variables
+
+Environment variables can be set for a job by lines of the form `env VAR=value`.
+
+.Standard output and error
+
+As shown the stdout and stderr can be redirected to files. Otherwise they
+are sent to `/dev/null`.
+
+See the full list of <<config_options,proctab configuration options>>.
+
+.Edits
+
+When you edit and save `proctab.conf`, proctab applies the changes immediately.
+
+ * A newly-added job gets started.
+ * A deleted job is terminated.
+ * A changed job is restarted with its new configuration.
+
+Job termination
+~~~~~~~~~~~~~~~
+
+To terminate a job, proctab sends SIGTERM to it, then SIGKILL shortly afterward.
+If a job terminates by itself (when proctab did not signal it to exit), and the
+job does not have the `once` option, proctab restarts it. However, if the job
+dies within 10 seconds of starting, proctab restarts it after waiting 10 seconds.
+A job that dies immediately therefore undergoes a 10-second restart cycle (until
+it stays running, if it ever does). This has two benefits: a job that is waiting
+for some resource (say connection to a remote server) can die peacefully knowing
+it will be restarted periodically, so it does not have to embed that logic itself.
+Secondly, a process that is misconfigured (say, with a typo in its command string)
+has little impact on the host because it only tries to restart every 10 seconds.
 
 Status, control and logs
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-To start, stop or get status of proctab, use the service control
-commands of the host system. 
+To start, stop or get status of proctab, use the host system management commands.
+Note that when you start proctab, it starts up all its jobs, just like at boot.
+When you stop proctab, it signals all its jobs to terminate before it exits.  
 
 .On a systemd-based host
 
@@ -124,15 +224,17 @@ commands of the host system.
   service proctab start
   service proctab stop
 
+.Logs
+
 Proctab logs to syslog, typically sent by the host system into the file
 `/var/log/syslog` or `/var/log/messages`. Look there for messages about
 proctab starting or restarting jobs, or errors in parsing `proctab.conf`.
 You can also run `proctab -t` to check the syntax and report any errors. 
 
-systemd features
-^^^^^^^^^^^^^^^^
-On systemd-based hosts, `systemctl` gives a nice tree view of the proctab
-process hierarchy. You can get a similar view on other systems using pstree.
+.systemd features
+
+On systemd-based hosts, `systemctl status proctab` gives a nice view of the
+proctab process hierarchy, as shown at the bottom of this command output.
 
 ----------------------------------------------------------------------------
 % systemctl status proctab
@@ -147,55 +249,13 @@ process hierarchy. You can get a similar view on other systems using pstree.
            └─1557 /usr/bin/ssh -i key -TNL 5901:127.0.0.1:5901 192.168.0.1
 ----------------------------------------------------------------------------
 
-There is also `journalctl` to view logs on a systemd-based host:
+Also, to view proctab logs on a systemd-based host, you can use:
 
     journalctl -u proctab
 
-Jobs
-~~~~
-Processes that run under proctab should,
-
- * stay in the foreground
- * exit on SIGTERM or SIGKILL 
- * clean up their own sub-processes
-
-The default proctab configuration file is `/etc/proctab.conf`. 
-
-When you edit and save `proctab.conf`, it applies the changes immediately.
-
- * A newly-added job gets started.
- * A deleted job is terminated.
- * A changed job is restarted with its new configuration.
-
-To terminate a job, proctab sends SIGTERM to it, then SIGKILL shortly afterward.
-
 [[config_options]]
-Config file
-~~~~~~~~~~~
-The configuration file contains any number of jobs. 
-
-* Each job is in a curly-brace delimited block.  
-* The order of options inside does not matter. 
-* Only the `name` and `cmd` are required.
-* Indentation is optional. 
-* Blank lines are ok.  
-* Comments start with `#` and must be on their own line.
-
-.Example job
----------------------------------------------------
-  job {
-    name snmpmonitor
-    cmd /usr/bin/snmp-mon -c snmp.conf
-    user daemon
-    depends {
-      snmp.conf
-      device.oid
-    }
-    env LD_LIBRARY_PATH=/opt/lib
-    ulimit -n infinity
-    bounce every 1d
-  }
----------------------------------------------------
+Appendix A: Configuration options
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 These options may appear in a job definition.
 
@@ -285,15 +345,6 @@ ulimit
 * proctab sets both the "hard" and "soft" ulimit to the same value.
 * If there is an error setting the ulimits, it's logged to syslog.
 
-Restarts
-^^^^^^^^
-Since proctab is designed to keep things running, if a job exits, proctab restarts it.
-
-* If a job exits quickly (within ten seconds of when it started) proctab 
-  waits ten seconds then restarts it. This avoids rapid restart cycles. The
-  job probably has some sort of configuration problem if it exits quickly.
-* Exit status 33 can be returned from a process to tell proctab not to restart it.
-
 One-time jobs
 ^^^^^^^^^^^^^
 Normally proctab runs permanent processes. However proctab supports one-time "setup"
@@ -309,12 +360,11 @@ jobs using the `wait` and `once` options.
 With `wait`, proctab waits for the job to exit before starting subsequent jobs. The
 `once` option prevents proctab from restarting it. 
 
-proctab command line options
-~~~~~~~~~~~~~~~~~~~~~~~~~
+Appendix B: Proctab command-line options
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-These are not normally used. The OS-specific initsystem (systemd, etc) normally runs
-proctab at system boot. However you can run proctab manually. If you do, these are the 
-command line options that proctab accepts. 
+The host init system normally runs proctab at system boot. However you can run
+proctab manually. These are the command line options that proctab accepts. 
 
 .proctab options
 [width="80%",cols="20m,50",grid="none",options="none"]
@@ -328,9 +378,10 @@ command line options that proctab accepts.
 |==========================================================================
 
 
-Experimental 
-~~~~~~~~~~~~
-These features are disabled by default.
+Appendix C: Network reporting and control
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+NOTE: These features are disabled by default.
 
 These configuration options may appear in `proctab.conf` at the global scope.
 
