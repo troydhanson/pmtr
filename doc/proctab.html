@@ -901,15 +901,14 @@ events efficiently using inotify. It restarts darkice if the content (thus, the
 hash) of darkice.cfg changes. A simple open/close of darkice.cfg with no changes
 will not restart the job. A job can depend on multiple files, listed one per
 line.</p></div>
-<div class="paragraph"><div class="title">No shell</div><p>The commands are executed by fork and execv; there is no shell interpretation of
-the command and its arguments. There is no PATH searching for the command. Use
-absolute paths on commands.  The only quoting support is double-quotes in cmd
-options such as</p></div>
+<div class="paragraph"><div class="title">No shell or $PATH</div><p>There is no shell interpretation of the command or its arguments. There is no
+searching for the command in $PATH. Use absolute paths on commands.  The only
+quoting support is double-quotes in command options. For example you can pass
+a string into a shell this way:</p></div>
 <div class="literalblock">
 <div class="content">
 <pre><code>cmd /bin/bash -c "killall Xvnc; vncserver :1"</code></pre>
 </div></div>
-<div class="paragraph"><p>This technique- launching a shell to execute a string- is handy.</p></div>
 <div class="ulist"><div class="title">General rules</div><ul>
 <li>
 <p>
@@ -964,8 +963,8 @@ clean up their own sub-processes
 </ul></div>
 </li>
 </ul></div>
+<div class="paragraph"><div class="title">Another example job</div><p>Here is another job with many options.</p></div>
 <div class="listingblock">
-<div class="title">Example job (lots of options)</div>
 <div class="content">
 <pre><code># example of a process with lots of options
 job {
@@ -984,14 +983,14 @@ job {
   err /var/log/gen.err
 }</code></pre>
 </div></div>
-<div class="paragraph"><div class="title">Bounce every</div><p>Among the options shown in the job above is <code>bounce every 1d</code>.  This is useful
-for scripts or other processes that might benefit from a periodic restart. It
-takes other units, like <code>5m</code> for five minutes.</p></div>
+<div class="paragraph"><div class="title">bounce every</div><p>Among the options shown job above is <code>bounce every 1d</code>. This is useful
+for scripts or other processes that might benefit from a daily restart. It takes
+other units, like <code>bounce every 5m</code> for 5 minutes or <code>2h</code> for every 2 hours.</p></div>
 <div class="paragraph"><div class="title">ulimit</div><p>The job above can open infinite file descriptors (well, it can try) because
-<code>ulimit -n infinite</code> allows it too. There are many limits (type <code>ulimit -a</code>
-in the shell, or <code>help limit</code>) that can be explicitly set in this way.</p></div>
-<div class="paragraph"><div class="title">Environment variables</div><p>Environment variables can be set for a job by lines of the form <code>env VAR=value</code>.</p></div>
-<div class="paragraph"><div class="title">Standard output and error</div><p>As shown the stdout and stderr can be redirected to files. Otherwise they
+<code>ulimit -n infinite</code> allows it. There are many limits that can be explicitly set
+in this way.  Type <code>ulimit -a</code> or <code>help limit</code> in a bash shell to see them.</p></div>
+<div class="paragraph"><div class="title">environment variables</div><p>Environment variables can be set for a job by lines of the form <code>env VAR=value</code>.</p></div>
+<div class="paragraph"><div class="title">stdout and stderr</div><p>As shown the stdout and stderr can be redirected to files. Otherwise they
 are sent to <code>/dev/null</code>.</p></div>
 <div class="paragraph"><p>See the full list of <a href="#config_options">proctab configuration options</a>.</p></div>
 <div class="paragraph"><div class="title">Edits</div><p>When you edit and save <code>proctab.conf</code>, proctab applies the changes immediately.</p></div>
@@ -1451,7 +1450,7 @@ edited or proctab is restarted.</p></div>
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2016-01-28 23:28:52 EST
+Last updated 2016-01-28 23:39:21 EST
 </div>
 </div>
 </body>

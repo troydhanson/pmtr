@@ -112,16 +112,14 @@ hash) of darkice.cfg changes. A simple open/close of darkice.cfg with no changes
 will not restart the job. A job can depend on multiple files, listed one per
 line.
 
-.No shell
+.No shell or $PATH
 
-The commands are executed by fork and execv; there is no shell interpretation of
-the command and its arguments. There is no PATH searching for the command. Use
-absolute paths on commands.  The only quoting support is double-quotes in cmd
-options such as
+There is no shell interpretation of the command or its arguments. There is no
+searching for the command in $PATH. Use absolute paths on commands.  The only
+quoting support is double-quotes in command options. For example you can pass
+a string into a shell this way:
 
   cmd /bin/bash -c "killall Xvnc; vncserver :1"
-
-This technique- launching a shell to execute a string- is handy.
 
 .General rules
 
@@ -136,8 +134,10 @@ This technique- launching a shell to execute a string- is handy.
 ** exit on SIGTERM or SIGKILL 
 ** clean up their own sub-processes
 
+.Another example job 
 
-.Example job (lots of options)
+Here is another job with many options.
+
 ---------------------------------------------------
 # example of a process with lots of options
 job {
@@ -158,23 +158,23 @@ job {
 
 ---------------------------------------------------
 
-.Bounce every
+.bounce every
 
-Among the options shown in the job above is `bounce every 1d`.  This is useful
-for scripts or other processes that might benefit from a periodic restart. It
-takes other units, like `5m` for five minutes.
+Among the options shown job above is `bounce every 1d`. This is useful
+for scripts or other processes that might benefit from a daily restart. It takes
+other units, like `bounce every 5m` for 5 minutes or `2h` for every 2 hours.
 
 .ulimit
 
 The job above can open infinite file descriptors (well, it can try) because
-`ulimit -n infinite` allows it too. There are many limits (type `ulimit -a`
-in the shell, or `help limit`) that can be explicitly set in this way.
+`ulimit -n infinite` allows it. There are many limits that can be explicitly set
+in this way.  Type `ulimit -a` or `help limit` in a bash shell to see them.
 
-.Environment variables
+.environment variables
 
 Environment variables can be set for a job by lines of the form `env VAR=value`.
 
-.Standard output and error
+.stdout and stderr
 
 As shown the stdout and stderr can be redirected to files. Otherwise they
 are sent to `/dev/null`.
