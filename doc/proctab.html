@@ -994,8 +994,7 @@ This options is for scripts or other processes that might benefit from a
 periodic restart. It also takes hour or minute units e.g. <code>2h</code> or <code>5m</code>.</p></div>
 <div class="paragraph"><div class="title">ulimit</div><p>The job above can open infinite file descriptors (well, it can try) because
 <code>ulimit -n infinite</code> allows it. The Linux kernel enforces the process ulimits.
-Many limits can be set this way- e.g. type <code>ulimit -a</code> to see them and their
-values in a bash shell.</p></div>
+Many limits can be set this way. Type <code>ulimit -a</code> to see them.</p></div>
 <div class="paragraph"><div class="title">stdout and stderr</div><p>As shown the stdout and stderr can be redirected to files. Otherwise they
 are sent to <code>/dev/null</code>.</p></div>
 <div class="paragraph"><div class="title">Environment variables</div><p>Environment variables can be set for a job by lines of the form <code>env VAR=value</code>.</p></div>
@@ -1057,11 +1056,10 @@ service proctab stop</code></pre>
 <div class="paragraph"><p>Note that when you start proctab, it starts all its jobs, just like at boot.
 When you stop proctab, it signals the jobs to terminate, then exits itself.</p></div>
 <div class="paragraph"><div class="title">Logs</div><p>Proctab logs to syslog. Typically the host puts them in <code>/var/log/syslog</code> or
-<code>/var/log/messages</code>.</p></div>
-<div class="paragraph"><p>Look there for messages about proctab starting or restarting jobs. Any errors in
-parsing <code>proctab.conf</code> are logged. It&#8217;s a good idea to check the log after
-making edits.</p></div>
-<div class="paragraph"><div class="title">Tips on systemd-based hosts</div><p>On hosts based on <em>systemd</em>, use <code>journalctl -u proctab</code> to see proctab logs,
+<code>/var/log/messages</code>.  Look there for messages about proctab starting or
+restarting jobs. Any errors in parsing <code>proctab.conf</code> are logged. It&#8217;s a good
+idea to check the log after making edits.</p></div>
+<div class="paragraph"><div class="title">Tips on systemd</div><p>On hosts based on <em>systemd</em>, use <code>journalctl -u proctab</code> to see proctab logs,
 and <code>systemctl status proctab</code> to view the process tree under proctab:</p></div>
 <div class="listingblock">
 <div class="content">
@@ -1438,7 +1436,7 @@ edited or proctab is restarted.</p></div>
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2016-01-29 01:30:33 EST
+Last updated 2016-01-29 01:37:07 EST
 </div>
 </div>
 </body>
