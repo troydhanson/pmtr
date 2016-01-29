@@ -57,7 +57,8 @@ To install the executable `/usr/bin/proctab` and the configuration file `/etc/pr
 Initscript
 ^^^^^^^^^^
 
-To have proctab installed a service, detecting the host init system automatically:
+To install an initscript or systemd service file to run proctab at startup, a
+setup script is included.
 
     cd initscripts
     sudo ./setup-initscript --install-service auto --bindir /usr/bin \
