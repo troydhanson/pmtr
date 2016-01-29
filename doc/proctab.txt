@@ -30,7 +30,7 @@ Linux only, and is link:LICENSE.txt[MIT] licensed.
 * Yocto https://github.com/troydhanson/meta-proctab[(layer)]
 
 Guide to proctab
------
+----------------
 
 Download, build and install
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
