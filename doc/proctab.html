@@ -4,7 +4,7 @@
 <head>
 <meta http-equiv="Content-Type" content="application/xhtml+xml; charset=UTF-8" />
 <meta name="generator" content="AsciiDoc 8.6.9" />
-<title>Guid to proctab</title>
+<title>Guide to proctab</title>
 <style type="text/css">
 /* Shared CSS for AsciiDoc xhtml11 and html5 backends */
 
@@ -767,7 +767,7 @@ asciidoc.install(2);
 </head>
 <body class="article">
 <div id="header">
-<h1>Guid to proctab</h1>
+<h1>Guide to proctab</h1>
 <span id="author">Troy D. Hanson</span><br />
 <span id="email"><code>&lt;<a href="mailto:tdh@tkhanson.net">tdh@tkhanson.net</a>&gt;</code></span><br />
 <div id="toc">
@@ -795,10 +795,6 @@ It runs under systemd, sysvinit or upstart that already exists on a Linux host.
 Its configuration file <code>/etc/proctab.conf</code> lists the services it should start.
 It starts them at boot, and restarts them as needed.  Proctab is written in C,
 Linux only, and is <a href="LICENSE.txt">MIT</a> licensed.</p></div>
-<div class="sect2">
-<h3 id="_proctab_conf">proctab.conf</h3>
-<div class="paragraph"><p>The config file <code>/etc/proctab.conf</code> lists the processes for proctab to run. It
-uses the term "job" to mean a service or a process.</p></div>
 <div class="listingblock">
 <div class="title">Example <code>/etc/proctab.conf</code></div>
 <div class="content">
@@ -953,7 +949,6 @@ A changed job is restarted with its new configuration.
 <div class="paragraph"><div class="title">Testing the configuration</div><p>You can run <code>proctab -t</code> to check the config file syntax and report any errors.
 This checks the file without running any jobs.  In normal background operation,
 proctab logs syntax errors to syslog.</p></div>
-</div>
 <div class="sect2">
 <h3 id="_job_termination_and_restart">Job termination and restart</h3>
 <div class="paragraph"><div class="title">Proctab-induced</div><p>To terminate a job, proctab sends SIGTERM to it, then SIGKILL shortly afterward.
@@ -1013,7 +1008,88 @@ recommended to check the logs after any configuration changes.</p></div>
 <div class="paragraph"><div class="title">On systemd</div><p>On <em>systemd</em>-based hosts, use <code>journalctl -u proctab</code> to see proctab logs.</p></div>
 </div>
 <div class="sect2">
-<h3 id="config_options">Appendix A: Configuration options</h3>
+<h3 id="_installation">Installation</h3>
+<div class="literalblock">
+<div class="title">Download</div>
+<div class="content">
+<pre><code>git clone https://github.com/troydhanson/proctab.git</code></pre>
+</div></div>
+<div class="literalblock">
+<div class="title">Build</div>
+<div class="content">
+<pre><code>cd proctab
+./autogen.sh
+./configure --bindir=/usr/bin --sysconfdir=/etc
+make</code></pre>
+</div></div>
+<div class="literalblock">
+<div class="title">Install</div>
+<div class="content">
+<pre><code>sudo make install
+sudo touch /etc/proctab.conf</code></pre>
+</div></div>
+<div class="paragraph"><p>This installs the executable <code>/usr/bin/proctab</code> and the configuration file <code>/etc/proctab.conf</code>.</p></div>
+<div class="paragraph"><div class="title">Initscript</div><p>To install an initscript or systemd service file to run proctab at startup, a
+setup script is included.</p></div>
+<div class="literalblock">
+<div class="content">
+<pre><code>cd initscripts
+sudo ./setup-initscript --install-service auto --bindir /usr/bin \
+   --enable-service --start-service</code></pre>
+</div></div>
+<div class="paragraph"><p>Note that <code>--bindir</code> should match the one given to "configure" in the build
+step.  The <code>bindir</code> is needed to set the proctab executable path in the service
+file.</p></div>
+<div class="paragraph"><p>Run <code>./setup-initscript -h</code> to see its full set of options.</p></div>
+<div class="paragraph"><div class="title">User-specified paths</div><p>The script can be used to install a service definition in a specific place,
+using a specific init system, rather than auto-detecting it. For example on
+a <em>systemd</em> host this could be used:</p></div>
+<div class="literalblock">
+<div class="content">
+<pre><code>sudo ./setup-initscript --install-service /etc/systemd/system \
+   --initsys systemd --bindir /usr/bin</code></pre>
+</div></div>
+<div class="paragraph"><p>This usage stops short of enabling or starting the service since it omits
+<code>--enable-service</code> and <code>--start-service</code>.</p></div>
+</div>
+<div class="sect2">
+<h3 id="platforms">Platforms</h3>
+<div class="paragraph"><p>Proctab has been used on:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+Ubuntu (12, 13, 14, 15, 16)
+</p>
+</li>
+<li>
+<p>
+CentOS/RHEL (5, 6, 7)
+</p>
+</li>
+<li>
+<p>
+Raspberry Pi (Raspbian)
+</p>
+</li>
+<li>
+<p>
+Debian
+</p>
+</li>
+<li>
+<p>
+Arch
+</p>
+</li>
+<li>
+<p>
+Yocto <a href="https://github.com/troydhanson/meta-proctab">(layer)</a>
+</p>
+</li>
+</ul></div>
+</div>
+<div class="sect2">
+<h3 id="config_options">Appendix A: Job options</h3>
 <div class="paragraph"><p>These options may appear in a job definition.</p></div>
 <div class="tableblock" id="options">
 <table rules="none"
@@ -1296,7 +1372,7 @@ They are used together in setup jobs at the top of <code>proctab.conf</code>
 </div>
 </div>
 <div class="sect2">
-<h3 id="_appendix_b_proctab_command_line_options">Appendix B: Proctab command-line options</h3>
+<h3 id="_appendix_b_proctab_options">Appendix B: Proctab options</h3>
 <div class="paragraph"><p>The host init system normally runs proctab at system boot. However you can run
 proctab manually. These are the command line options that proctab accepts.</p></div>
 <div class="tableblock">
@@ -1337,7 +1413,7 @@ cellspacing="0" cellpadding="4">
 </div>
 </div>
 <div class="sect2">
-<h3 id="_appendix_c_network_reporting_and_control">Appendix C: Network reporting and control</h3>
+<h3 id="_appendix_c_network_options">Appendix C: Network options</h3>
 <div class="admonitionblock">
 <table><tr>
 <td class="icon">
@@ -1367,98 +1443,13 @@ effect is temporary; the settings in proctab.conf resume precedence when it&#821
 edited or proctab is restarted.</p></div>
 <div class="paragraph"><p>These options are considered experimental and may be replaced or removed.</p></div>
 </div>
-<div class="sect2">
-<h3 id="_appendix_d_download_build_and_install">Appendix D: Download, build and install</h3>
-<div class="sect3">
-<h4 id="_build">Build</h4>
-<div class="paragraph"><p>To build it from the git repository,</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>git clone https://github.com/troydhanson/proctab.git
-cd proctab
-./autogen.sh
-./configure --bindir=/usr/bin --sysconfdir=/etc
-make</code></pre>
-</div></div>
-</div>
-<div class="sect3">
-<h4 id="_install">Install</h4>
-<div class="paragraph"><p>To install the executable <code>/usr/bin/proctab</code> and the configuration file <code>/etc/proctab.conf</code>:</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>sudo make install
-sudo touch /etc/proctab.conf</code></pre>
-</div></div>
-</div>
-<div class="sect3">
-<h4 id="_initscript">Initscript</h4>
-<div class="paragraph"><p>To install an initscript or systemd service file to run proctab at startup, a
-setup script is included.</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>cd initscripts
-sudo ./setup-initscript --install-service auto --bindir /usr/bin \
-   --enable-service --start-service</code></pre>
-</div></div>
-<div class="paragraph"><p>Note that <code>--bindir</code> should match the one given to "configure" in the build
-step.  The <code>bindir</code> is needed to set the proctab executable path in the service
-file.</p></div>
-<div class="paragraph"><p>Run <code>./setup-initscript -h</code> to see its full set of options.</p></div>
-<div class="paragraph"><div class="title">User-specified paths</div><p>The script can be used to install a service definition in a specific place,
-using a specific init system, rather than auto-detecting it. For example on
-a <em>systemd</em> host this could be used:</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>sudo ./setup-initscript --install-service /etc/systemd/system \
-   --initsys systemd --bindir /usr/bin</code></pre>
-</div></div>
-<div class="paragraph"><p>This usage stops short of enabling or starting the service since it omits
-<code>--enable-service</code> and <code>--start-service</code>.</p></div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="platforms">Platforms</h3>
-<div class="paragraph"><p>Proctab has been used on:</p></div>
-<div class="ulist"><ul>
-<li>
-<p>
-Ubuntu (12, 13, 14, 15, 16)
-</p>
-</li>
-<li>
-<p>
-CentOS/RHEL (5, 6, 7)
-</p>
-</li>
-<li>
-<p>
-Raspberry Pi (Raspbian)
-</p>
-</li>
-<li>
-<p>
-Debian
-</p>
-</li>
-<li>
-<p>
-Arch
-</p>
-</li>
-<li>
-<p>
-Yocto <a href="https://github.com/troydhanson/meta-proctab">(layer)</a>
-</p>
-</li>
-</ul></div>
-</div>
 </div>
 </div>
 </div>
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2016-02-03 14:52:00 EST
+Last updated 2016-02-03 15:02:37 EST
 </div>
 </div>
 </body>

@@ -1,5 +1,5 @@
-Guid to proctab
-===============
+Guide to proctab
+================
 Troy D. Hanson <tdh@tkhanson.net>
 
 Back to the https://github.com/troydhanson/proctab[proctab Github page].
@@ -20,12 +20,6 @@ It runs under systemd, sysvinit or upstart that already exists on a Linux host.
 Its configuration file `/etc/proctab.conf` lists the services it should start.
 It starts them at boot, and restarts them as needed.  Proctab is written in C,
 Linux only, and is link:LICENSE.txt[MIT] licensed.
-
-proctab.conf
-~~~~~~~~~~~~
-
-The config file `/etc/proctab.conf` lists the processes for proctab to run. It
-uses the term "job" to mean a service or a process.
 
 .Example `/etc/proctab.conf`
 --------------------------------------------------------
@@ -230,9 +224,70 @@ recommended to check the logs after any configuration changes.
 
 On 'systemd'-based hosts, use `journalctl -u proctab` to see proctab logs.
 
+Installation
+~~~~~~~~~~~~
+
+.Download
+
+    git clone https://github.com/troydhanson/proctab.git
+
+.Build
+
+    cd proctab
+    ./autogen.sh
+    ./configure --bindir=/usr/bin --sysconfdir=/etc
+    make
+
+.Install
+
+    sudo make install
+    sudo touch /etc/proctab.conf
+
+This installs the executable `/usr/bin/proctab` and the configuration file `/etc/proctab.conf`.
+
+.Initscript
+
+To install an initscript or systemd service file to run proctab at startup, a
+setup script is included.
+
+    cd initscripts
+    sudo ./setup-initscript --install-service auto --bindir /usr/bin \
+       --enable-service --start-service 
+
+Note that `--bindir` should match the one given to "configure" in the build
+step.  The `bindir` is needed to set the proctab executable path in the service
+file.
+
+Run `./setup-initscript -h` to see its full set of options.
+
+.User-specified paths
+
+The script can be used to install a service definition in a specific place,
+using a specific init system, rather than auto-detecting it. For example on
+a 'systemd' host this could be used:
+
+    sudo ./setup-initscript --install-service /etc/systemd/system \
+       --initsys systemd --bindir /usr/bin
+
+This usage stops short of enabling or starting the service since it omits
+`--enable-service` and `--start-service`.
+
+[[platforms]]
+Platforms
+~~~~~~~~~
+
+Proctab has been used on:
+
+* Ubuntu (12, 13, 14, 15, 16)
+* CentOS/RHEL (5, 6, 7)
+* Raspberry Pi (Raspbian)
+* Debian 
+* Arch
+* Yocto https://github.com/troydhanson/meta-proctab[(layer)]
+
 [[config_options]]
-Appendix A: Configuration options
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Appendix A: Job options
+~~~~~~~~~~~~~~~~~~~~~~~
 
 These options may appear in a job definition.
 
@@ -317,8 +372,8 @@ wait/once
 * `once` prevents proctab from restarting the job when it exits
 * `wait` delays subsequent jobs from starting until this one exits
 
-Appendix B: Proctab command-line options
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Appendix B: Proctab options
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The host init system normally runs proctab at system boot. However you can run
 proctab manually. These are the command line options that proctab accepts. 
@@ -335,8 +390,8 @@ proctab manually. These are the command line options that proctab accepts.
 |==========================================================================
 
 
-Appendix C: Network reporting and control
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Appendix C: Network options
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 NOTE: These features are disabled by default.
 
@@ -361,69 +416,6 @@ effect is temporary; the settings in proctab.conf resume precedence when it's
 edited or proctab is restarted.
 
 These options are considered experimental and may be replaced or removed.
-
-Appendix D: Download, build and install
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Build
-^^^^^
-
-To build it from the git repository, 
-
-    git clone https://github.com/troydhanson/proctab.git
-    cd proctab
-    ./autogen.sh
-    ./configure --bindir=/usr/bin --sysconfdir=/etc
-    make
-
-Install
-^^^^^^^
-
-To install the executable `/usr/bin/proctab` and the configuration file `/etc/proctab.conf`:
-
-    sudo make install
-    sudo touch /etc/proctab.conf
-
-Initscript
-^^^^^^^^^^
-
-To install an initscript or systemd service file to run proctab at startup, a
-setup script is included.
-
-    cd initscripts
-    sudo ./setup-initscript --install-service auto --bindir /usr/bin \
-       --enable-service --start-service 
-
-Note that `--bindir` should match the one given to "configure" in the build
-step.  The `bindir` is needed to set the proctab executable path in the service
-file.
-
-Run `./setup-initscript -h` to see its full set of options.
-
-.User-specified paths
-
-The script can be used to install a service definition in a specific place,
-using a specific init system, rather than auto-detecting it. For example on
-a 'systemd' host this could be used:
-
-    sudo ./setup-initscript --install-service /etc/systemd/system \
-       --initsys systemd --bindir /usr/bin
-
-This usage stops short of enabling or starting the service since it omits
-`--enable-service` and `--start-service`.
-
-[[platforms]]
-Platforms
-~~~~~~~~~
-
-Proctab has been used on:
-
-* Ubuntu (12, 13, 14, 15, 16)
-* CentOS/RHEL (5, 6, 7)
-* Raspberry Pi (Raspbian)
-* Debian 
-* Arch
-* Yocto https://github.com/troydhanson/meta-proctab[(layer)]
 
 // vim: set tw=80 wm=2 syntax=asciidoc: 
 
