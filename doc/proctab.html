@@ -823,6 +823,8 @@ first one is a one-time, setup job that proctab won&#8217;t restart. The
 next two are a Darkice audio streamer and a persistent SSH tunnel.
 There are many <a href="#config_options">proctab configuration options</a>.
 The minimal requirement is that each job has a name and a cmd.</p></div>
+<div class="sect2">
+<h3 id="_proctab_conf">proctab.conf</h3>
 <div class="paragraph"><div class="title">No shell expansion or $PATH searching</div><p>There is no shell interpretation of the command or its arguments. There is no
 searching for the command in $PATH. Use absolute paths on commands.  Proctab is
 a C program and it starts these jobs directly using <code>execv</code>.</p></div>
@@ -949,6 +951,7 @@ A changed job is restarted with its new configuration.
 <div class="paragraph"><div class="title">Testing the configuration</div><p>You can run <code>proctab -t</code> to check the config file syntax and report any errors.
 This checks the file without running any jobs.  In normal background operation,
 proctab logs syntax errors to syslog.</p></div>
+</div>
 <div class="sect2">
 <h3 id="_job_termination_and_restart">Job termination and restart</h3>
 <div class="paragraph"><div class="title">Proctab-induced</div><p>To terminate a job, proctab sends SIGTERM to it, then SIGKILL shortly afterward.
@@ -1087,6 +1090,47 @@ Yocto <a href="https://github.com/troydhanson/meta-proctab">(layer)</a>
 </p>
 </li>
 </ul></div>
+</div>
+<div class="sect2">
+<h3 id="_command_line_options">Command line options</h3>
+<div class="paragraph"><p>The host init system normally runs proctab at system boot. However you can run
+proctab manually. These are the command line options that proctab accepts.</p></div>
+<div class="tableblock">
+<table rules="none"
+width="80%"
+frame="border"
+cellspacing="0" cellpadding="4">
+<caption class="title">Table 1. proctab options</caption>
+<col width="28%" />
+<col width="71%" />
+<tbody>
+<tr>
+<td align="left" valign="top"><p class="table"><code>-h</code></p></td>
+<td align="left" valign="top"><p class="table">show help</p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><code>-F</code></p></td>
+<td align="left" valign="top"><p class="table">stay in foreground</p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><code>-c &lt;file&gt;</code></p></td>
+<td align="left" valign="top"><p class="table">specify configuration file</p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><code>-t</code></p></td>
+<td align="left" valign="top"><p class="table">test syntax (parse config file and exit)</p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><code>-v</code></p></td>
+<td align="left" valign="top"><p class="table">verbose logging (repeatable), -vv shows parsing</p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table"><code>-p &lt;file&gt;</code></p></td>
+<td align="left" valign="top"><p class="table">make pidfile</p></td>
+</tr>
+</tbody>
+</table>
+</div>
 </div>
 <div class="sect2">
 <h3 id="config_options">Appendix A: Job options</h3>
@@ -1372,48 +1416,7 @@ They are used together in setup jobs at the top of <code>proctab.conf</code>
 </div>
 </div>
 <div class="sect2">
-<h3 id="_appendix_b_proctab_options">Appendix B: Proctab options</h3>
-<div class="paragraph"><p>The host init system normally runs proctab at system boot. However you can run
-proctab manually. These are the command line options that proctab accepts.</p></div>
-<div class="tableblock">
-<table rules="none"
-width="80%"
-frame="border"
-cellspacing="0" cellpadding="4">
-<caption class="title">Table 1. proctab options</caption>
-<col width="28%" />
-<col width="71%" />
-<tbody>
-<tr>
-<td align="left" valign="top"><p class="table"><code>-h</code></p></td>
-<td align="left" valign="top"><p class="table">show help</p></td>
-</tr>
-<tr>
-<td align="left" valign="top"><p class="table"><code>-F</code></p></td>
-<td align="left" valign="top"><p class="table">stay in foreground</p></td>
-</tr>
-<tr>
-<td align="left" valign="top"><p class="table"><code>-c &lt;file&gt;</code></p></td>
-<td align="left" valign="top"><p class="table">specify configuration file</p></td>
-</tr>
-<tr>
-<td align="left" valign="top"><p class="table"><code>-t</code></p></td>
-<td align="left" valign="top"><p class="table">test syntax (parse config file and exit)</p></td>
-</tr>
-<tr>
-<td align="left" valign="top"><p class="table"><code>-v</code></p></td>
-<td align="left" valign="top"><p class="table">verbose logging (repeatable), -vv shows parsing</p></td>
-</tr>
-<tr>
-<td align="left" valign="top"><p class="table"><code>-p &lt;file&gt;</code></p></td>
-<td align="left" valign="top"><p class="table">make pidfile</p></td>
-</tr>
-</tbody>
-</table>
-</div>
-</div>
-<div class="sect2">
-<h3 id="_appendix_c_network_options">Appendix C: Network options</h3>
+<h3 id="_appendix_b_udp_control">Appendix B: UDP control</h3>
 <div class="admonitionblock">
 <table><tr>
 <td class="icon">
@@ -1449,7 +1452,7 @@ edited or proctab is restarted.</p></div>
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2016-02-03 15:02:37 EST
+Last updated 2016-02-03 15:09:11 EST
 </div>
 </div>
 </body>

@@ -51,6 +51,9 @@ next two are a Darkice audio streamer and a persistent SSH tunnel.
 There are many <<config_options,proctab configuration options>>.
 The minimal requirement is that each job has a name and a cmd.
 
+proctab.conf
+~~~~~~~~~~~~
+
 .No shell expansion or $PATH searching
 
 There is no shell interpretation of the command or its arguments. There is no
@@ -285,6 +288,23 @@ Proctab has been used on:
 * Arch
 * Yocto https://github.com/troydhanson/meta-proctab[(layer)]
 
+Command line options
+~~~~~~~~~~~~~~~~~~~~
+
+The host init system normally runs proctab at system boot. However you can run
+proctab manually. These are the command line options that proctab accepts. 
+
+.proctab options
+[width="80%",cols="20m,50",grid="none",options="none"]
+|==========================================================================
+| -h        | show help    
+| -F        | stay in foreground 
+| -c <file> | specify configuration file
+| -t        | test syntax (parse config file and exit)
+| -v        | verbose logging (repeatable), -vv shows parsing
+| -p <file> | make pidfile
+|==========================================================================
+
 [[config_options]]
 Appendix A: Job options
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -372,26 +392,8 @@ wait/once
 * `once` prevents proctab from restarting the job when it exits
 * `wait` delays subsequent jobs from starting until this one exits
 
-Appendix B: Proctab options
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-The host init system normally runs proctab at system boot. However you can run
-proctab manually. These are the command line options that proctab accepts. 
-
-.proctab options
-[width="80%",cols="20m,50",grid="none",options="none"]
-|==========================================================================
-| -h        | show help    
-| -F        | stay in foreground 
-| -c <file> | specify configuration file
-| -t        | test syntax (parse config file and exit)
-| -v        | verbose logging (repeatable), -vv shows parsing
-| -p <file> | make pidfile
-|==========================================================================
-
-
-Appendix C: Network options
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Appendix B: UDP control
+~~~~~~~~~~~~~~~~~~~~~~~
 
 NOTE: These features are disabled by default.
 
