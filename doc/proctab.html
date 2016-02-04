@@ -953,22 +953,6 @@ This checks the file without running any jobs.  In normal background operation,
 proctab logs syntax errors to syslog.</p></div>
 </div>
 <div class="sect2">
-<h3 id="_job_termination_and_restart">Job termination and restart</h3>
-<div class="paragraph"><div class="title">Proctab-induced</div><p>To terminate a job, proctab sends SIGTERM to it, then SIGKILL shortly afterward.
-(That is, if it&#8217;s still running). Proctab terminates a job when that job is
-deleted, disabled, needs to be restarted due to changes to its command or other
-options, is being bounced, or because proctab itself is shutting down.</p></div>
-<div class="paragraph"><div class="title">Externally-induced</div><p>If a job terminates by itself, when proctab did not signal it to exit, (and the
-job does not have the <code>once</code> option), proctab restarts it. However, if the job
-died within 10 seconds of starting, proctab waits 10 seconds to restart it.</p></div>
-<div class="paragraph"><div class="title">Restart management</div><p>This has two benefits: a job that is waiting for some resource (say, to connect
-to a remote server that is temporarily offline) can exit, counting on being
-restarted periodically. It does not need its own retry logic. Secondly, a job
-that is misconfigured (say, with a typo in its command string, causing it to
-die immediately) has little impact on the host because proctab only tries to
-restart it every 10 seconds. Restarts are visible in the log.</p></div>
-</div>
-<div class="sect2">
 <h3 id="_status_and_control">Status and control</h3>
 <div class="paragraph"><p>To start, stop or get status of proctab, use the host system management commands.
 When proctab starts, it starts all its jobs; when proctab stops, it signals its
@@ -1009,6 +993,22 @@ service proctab stop</code></pre>
 restarting jobs. Any errors in parsing <code>proctab.conf</code> are logged. It is
 recommended to check the logs after any configuration changes.</p></div>
 <div class="paragraph"><div class="title">On systemd</div><p>On <em>systemd</em>-based hosts, use <code>journalctl -u proctab</code> to see proctab logs.</p></div>
+</div>
+<div class="sect2">
+<h3 id="_job_termination_and_restart">Job termination and restart</h3>
+<div class="paragraph"><div class="title">Proctab-induced</div><p>To terminate a job, proctab sends SIGTERM to it, then SIGKILL shortly afterward.
+(That is, if it&#8217;s still running). Proctab terminates a job when that job is
+deleted, disabled, needs to be restarted due to changes to its command or other
+options, is being bounced, or because proctab itself is shutting down.</p></div>
+<div class="paragraph"><div class="title">Externally-induced</div><p>If a job terminates by itself, when proctab did not signal it to exit, (and the
+job does not have the <code>once</code> option), proctab restarts it. However, if the job
+died within 10 seconds of starting, proctab waits 10 seconds to restart it.</p></div>
+<div class="paragraph"><div class="title">Restart management</div><p>This has two benefits: a job that is waiting for some resource (say, to connect
+to a remote server that is temporarily offline) can exit, counting on being
+restarted periodically. It does not need its own retry logic. Secondly, a job
+that is misconfigured (say, with a typo in its command string, causing it to
+die immediately) has little impact on the host because proctab only tries to
+restart it every 10 seconds. Restarts are visible in the log.</p></div>
 </div>
 <div class="sect2">
 <h3 id="_installation">Installation</h3>
@@ -1452,7 +1452,7 @@ edited or proctab is restarted.</p></div>
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2016-02-03 15:09:11 EST
+Last updated 2016-02-03 19:56:53 EST
 </div>
 </div>
 </body>
