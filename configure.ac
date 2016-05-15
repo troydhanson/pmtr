@@ -1,4 +1,4 @@
-AC_INIT([proctab], 1.0)
+AC_INIT([pmtr], 1.0)
 AM_INIT_AUTOMAKE([foreign])
 m4_ifdef([AM_SILENT_RULES],
     [AM_SILENT_RULES([yes])

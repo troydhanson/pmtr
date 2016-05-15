@@ -4,7 +4,7 @@
 <head>
 <meta http-equiv="Content-Type" content="application/xhtml+xml; charset=UTF-8" />
 <meta name="generator" content="AsciiDoc 8.6.9" />
-<title>Guide to proctab</title>
+<title>Guide to pmtr</title>
 <style type="text/css">
 /* Shared CSS for AsciiDoc xhtml11 and html5 backends */
 
@@ -767,7 +767,7 @@ asciidoc.install(2);
 </head>
 <body class="article">
 <div id="header">
-<h1>Guide to proctab</h1>
+<h1>Guide to pmtr</h1>
 <span id="author">Troy D. Hanson</span><br />
 <span id="email"><code>&lt;<a href="mailto:tdh@tkhanson.net">tdh@tkhanson.net</a>&gt;</code></span><br />
 <div id="toc">
@@ -778,25 +778,25 @@ asciidoc.install(2);
 <div id="content">
 <div id="preamble">
 <div class="sectionbody">
-<div class="paragraph"><p>Back to the <a href="https://github.com/troydhanson/proctab">proctab Github page</a>.</p></div>
+<div class="paragraph"><p>Back to the <a href="https://github.com/troydhanson/pmtr">pmtr Github page</a>.</p></div>
 <div class="paragraph"><p>To run services on Linux systems one typically writes an initscript. The init
 mechanism, and the syntax of initscripts, vary depending on the distribution.</p></div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="_proctab">proctab</h2>
+<h2 id="_pmtr">pmtr</h2>
 <div class="sectionbody">
-<div class="paragraph"><p>Proctab is one of my <a href="http://troydhanson.github.io/">many C projects</a>. I wrote it
+<div class="paragraph"><p>Pmtr is one of my <a href="http://troydhanson.github.io/">many C projects</a>. I wrote it
 for sensors and appliances that have lots of related jobs that are easier to
 manage through one configuration file. Also, to insulate the developer from
 the underlying init system.</p></div>
-<div class="paragraph"><p>I wrote <em>proctab</em> to complement rather than replace the underlying init system.
+<div class="paragraph"><p>I wrote <em>pmtr</em> to complement rather than replace the underlying init system.
 It runs under systemd, sysvinit or upstart that already exists on a Linux host.
-Its configuration file <code>/etc/proctab.conf</code> lists the services it should start.
-It starts them at boot, and restarts them as needed.  Proctab is written in C,
+Its configuration file <code>/etc/pmtr.conf</code> lists the services it should start.
+It starts them at boot, and restarts them as needed.  Pmtr is written in C,
 Linux only, and is <a href="LICENSE.txt">MIT</a> licensed.</p></div>
 <div class="listingblock">
-<div class="title">Example <code>/etc/proctab.conf</code></div>
+<div class="title">Example <code>/etc/pmtr.conf</code></div>
 <div class="content">
 <pre><code>job {
   name set-audio-source
@@ -818,93 +818,64 @@ job {
   cmd /usr/bin/ssh -i key -TNL 5901:127.0.0.1:5901 192.168.0.1
 }</code></pre>
 </div></div>
-<div class="paragraph"><p>Here we have a proctab configuration that runs three jobs. The
-first one is a one-time, setup job that proctab won&#8217;t restart. The
+<div class="paragraph"><p>Here we have a pmtr configuration that runs three jobs. The
+first one is a one-time, setup job that pmtr won&#8217;t restart. The
 next two are a Darkice audio streamer and a persistent SSH tunnel.
-There are many <a href="#config_options">proctab configuration options</a>.
+There are many <a href="#config_options">pmtr configuration options</a>.
 The minimal requirement is that each job has a name and a cmd.</p></div>
-<div class="sect2">
-<h3 id="_proctab_conf">proctab.conf</h3>
-<div class="paragraph"><div class="title">No shell expansion or $PATH searching</div><p>There is no shell interpretation of the command or its arguments. There is no
-searching for the command in $PATH. Use absolute paths on commands.  Proctab is
-a C program and it starts these jobs directly using <code>execv</code>.</p></div>
-<div class="paragraph"><div class="title">One time setup jobs (wait and once)</div><p>As a concession to real life, proctab has basic support for one-time setup jobs.
-The first job in the example above uses <code>once</code> and <code>wait</code> to prevent proctab
+<div class="paragraph"><p>pmtr.conf</p></div>
+<div class="listingblock">
+<div class="content">
+<pre><code>.No shell expansion or $PATH searching
+
+There is no shell interpretation of the command or its arguments. There is no
+searching for the command in $PATH. Use absolute paths on commands.  Pmtr is
+a C program and it starts these jobs directly using `execv`.
+
+.One time setup jobs (wait and once)
+
+As a concession to real life, pmtr has basic support for one-time setup jobs.
+The first job in the example above uses `once` and `wait` to prevent pmtr
 from restarting the job, and to delay starting the subsequent jobs until the
-setup job has finished.</p></div>
-<div class="paragraph"><div class="title">depends</div><p>In the example above, darkice depends on <code>/etc/darkice.cfg</code>. This makes proctab
-restart darkice whenever darkice.cfg is edited. Proctab watches for these file
+setup job has finished.
+
+.depends
+
+In the example above, darkice depends on `/etc/darkice.cfg`. This makes pmtr
+restart darkice whenever darkice.cfg is edited. Pmtr watches for these file
 events efficiently using inotify. It restarts darkice if the content (thus, the
 hash) of darkice.cfg changes. A simple open/close of darkice.cfg with no changes
 will not restart the job. A job can depend on multiple files, listed one per
-line.</p></div>
-<div class="paragraph"><div class="title">Quoting</div><p>Double-quotes make a single argument from the quoted content. Tip: this can be
-useful, in a pinch, to pass a script (as a quoted string) into a shell.</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>cmd /bin/bash -c "killall Xvnc; vncserver :1"</code></pre>
-</div></div>
-<div class="ulist"><div class="title">General syntax</div><ul>
-<li>
-<p>
-Each job is in a curly-brace delimited block.
-</p>
-</li>
-<li>
-<p>
-The order of options inside does not matter.
-</p>
-</li>
-<li>
-<p>
-Only the <code>name</code> and <code>cmd</code> are required.
-</p>
-</li>
-<li>
-<p>
-Indentation is optional.
-</p>
-</li>
-<li>
-<p>
-Blank lines are ok.
-</p>
-</li>
-<li>
-<p>
-Comments start with <code>#</code> and must be on their own line.
-</p>
-</li>
-</ul></div>
-<div class="ulist"><div class="title">General job requirements</div><ul>
-<li>
-<p>
-Processes that run under proctab should,
-</p>
-<div class="ulist"><ul>
-<li>
-<p>
-stay in the foreground
-</p>
-</li>
-<li>
-<p>
-exit on SIGTERM or SIGKILL
-</p>
-</li>
-<li>
-<p>
-clean up their own sub-processes
-</p>
-</li>
-</ul></div>
-</li>
-</ul></div>
-<div class="paragraph"><p>Here is another job with many options.</p></div>
-<div class="listingblock">
-<div class="title">Another example job</div>
-<div class="content">
-<pre><code># example of a process with lots of options
+line.
+
+.Quoting
+
+Double-quotes make a single argument from the quoted content. Tip: this can be
+useful, in a pinch, to pass a script (as a quoted string) into a shell.
+
+  cmd /bin/bash -c "killall Xvnc; vncserver :1"
+
+.General syntax
+
+* Each job is in a curly-brace delimited block.
+* The order of options inside does not matter.
+* Only the `name` and `cmd` are required.
+* Indentation is optional.
+* Blank lines are ok.
+* Comments start with `#` and must be on their own line.
+
+.General job requirements
+
+* Processes that run under pmtr should,
+** stay in the foreground
+** exit on SIGTERM or SIGKILL
+** clean up their own sub-processes
+
+Here is another job with many options.
+
+.Another example job
+---------------------------------------------------
+# example of a process with lots of options
 job {
   name generate-data
   dir /home/discovery
@@ -919,95 +890,100 @@ job {
   bounce every 1d
   out /var/log/gen.log
   err /var/log/gen.err
-}</code></pre>
-</div></div>
-<div class="paragraph"><div class="title">bounce every</div><p>Among the options shown job above is <code>bounce every 1d</code>. (The <code>d</code> is for day).
+}
+
+---------------------------------------------------
+
+.bounce every
+
+Among the options shown job above is `bounce every 1d`. (The `d` is for day).
 This options is for scripts or other processes that might benefit from a
-periodic restart. It also takes hour or minute units e.g. <code>2h</code> or <code>5m</code>.</p></div>
-<div class="paragraph"><div class="title">ulimit</div><p>The job above can open infinite file descriptors (well, it can try) because
-<code>ulimit -n infinite</code> allows it. The Linux kernel enforces the process ulimits.
-Many limits can be set this way. Type <code>ulimit -a</code> to see them.</p></div>
-<div class="paragraph"><div class="title">stdout and stderr</div><p>As shown the stdout and stderr can be redirected to files. Otherwise they
-are sent to <code>/dev/null</code>.</p></div>
-<div class="paragraph"><div class="title">Environment variables</div><p>Environment variables can be set for a job by lines of the form <code>env VAR=value</code>.</p></div>
-<div class="paragraph"><div class="title">Edits take effect immediately</div><p>When you edit and save <code>proctab.conf</code>, proctab applies the changes immediately.</p></div>
-<div class="ulist"><ul>
-<li>
-<p>
-A newly-added job gets started.
-</p>
-</li>
-<li>
-<p>
-A deleted job is terminated.
-</p>
-</li>
-<li>
-<p>
-A changed job is restarted with its new configuration.
-</p>
-</li>
-</ul></div>
-<div class="paragraph"><div class="title">Testing the configuration</div><p>You can run <code>proctab -t</code> to check the config file syntax and report any errors.
+periodic restart. It also takes hour or minute units e.g. `2h` or `5m`.
+
+.ulimit
+
+The job above can open infinite file descriptors (well, it can try) because
+`ulimit -n infinite` allows it. The Linux kernel enforces the process ulimits.
+Many limits can be set this way. Type `ulimit -a` to see them.
+
+.stdout and stderr
+
+As shown the stdout and stderr can be redirected to files. Otherwise they
+are sent to `/dev/null`.
+
+.Environment variables
+
+Environment variables can be set for a job by lines of the form `env VAR=value`.
+
+.Edits take effect immediately
+
+When you edit and save `pmtr.conf`, pmtr applies the changes immediately.
+
+ * A newly-added job gets started.
+ * A deleted job is terminated.
+ * A changed job is restarted with its new configuration.
+
+.Testing the configuration
+
+You can run `pmtr -t` to check the config file syntax and report any errors.
 This checks the file without running any jobs.  In normal background operation,
-proctab logs syntax errors to syslog.</p></div>
-</div>
-<div class="sect2">
-<h3 id="_status_and_control">Status and control</h3>
-<div class="paragraph"><p>To start, stop or get status of proctab, use the host system management commands.
-When proctab starts, it starts all its jobs; when proctab stops, it signals its
+pmtr logs syntax errors to syslog.
+
+Status and control</code></pre>
+</div></div>
+<div class="paragraph"><p>To start, stop or get status of pmtr, use the host system management commands.
+When pmtr starts, it starts all its jobs; when pmtr stops, it signals its
 jobs to terminate, then exits itself.</p></div>
 <div class="literalblock">
 <div class="title">On a systemd-based host</div>
 <div class="content">
-<pre><code>systemctl start proctab
-systemctl stop proctab
-systemctl status proctab</code></pre>
+<pre><code>systemctl start pmtr
+systemctl stop pmtr
+systemctl status pmtr</code></pre>
 </div></div>
 <div class="listingblock">
-<div class="title"><em>systemctl status proctab</em> example</div>
+<div class="title"><em>systemctl status pmtr</em> example</div>
 <div class="content">
-<pre><code>% systemctl status proctab
-● proctab.service - proctab process manager
-   Loaded: loaded (/lib/systemd/system/proctab.service; enabled)
+<pre><code>% systemctl status pmtr
+● pmtr.service - pmtr process manager
+   Loaded: loaded (/lib/systemd/system/pmtr.service; enabled)
    Active: active (running) since Mon 2015-11-23 02:18:58 UTC; 12min ago
-     Docs: http://troydhanson.github.io/proctab
- Main PID: 1463 (proctab)
-   CGroup: /system.slice/proctab.service
-           ├─1463 /usr/bin/proctab -F -c /etc/proctab.conf
+     Docs: http://troydhanson.github.io/pmtr
+ Main PID: 1463 (pmtr)
+   CGroup: /system.slice/pmtr.service
+           ├─1463 /usr/bin/pmtr -F -c /etc/pmtr.conf
            ├─1556 /usr/bin/darkice -c /etc/darkice.cfg
            └─1557 /usr/bin/ssh -i key -TNL 5901:127.0.0.1:5901 192.168.0.1</code></pre>
 </div></div>
 <div class="literalblock">
 <div class="title">On many other systems</div>
 <div class="content">
-<pre><code>service proctab status
-service proctab start
-service proctab stop</code></pre>
+<pre><code>service pmtr status
+service pmtr start
+service pmtr stop</code></pre>
 </div></div>
-</div>
 <div class="sect2">
 <h3 id="_logs">Logs</h3>
-<div class="paragraph"><p>Proctab logs to syslog. Typically the host puts them in <code>/var/log/syslog</code> or
-<code>/var/log/messages</code>.  Look there for messages about proctab starting or
-restarting jobs. Any errors in parsing <code>proctab.conf</code> are logged. It is
+<div class="paragraph"><p>Pmtr logs to syslog. Typically the host puts them in <code>/var/log/syslog</code> or
+<code>/var/log/messages</code>.  Look there for messages about pmtr starting or
+restarting jobs. Any errors in parsing <code>pmtr.conf</code> are logged. It is
 recommended to check the logs after any configuration changes.</p></div>
-<div class="paragraph"><div class="title">On systemd</div><p>On <em>systemd</em>-based hosts, use <code>journalctl -u proctab</code> to see proctab logs.</p></div>
+<div class="paragraph"><div class="title">On systemd</div><p>On <em>systemd</em>-based hosts, use <code>journalctl -u pmtr</code> to see pmtr logs.</p></div>
 </div>
 <div class="sect2">
 <h3 id="_job_termination_and_restart">Job termination and restart</h3>
-<div class="paragraph"><div class="title">Proctab-induced</div><p>To terminate a job, proctab sends SIGTERM to it, then SIGKILL shortly afterward.
-(That is, if it&#8217;s still running). Proctab terminates a job when that job is
+<div class="paragraph"><div class="title">Pmtr-induced</div><p>To terminate a job, pmtr sends SIGTERM to it, then SIGKILL shortly afterward.
+(That is, if it&#8217;s still running). Pmtr terminates a job when that job is
 deleted, disabled, needs to be restarted due to changes to its command or other
-options, is being bounced, or because proctab itself is shutting down.</p></div>
-<div class="paragraph"><div class="title">Externally-induced</div><p>If a job terminates by itself, when proctab did not signal it to exit, (and the
-job does not have the <code>once</code> option), proctab restarts it. However, if the job
-died within 10 seconds of starting, proctab waits 10 seconds to restart it.</p></div>
+options, is being bounced, or because pmtr itself is shutting down.</p></div>
+<div class="paragraph"><div class="title">Externally-induced</div><p>If a job terminates by itself, when pmtr did not signal it to exit, (and the
+job does not have the <code>once</code> option), pmtr restarts it. However, if the job
+died within 10 seconds of starting, pmtr waits 10 seconds to restart it.</p></div>
 <div class="paragraph"><div class="title">Restart management</div><p>This has two benefits: a job that is waiting for some resource (say, to connect
 to a remote server that is temporarily offline) can exit, counting on being
 restarted periodically. It does not need its own retry logic. Secondly, a job
 that is misconfigured (say, with a typo in its command string, causing it to
-die immediately) has little impact on the host because proctab only tries to
+die immediately) has little impact on the host because pmtr only tries to
 restart it every 10 seconds. Restarts are visible in the log.</p></div>
 </div>
 <div class="sect2">
@@ -1015,12 +991,12 @@ restart it every 10 seconds. Restarts are visible in the log.</p></div>
 <div class="literalblock">
 <div class="title">Download</div>
 <div class="content">
-<pre><code>git clone https://github.com/troydhanson/proctab.git</code></pre>
+<pre><code>git clone https://github.com/troydhanson/pmtr.git</code></pre>
 </div></div>
 <div class="literalblock">
 <div class="title">Build</div>
 <div class="content">
-<pre><code>cd proctab
+<pre><code>cd pmtr
 ./autogen.sh
 ./configure --bindir=/usr/bin --sysconfdir=/etc
 make</code></pre>
@@ -1029,10 +1005,11 @@ make</code></pre>
 <div class="title">Install</div>
 <div class="content">
 <pre><code>sudo make install
-sudo touch /etc/proctab.conf</code></pre>
+sudo touch /etc/pmtr.conf</code></pre>
 </div></div>
-<div class="paragraph"><p>This installs the executable <code>/usr/bin/proctab</code> and the configuration file <code>/etc/proctab.conf</code>.</p></div>
-<div class="paragraph"><div class="title">Initscript</div><p>To install an initscript or systemd service file to run proctab at startup, a
+<div class="paragraph"><p>This installs the executable <code>/usr/bin/pmtr</code> and the configuration file
+<code>/etc/pmtr.conf</code>.</p></div>
+<div class="paragraph"><div class="title">Initscript</div><p>To install an initscript or systemd service file to run pmtr at startup, a
 setup script is included.</p></div>
 <div class="literalblock">
 <div class="content">
@@ -1041,7 +1018,7 @@ sudo ./setup-initscript --install-service auto --bindir /usr/bin \
    --enable-service --start-service</code></pre>
 </div></div>
 <div class="paragraph"><p>Note that <code>--bindir</code> should match the one given to "configure" in the build
-step.  The <code>bindir</code> is needed to set the proctab executable path in the service
+step.  The <code>bindir</code> is needed to set the pmtr executable path in the service
 file.</p></div>
 <div class="paragraph"><p>Run <code>./setup-initscript -h</code> to see its full set of options.</p></div>
 <div class="paragraph"><div class="title">User-specified paths</div><p>The script can be used to install a service definition in a specific place,
@@ -1057,7 +1034,7 @@ a <em>systemd</em> host this could be used:</p></div>
 </div>
 <div class="sect2">
 <h3 id="platforms">Platforms</h3>
-<div class="paragraph"><p>Proctab has been used on:</p></div>
+<div class="paragraph"><p>Pmtr has been used on:</p></div>
 <div class="ulist"><ul>
 <li>
 <p>
@@ -1086,21 +1063,21 @@ Arch
 </li>
 <li>
 <p>
-Yocto <a href="https://github.com/troydhanson/meta-proctab">(layer)</a>
+Yocto <a href="https://github.com/troydhanson/meta-pmtr">(layer)</a>
 </p>
 </li>
 </ul></div>
 </div>
 <div class="sect2">
 <h3 id="_command_line_options">Command line options</h3>
-<div class="paragraph"><p>The host init system normally runs proctab at system boot. However you can run
-proctab manually. These are the command line options that proctab accepts.</p></div>
+<div class="paragraph"><p>The host init system normally runs pmtr at system boot. However you can run
+pmtr manually. These are the command line options that pmtr accepts.</p></div>
 <div class="tableblock">
 <table rules="none"
 width="80%"
 frame="border"
 cellspacing="0" cellpadding="4">
-<caption class="title">Table 1. proctab options</caption>
+<caption class="title">Table 1. pmtr options</caption>
 <col width="28%" />
 <col width="71%" />
 <tbody>
@@ -1289,7 +1266,7 @@ The <code>user</code> option is the unix username that should be the process own
 </li>
 <li>
 <p>
-The <code>user</code> defaults to root if proctab is running as root (it normally is)
+The <code>user</code> defaults to root if pmtr is running as root (it normally is)
 </p>
 </li>
 </ul></div>
@@ -1304,7 +1281,7 @@ Use a <code>depends</code> block to specify files, one per line, that the job de
 </li>
 <li>
 <p>
-If the content of any of the dependencies changes, proctab restarts the job.
+If the content of any of the dependencies changes, pmtr restarts the job.
 </p>
 </li>
 </ul></div>
@@ -1379,7 +1356,7 @@ To see the current kernel limits on a process, run <code>cat /proc/&lt;pid&gt;/l
 </li>
 <li>
 <p>
-proctab sets both the "hard" and "soft" ulimit to the same value.
+pmtr sets both the "hard" and "soft" ulimit to the same value.
 </p>
 </li>
 <li>
@@ -1394,17 +1371,17 @@ If there is an error setting the ulimits, it&#8217;s logged to syslog.
 <div class="ulist"><ul>
 <li>
 <p>
-Proctab has basic support for one-time setup jobs using <code>wait</code> and <code>once</code>.
+Pmtr has basic support for one-time setup jobs using <code>wait</code> and <code>once</code>.
 </p>
 </li>
 <li>
 <p>
-They are used together in setup jobs at the top of <code>proctab.conf</code>
+They are used together in setup jobs at the top of <code>pmtr.conf</code>
 </p>
 </li>
 <li>
 <p>
-<code>once</code> prevents proctab from restarting the job when it exits
+<code>once</code> prevents pmtr from restarting the job when it exits
 </p>
 </li>
 <li>
@@ -1425,13 +1402,13 @@ They are used together in setup jobs at the top of <code>proctab.conf</code>
 <td class="content">These features are disabled by default.</td>
 </tr></table>
 </div>
-<div class="paragraph"><p>These configuration options may appear in <code>proctab.conf</code> at the global scope.</p></div>
+<div class="paragraph"><p>These configuration options may appear in <code>pmtr.conf</code> at the global scope.</p></div>
 <div class="literalblock">
 <div class="content">
 <pre><code>report to udp://127.0.0.1:9999
 listen on udp://0.0.0.0:10000</code></pre>
 </div></div>
-<div class="paragraph"><p>The <code>report to</code> option designates a remote address and port to which proctab
+<div class="paragraph"><p>The <code>report to</code> option designates a remote address and port to which pmtr
 should send a a UDP packet every ten seconds.  The packet payload lists the job
 names, enabled or disabled status, and elapsed runtimes in simple text. If the
 <code>report to</code> address falls in the multicast UDP range (e.g. 239.0.0.1, etc), the
@@ -1439,11 +1416,11 @@ specification may include a trailing interface, e.g., <code>report to
 udp://239.0.0.1:9999@eth2</code> to designate the interface from which the multicast
 UDP datagrams should egress.</p></div>
 <div class="paragraph"><p>The <code>listen on</code> option allows jobs to be remotely enabled or disabled. It
-specifies a UDP address and port that proctab should listen on for datagrams of
+specifies a UDP address and port that pmtr should listen on for datagrams of
 form <code>enable abc</code> or <code>disable abc</code>, where <em>abc</em> is a job name.  The address
 0.0.0.0 can be used as a shortcut to denote "any address" on this system.  The
-effect is temporary; the settings in proctab.conf resume precedence when it&#8217;s
-edited or proctab is restarted.</p></div>
+effect is temporary; the settings in pmtr.conf resume precedence when it&#8217;s
+edited or pmtr is restarted.</p></div>
 <div class="paragraph"><p>These options are considered experimental and may be replaced or removed.</p></div>
 </div>
 </div>
@@ -1452,7 +1429,7 @@ edited or proctab is restarted.</p></div>
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2016-02-03 19:56:53 EST
+Last updated 2016-05-15 08:24:27 EDT
 </div>
 </div>
 </body>

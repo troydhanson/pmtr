@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# proctab: process monitor
+# pmtr: process monitor
 #
 # chkconfig:   2345 26 89
 # description: process monitor daemon
@@ -9,21 +9,21 @@
 
 start()
 {
-    echo -n $"Starting proctab: "
-    daemon --pidfile=/var/run/proctab.pid __SYSBINDIR__/proctab -p /var/run/proctab.pid 
-    touch /var/lock/subsys/proctab
+    echo -n $"Starting pmtr: "
+    daemon --pidfile=/var/run/pmtr.pid __SYSBINDIR__/pmtr -p /var/run/pmtr.pid 
+    touch /var/lock/subsys/pmtr
     echo
 }
 
 stop()
 {
-    echo -n $"Shutting down proctab: "
-    killproc -p /var/run/proctab.pid proctab
-    rm -f /var/lock/subsys/proctab
+    echo -n $"Shutting down pmtr: "
+    killproc -p /var/run/pmtr.pid pmtr
+    rm -f /var/lock/subsys/pmtr
     echo
 }
 
-[ -f __SYSBINDIR__/proctab ] || exit 0
+[ -f __SYSBINDIR__/pmtr ] || exit 0
 
 # see how we were called
 case "$1" in
@@ -38,10 +38,10 @@ case "$1" in
         start
         ;;
   condrestart)
-        [ -e /var/lock/subsys/proctab ] && (stop; start)
+        [ -e /var/lock/subsys/pmtr ] && (stop; start)
         ;;
   status)
-        status -p /var/run/proctab.pid proctab
+        status -p /var/run/pmtr.pid pmtr
         ;;
   *)
         echo $"Usage: $0 {start|stop|restart|reload|condrestart}"

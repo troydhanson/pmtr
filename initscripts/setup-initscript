@@ -2,7 +2,7 @@
 
 ##############################################################################
 #
-# This tool installs an initscript that runs proctab as a system service.
+# This tool installs an initscript that runs pmtr as a system service.
 # Since initscripts vary by platform, this script can attempt to figure out
 # the initsystem (if unspecified), or it can be told explicitly (systemd,
 # upstart, etc to use). To see the supported options run:
@@ -45,32 +45,32 @@ our $bindir = "auto";
 our $help = 0;
 
 my %cfg;
-$cfg{systemd}{enable} = "systemctl enable proctab";
-$cfg{systemd}{disable} = "systemctl disable proctab";
-$cfg{systemd}{start}  = "systemctl start proctab";
-$cfg{systemd}{stop}  = "systemctl stop proctab";
-$cfg{systemd}{service}= "/etc/systemd/system/proctab.service";
+$cfg{systemd}{enable} = "systemctl enable pmtr";
+$cfg{systemd}{disable} = "systemctl disable pmtr";
+$cfg{systemd}{start}  = "systemctl start pmtr";
+$cfg{systemd}{stop}  = "systemctl stop pmtr";
+$cfg{systemd}{service}= "/etc/systemd/system/pmtr.service";
 $cfg{systemd}{mode}=    0644;
 
-$cfg{rhel6}{enable}   = "/sbin/chkconfig --add proctab";
-$cfg{rhel6}{disable}   = "/sbin/chkconfig proctab off";
-$cfg{rhel6}{start}    = "/etc/init.d/proctab start";
-$cfg{rhel6}{stop}    = "/etc/init.d/proctab stop";
-$cfg{rhel6}{service}  = "/etc/rc.d/init.d/proctab";
+$cfg{rhel6}{enable}   = "/sbin/chkconfig --add pmtr";
+$cfg{rhel6}{disable}   = "/sbin/chkconfig pmtr off";
+$cfg{rhel6}{start}    = "/etc/init.d/pmtr start";
+$cfg{rhel6}{stop}    = "/etc/init.d/pmtr stop";
+$cfg{rhel6}{service}  = "/etc/rc.d/init.d/pmtr";
 $cfg{rhel6}{mode}=    0755;
 
 $cfg{upstart}{enable} = "/bin/true";
 $cfg{upstart}{disable} = "/bin/true";
-$cfg{upstart}{start}  = "/sbin/start proctab";
-$cfg{upstart}{stop}  = "/sbin/stop proctab";
-$cfg{upstart}{service}= "/etc/init/proctab.conf";
+$cfg{upstart}{start}  = "/sbin/start pmtr";
+$cfg{upstart}{stop}  = "/sbin/stop pmtr";
+$cfg{upstart}{service}= "/etc/init/pmtr.conf";
 $cfg{upstart}{mode}=    0644;
 
-$cfg{debian}{enable}  = "/usr/sbin/update-rc.d proctab defaults";
-$cfg{debian}{disable}  = "/usr/sbin/update-rc.d -f proctab remove";
-$cfg{debian}{start}   = "/usr/sbin/service proctab start";
-$cfg{debian}{stop}   = "/usr/sbin/service proctab stop";
-$cfg{debian}{service} = "/etc/init.d/proctab";
+$cfg{debian}{enable}  = "/usr/sbin/update-rc.d pmtr defaults";
+$cfg{debian}{disable}  = "/usr/sbin/update-rc.d -f pmtr remove";
+$cfg{debian}{start}   = "/usr/sbin/service pmtr start";
+$cfg{debian}{stop}   = "/usr/sbin/service pmtr stop";
+$cfg{debian}{service} = "/etc/init.d/pmtr";
 $cfg{debian}{mode}=    0755;
 
 usage unless GetOptions( "verbose+"          => \$verbose,
@@ -91,12 +91,12 @@ usage unless ($install or $start or $stop or $uninstall);
 sub guess_bindir {
   my @dirs = qw(/bin /usr/bin /sbin /usr/sbin /usr/local/bin);
   for my $dir (@dirs) {
-    if (-x "$dir/proctab") {
+    if (-x "$dir/pmtr") {
       $bindir = $dir;
       return;
     }
   }
-  die "can't locate proctab executable: try using --bindir\n";
+  die "can't locate pmtr executable: try using --bindir\n";
 }
 
 sub guess_initsystem {

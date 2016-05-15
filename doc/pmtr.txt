@@ -1,27 +1,27 @@
-Guide to proctab
-================
+Guide to pmtr
+=============
 Troy D. Hanson <tdh@tkhanson.net>
 
-Back to the https://github.com/troydhanson/proctab[proctab Github page].
+Back to the https://github.com/troydhanson/pmtr[pmtr Github page].
 
 To run services on Linux systems one typically writes an initscript. The init
 mechanism, and the syntax of initscripts, vary depending on the distribution.
 
-proctab
--------
+pmtr
+----
 
-Proctab is one of my http://troydhanson.github.io/[many C projects]. I wrote it
+Pmtr is one of my http://troydhanson.github.io/[many C projects]. I wrote it
 for sensors and appliances that have lots of related jobs that are easier to
 manage through one configuration file. Also, to insulate the developer from
 the underlying init system.
 
-I wrote 'proctab' to complement rather than replace the underlying init system.
+I wrote 'pmtr' to complement rather than replace the underlying init system.
 It runs under systemd, sysvinit or upstart that already exists on a Linux host.
-Its configuration file `/etc/proctab.conf` lists the services it should start.
-It starts them at boot, and restarts them as needed.  Proctab is written in C,
+Its configuration file `/etc/pmtr.conf` lists the services it should start.
+It starts them at boot, and restarts them as needed.  Pmtr is written in C,
 Linux only, and is link:LICENSE.txt[MIT] licensed.
 
-.Example `/etc/proctab.conf`
+.Example `/etc/pmtr.conf`
 --------------------------------------------------------
 job {
   name set-audio-source
@@ -45,32 +45,32 @@ job {
 
 --------------------------------------------------------
 
-Here we have a proctab configuration that runs three jobs. The
-first one is a one-time, setup job that proctab won't restart. The
+Here we have a pmtr configuration that runs three jobs. The
+first one is a one-time, setup job that pmtr won't restart. The
 next two are a Darkice audio streamer and a persistent SSH tunnel.
-There are many <<config_options,proctab configuration options>>.
+There are many <<config_options,pmtr configuration options>>.
 The minimal requirement is that each job has a name and a cmd.
 
-proctab.conf
+pmtr.conf
 ~~~~~~~~~~~~
 
 .No shell expansion or $PATH searching
 
 There is no shell interpretation of the command or its arguments. There is no
-searching for the command in $PATH. Use absolute paths on commands.  Proctab is
+searching for the command in $PATH. Use absolute paths on commands.  Pmtr is
 a C program and it starts these jobs directly using `execv`. 
 
 .One time setup jobs (wait and once)
 
-As a concession to real life, proctab has basic support for one-time setup jobs.
-The first job in the example above uses `once` and `wait` to prevent proctab
+As a concession to real life, pmtr has basic support for one-time setup jobs.
+The first job in the example above uses `once` and `wait` to prevent pmtr
 from restarting the job, and to delay starting the subsequent jobs until the
 setup job has finished.
 
 .depends
 
-In the example above, darkice depends on `/etc/darkice.cfg`. This makes proctab 
-restart darkice whenever darkice.cfg is edited. Proctab watches for these file
+In the example above, darkice depends on `/etc/darkice.cfg`. This makes pmtr 
+restart darkice whenever darkice.cfg is edited. Pmtr watches for these file
 events efficiently using inotify. It restarts darkice if the content (thus, the
 hash) of darkice.cfg changes. A simple open/close of darkice.cfg with no changes
 will not restart the job. A job can depend on multiple files, listed one per
@@ -94,7 +94,7 @@ useful, in a pinch, to pass a script (as a quoted string) into a shell.
 
 .General job requirements
 
-* Processes that run under proctab should,
+* Processes that run under pmtr should,
 ** stay in the foreground
 ** exit on SIGTERM or SIGKILL 
 ** clean up their own sub-processes
@@ -145,7 +145,7 @@ Environment variables can be set for a job by lines of the form `env VAR=value`.
 
 .Edits take effect immediately
 
-When you edit and save `proctab.conf`, proctab applies the changes immediately.
+When you edit and save `pmtr.conf`, pmtr applies the changes immediately.
 
  * A newly-added job gets started.
  * A deleted job is terminated.
@@ -153,70 +153,70 @@ When you edit and save `proctab.conf`, proctab applies the changes immediately.
 
 .Testing the configuration
 
-You can run `proctab -t` to check the config file syntax and report any errors. 
+You can run `pmtr -t` to check the config file syntax and report any errors. 
 This checks the file without running any jobs.  In normal background operation,
-proctab logs syntax errors to syslog.
+pmtr logs syntax errors to syslog.
 
 Status and control 
 ~~~~~~~~~~~~~~~~~~
 
-To start, stop or get status of proctab, use the host system management commands.
-When proctab starts, it starts all its jobs; when proctab stops, it signals its
+To start, stop or get status of pmtr, use the host system management commands.
+When pmtr starts, it starts all its jobs; when pmtr stops, it signals its
 jobs to terminate, then exits itself.
 
 .On a systemd-based host
 
-  systemctl start proctab 
-  systemctl stop proctab 
-  systemctl status proctab 
+  systemctl start pmtr 
+  systemctl stop pmtr 
+  systemctl status pmtr 
 
-.'systemctl status proctab' example
+.'systemctl status pmtr' example
 ----------------------------------------------------------------------------
-% systemctl status proctab
-● proctab.service - proctab process manager
-   Loaded: loaded (/lib/systemd/system/proctab.service; enabled)
+% systemctl status pmtr
+● pmtr.service - pmtr process manager
+   Loaded: loaded (/lib/systemd/system/pmtr.service; enabled)
    Active: active (running) since Mon 2015-11-23 02:18:58 UTC; 12min ago
-     Docs: http://troydhanson.github.io/proctab
- Main PID: 1463 (proctab)
-   CGroup: /system.slice/proctab.service
-           ├─1463 /usr/bin/proctab -F -c /etc/proctab.conf
+     Docs: http://troydhanson.github.io/pmtr
+ Main PID: 1463 (pmtr)
+   CGroup: /system.slice/pmtr.service
+           ├─1463 /usr/bin/pmtr -F -c /etc/pmtr.conf
            ├─1556 /usr/bin/darkice -c /etc/darkice.cfg
            └─1557 /usr/bin/ssh -i key -TNL 5901:127.0.0.1:5901 192.168.0.1
 ----------------------------------------------------------------------------
 
 .On many other systems
 
-  service proctab status
-  service proctab start
-  service proctab stop
+  service pmtr status
+  service pmtr start
+  service pmtr stop
 
 Logs
 ~~~~
 
-Proctab logs to syslog. Typically the host puts them in `/var/log/syslog` or
-`/var/log/messages`.  Look there for messages about proctab starting or
-restarting jobs. Any errors in parsing `proctab.conf` are logged. It is 
+Pmtr logs to syslog. Typically the host puts them in `/var/log/syslog` or
+`/var/log/messages`.  Look there for messages about pmtr starting or
+restarting jobs. Any errors in parsing `pmtr.conf` are logged. It is 
 recommended to check the logs after any configuration changes.
 
 .On systemd
 
-On 'systemd'-based hosts, use `journalctl -u proctab` to see proctab logs.
+On 'systemd'-based hosts, use `journalctl -u pmtr` to see pmtr logs.
 
 Job termination and restart
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.Proctab-induced 
+.Pmtr-induced 
 
-To terminate a job, proctab sends SIGTERM to it, then SIGKILL shortly afterward.
-(That is, if it's still running). Proctab terminates a job when that job is
+To terminate a job, pmtr sends SIGTERM to it, then SIGKILL shortly afterward.
+(That is, if it's still running). Pmtr terminates a job when that job is
 deleted, disabled, needs to be restarted due to changes to its command or other
-options, is being bounced, or because proctab itself is shutting down.
+options, is being bounced, or because pmtr itself is shutting down.
 
 .Externally-induced
 
-If a job terminates by itself, when proctab did not signal it to exit, (and the
-job does not have the `once` option), proctab restarts it. However, if the job
-died within 10 seconds of starting, proctab waits 10 seconds to restart it.
+If a job terminates by itself, when pmtr did not signal it to exit, (and the
+job does not have the `once` option), pmtr restarts it. However, if the job
+died within 10 seconds of starting, pmtr waits 10 seconds to restart it.
 
 .Restart management
 
@@ -224,7 +224,7 @@ This has two benefits: a job that is waiting for some resource (say, to connect
 to a remote server that is temporarily offline) can exit, counting on being
 restarted periodically. It does not need its own retry logic. Secondly, a job
 that is misconfigured (say, with a typo in its command string, causing it to
-die immediately) has little impact on the host because proctab only tries to
+die immediately) has little impact on the host because pmtr only tries to
 restart it every 10 seconds. Restarts are visible in the log.
 
 Installation
@@ -232,11 +232,11 @@ Installation
 
 .Download
 
-    git clone https://github.com/troydhanson/proctab.git
+    git clone https://github.com/troydhanson/pmtr.git
 
 .Build
 
-    cd proctab
+    cd pmtr
     ./autogen.sh
     ./configure --bindir=/usr/bin --sysconfdir=/etc
     make
@@ -244,13 +244,14 @@ Installation
 .Install
 
     sudo make install
-    sudo touch /etc/proctab.conf
+    sudo touch /etc/pmtr.conf
 
-This installs the executable `/usr/bin/proctab` and the configuration file `/etc/proctab.conf`.
+This installs the executable `/usr/bin/pmtr` and the configuration file
+`/etc/pmtr.conf`.
 
 .Initscript
 
-To install an initscript or systemd service file to run proctab at startup, a
+To install an initscript or systemd service file to run pmtr at startup, a
 setup script is included.
 
     cd initscripts
@@ -258,7 +259,7 @@ setup script is included.
        --enable-service --start-service 
 
 Note that `--bindir` should match the one given to "configure" in the build
-step.  The `bindir` is needed to set the proctab executable path in the service
+step.  The `bindir` is needed to set the pmtr executable path in the service
 file.
 
 Run `./setup-initscript -h` to see its full set of options.
@@ -279,22 +280,22 @@ This usage stops short of enabling or starting the service since it omits
 Platforms
 ~~~~~~~~~
 
-Proctab has been used on:
+Pmtr has been used on:
 
 * Ubuntu (12, 13, 14, 15, 16)
 * CentOS/RHEL (5, 6, 7)
 * Raspberry Pi (Raspbian)
 * Debian 
 * Arch
-* Yocto https://github.com/troydhanson/meta-proctab[(layer)]
+* Yocto https://github.com/troydhanson/meta-pmtr[(layer)]
 
 Command line options
 ~~~~~~~~~~~~~~~~~~~~
 
-The host init system normally runs proctab at system boot. However you can run
-proctab manually. These are the command line options that proctab accepts. 
+The host init system normally runs pmtr at system boot. However you can run
+pmtr manually. These are the command line options that pmtr accepts. 
 
-.proctab options
+.pmtr options
 [width="80%",cols="20m,50",grid="none",options="none"]
 |==========================================================================
 | -h        | show help    
@@ -358,12 +359,12 @@ out, err, in
 user
 ^^^^
 * The `user` option is the unix username that should be the process owner.
-* The `user` defaults to root if proctab is running as root (it normally is)
+* The `user` defaults to root if pmtr is running as root (it normally is)
 
 depends
 ^^^^^^^
 * Use a `depends` block to specify files, one per line, that the job depends on.
-* If the content of any of the dependencies changes, proctab restarts the job.
+* If the content of any of the dependencies changes, pmtr restarts the job.
 
 bounce every
 ^^^^^^^^^^^^
@@ -382,14 +383,14 @@ ulimit
 * In bash, type `man prlimit` to see a more technical description and the units.
 * The values are all numeric or the keyword `infinity`.
 * To see the current kernel limits on a process, run `cat /proc/<pid>/limits`.
-* proctab sets both the "hard" and "soft" ulimit to the same value.
+* pmtr sets both the "hard" and "soft" ulimit to the same value.
 * If there is an error setting the ulimits, it's logged to syslog.
 
 wait/once
 ^^^^^^^^^
-* Proctab has basic support for one-time setup jobs using `wait` and `once`.
-* They are used together in setup jobs at the top of `proctab.conf`
-* `once` prevents proctab from restarting the job when it exits
+* Pmtr has basic support for one-time setup jobs using `wait` and `once`.
+* They are used together in setup jobs at the top of `pmtr.conf`
+* `once` prevents pmtr from restarting the job when it exits
 * `wait` delays subsequent jobs from starting until this one exits
 
 Appendix B: UDP control
@@ -397,12 +398,12 @@ Appendix B: UDP control
 
 NOTE: These features are disabled by default.
 
-These configuration options may appear in `proctab.conf` at the global scope.
+These configuration options may appear in `pmtr.conf` at the global scope.
 
   report to udp://127.0.0.1:9999
   listen on udp://0.0.0.0:10000
 
-The `report to` option designates a remote address and port to which proctab
+The `report to` option designates a remote address and port to which pmtr
 should send a a UDP packet every ten seconds.  The packet payload lists the job
 names, enabled or disabled status, and elapsed runtimes in simple text. If the
 `report to` address falls in the multicast UDP range (e.g. 239.0.0.1, etc), the
@@ -411,11 +412,11 @@ udp://239.0.0.1:9999@eth2` to designate the interface from which the multicast
 UDP datagrams should egress. 
 
 The `listen on` option allows jobs to be remotely enabled or disabled. It
-specifies a UDP address and port that proctab should listen on for datagrams of
+specifies a UDP address and port that pmtr should listen on for datagrams of
 form `enable abc` or `disable abc`, where 'abc' is a job name.  The address
 0.0.0.0 can be used as a shortcut to denote "any address" on this system.  The
-effect is temporary; the settings in proctab.conf resume precedence when it's
-edited or proctab is restarted.
+effect is temporary; the settings in pmtr.conf resume precedence when it's
+edited or pmtr is restarted.
 
 These options are considered experimental and may be replaced or removed.
 

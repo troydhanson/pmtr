@@ -1,1 +1,1 @@
-Please see the proctab documentation at https://troydhanson.github.io/proctab
+Please see the pmtr documentation at https://troydhanson.github.io/pmtr

@@ -1,17 +1,17 @@
-#ifndef _PROCTAB_H_
-#define _PROCTAB_H_
+#ifndef _PMTR_H_
+#define _PMTR_H_
 
 #include <time.h>
 #include "utarray.h"
 #include "utstring.h"
 
-/* proctab.conf is expected in /etc by default. This expectation can be overridden
+/* pmtr.conf is expected in /etc by default. This expectation can be overridden
  * at build time using ./configure --sysconfdir=/dir. The end user can also tell
- * proctab to look for its config file elsewhere using command line options. */
+ * pmtr to look for its config file elsewhere using command line options. */
 #ifndef CFGDIR
 #define CFGDIR "/etc"
 #endif
-#define DEFAULT_PROCTAB_CONFIG CFGDIR "/proctab.conf"
+#define DEFAULT_PMTR_CONFIG CFGDIR "/pmtr.conf"
 #define SHORT_DELAY 10
 
 typedef struct {
@@ -29,6 +29,6 @@ typedef struct {
   char report_id[100]; /* our identity in report */
   UT_string *s;     /* scratch space */
 
-} proctab_t;
+} pmtr_t;
 
-#endif /* _PROCTAB_H_ */
+#endif /* _PMTR_H_ */

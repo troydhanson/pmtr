@@ -7,14 +7,14 @@
 #include <time.h>
 #include <signal.h>
 
-#include "proctab.h"
+#include "pmtr.h"
 #include "utstring.h"
 #include "utarray.h"
 
 #define adim(x) (sizeof(x)/sizeof(*x))
 
 /* exit status that a job can use to indicate it does not want to be respawned */
-#define PROCTAB_NO_RESTART 33
+#define PMTR_NO_RESTART 33
 
 /* signals that we'll allow (unblock) during sigsuspend */
 static const int sigs[] = {SIGHUP,SIGCHLD,SIGTERM,SIGINT,SIGQUIT,
@@ -81,14 +81,14 @@ typedef struct {
   int rc;
   UT_string *em;
   job_t *job; /* scratch space */
-  proctab_t *cfg; /* the global ptmr config */
+  pmtr_t *cfg; /* the global ptmr config */
 } parse_t;
 
 extern const UT_icd job_mm;
 
 /* prototypes */
-int parse_jobs(proctab_t *cfg, UT_string *em);
-void do_jobs(proctab_t *cfg);
+int parse_jobs(pmtr_t *cfg, UT_string *em);
+void do_jobs(pmtr_t *cfg);
 void term_jobs(UT_array *jobs);
 int term_job(job_t *job);
 void push_job(parse_t *ps);
@@ -97,7 +97,7 @@ job_t *get_job_by_name(UT_array *jobs, char *name);
 int job_cmp(job_t *a, job_t *b);
 void set_name(parse_t *ps, char *name);
 char *unquote(char *str);
-void alarm_within(proctab_t *cfg, int sec);
+void alarm_within(pmtr_t *cfg, int sec);
 int get_tok(char *c_orig, char **c, size_t *bsz, size_t *toksz, int *line);
 void set_dir(parse_t *ps, char *s);
 void set_out(parse_t *ps, char *s);

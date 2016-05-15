@@ -1,9 +1,9 @@
 [Unit]
-Description=proctab process manager
-Documentation=http://troydhanson.github.io/proctab
+Description=pmtr process manager
+Documentation=http://troydhanson.github.io/pmtr
 
 [Service]
-ExecStart=__SYSBINDIR__/proctab -F 
+ExecStart=__SYSBINDIR__/pmtr -F 
 
 [Install]
 WantedBy=multi-user.target

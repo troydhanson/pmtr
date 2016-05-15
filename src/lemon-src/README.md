@@ -3,7 +3,7 @@ disclaims copyright per comments in the source code.
 
 --
 
-The Makefile here is not normally invoked during the proctab build.
+The Makefile here is not normally invoked during the pmtr build.
 This is only manually invoked if cfg.y (the grammar) is changed. In
 that situation the author should run make in this directory to build
 the cfg.c and cfg.h parser sources. Those sources, once generated,

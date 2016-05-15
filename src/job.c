@@ -17,7 +17,7 @@
 //#define DEBUG 1
 
 #include "utarray.h"
-#include "proctab.h"
+#include "pmtr.h"
 #include "job.h"
 
 /* lemon prototypes */
@@ -283,7 +283,7 @@ int hash_deps(UT_array *jobs) {
     while( (dep=(char**)utarray_next(&job->depv,dep))) {
       if (slurp(fpath(job,*dep), &text, &len) < 0) {
         syslog(LOG_ERR,"job %s: can't open dependency %s", job->name, *dep);
-        job->disabled = 1; /* they need to fix proctab.conf to trigger rescan */
+        job->disabled = 1; /* they need to fix pmtr.conf to trigger rescan */
         if (job->pid) job->terminate=1;
         continue;
       }
@@ -304,7 +304,7 @@ static int order_sort(const void *_a, const void *_b) {
   job_t *a = (job_t*)_a, *b = (job_t*)_b;
   return a->order - b->order;
 }
-int parse_jobs(proctab_t *cfg, UT_string *em) {
+int parse_jobs(pmtr_t *cfg, UT_string *em) {
   char *buf, *c, *tok;
   size_t len,toklen;
   UT_array *toks;
@@ -375,7 +375,7 @@ void signal_job(job_t *job) {
 }
 
 /* start up the jobs that are not already running */
-void do_jobs(proctab_t *cfg) {
+void do_jobs(pmtr_t *cfg) {
   pid_t pid;
   time_t now, elapsed;
   int es, n, fo, fe, fi, rc=-1, sig, kr;
@@ -418,7 +418,7 @@ void do_jobs(proctab_t *cfg) {
           continue;
         }
         syslog(LOG_INFO,"job %s finished",job->name);
-        if (WIFEXITED(es) && (WEXITSTATUS(es) == PROCTAB_NO_RESTART)) job->respawn=0;
+        if (WIFEXITED(es) && (WEXITSTATUS(es) == PMTR_NO_RESTART)) job->respawn=0;
         else if (job->once) job->respawn=0;
         job->pid = 0;
       }
@@ -493,7 +493,7 @@ void do_jobs(proctab_t *cfg) {
   }
 }
 
-void collect_jobs(proctab_t *cfg, UT_string *sm) {
+void collect_jobs(pmtr_t *cfg, UT_string *sm) {
   int es, ex, elapsed;
   time_t now;
   job_t *job;
@@ -526,7 +526,7 @@ void collect_jobs(proctab_t *cfg, UT_string *sm) {
       (int)pid, elapsed);
     if (WIFSIGNALED(es)) utstring_printf(sm, "signal %d", (int)WTERMSIG(es));
     if (WIFEXITED(es)) {
-      if ( (ex = WEXITSTATUS(es)) == PROCTAB_NO_RESTART) job->respawn=0;
+      if ( (ex = WEXITSTATUS(es)) == PMTR_NO_RESTART) job->respawn=0;
       utstring_printf(sm,"exit status %d", ex);
     }
     syslog(LOG_INFO,"%s",utstring_body(sm));
@@ -633,7 +633,7 @@ int job_cmp(job_t *a, job_t *b) {
  * alarm handler, we only need to reset the timer if the next scheduled
  * alarm is non-existent or its later than we need. 
  */
-void alarm_within(proctab_t *cfg, int sec) {
+void alarm_within(pmtr_t *cfg, int sec) {
   time_t now = time(NULL);
   int reset = 0;
 

@@ -1,9 +1,9 @@
-all: proctab.html
+all: pmtr.html
 
-proctab.html: proctab.txt
+pmtr.html: pmtr.txt
 	asciidoc -a toc2 $<
 
-TMP=/tmp/proctab-gh-pages
+TMP=/tmp/pmtr-gh-pages
 stage:
 	mkdir -p ${TMP}
 	rm -if ${TMP}/*
@@ -11,4 +11,4 @@ stage:
 	cp *.html ${TMP}
 
 clean: 
-	rm -f proctab.html
+	rm -f pmtr.html
