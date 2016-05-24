@@ -21,7 +21,25 @@ Its configuration file `/etc/pmtr.conf` lists the services it should start.
 It starts them at boot, and restarts them as needed.  Pmtr is written in C,
 Linux only, and is link:LICENSE.txt[MIT] licensed.
 
-.Example `/etc/pmtr.conf`
+[[platforms]]
+Platforms
+~~~~~~~~~
+
+Pmtr has been used on:
+
+* Ubuntu (12, 13, 14, 15, 16)
+* CentOS/RHEL (5, 6, 7)
+* Raspberry Pi (Raspbian)
+* Debian 
+* Arch
+* Yocto https://github.com/troydhanson/meta-pmtr[(layer)]
+
+pmtr.conf
+~~~~~~~~~
+
+The pmtr configuration is, by default, `/etc/pmtr.conf`. Here's an example:
+
+./etc/pmtr.conf
 --------------------------------------------------------
 job {
   name set-audio-source
@@ -45,14 +63,10 @@ job {
 
 --------------------------------------------------------
 
-Here we have a pmtr configuration that runs three jobs. The
-first one is a one-time, setup job that pmtr won't restart. The
-next two are a Darkice audio streamer and a persistent SSH tunnel.
-There are many <<config_options,pmtr configuration options>>.
-The minimal requirement is that each job has a name and a cmd.
-
-pmtr.conf
-~~~~~~~~~~~~
+Here pmtr runs three services (jobs). The first one is a one-time, setup job
+that pmtr won't restart. The next two are a Darkice audio streamer and a
+persistent SSH tunnel.  There are many <<config_options,pmtr configuration
+options>>.  The minimal requirement is that each job has a name and a cmd.
 
 .No shell expansion or $PATH searching
 
@@ -275,19 +289,6 @@ a 'systemd' host this could be used:
 
 This usage stops short of enabling or starting the service since it omits
 `--enable-service` and `--start-service`.
-
-[[platforms]]
-Platforms
-~~~~~~~~~
-
-Pmtr has been used on:
-
-* Ubuntu (12, 13, 14, 15, 16)
-* CentOS/RHEL (5, 6, 7)
-* Raspberry Pi (Raspbian)
-* Debian 
-* Arch
-* Yocto https://github.com/troydhanson/meta-pmtr[(layer)]
 
 Command line options
 ~~~~~~~~~~~~~~~~~~~~
