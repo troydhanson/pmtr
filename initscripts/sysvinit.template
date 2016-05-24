@@ -16,10 +16,10 @@ else
 fi
 
 start() {
-	start-stop-daemon --start --pidfile $PIDFILE --exec /usr/bin/pmtr -- -p $PIDFILE
+	start-stop-daemon --start --pidfile $PIDFILE --exec __SYSBINDIR__/pmtr -- -p $PIDFILE
 }
 stop() {
-	start-stop-daemon --stop --pidfile /var/run/pmtr.pid
+	start-stop-daemon --stop --pidfile $PIDFILE
 	if [ $? -eq 0 ]; then rm -f $PIDFILE; fi
 }
 restart() {
