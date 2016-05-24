@@ -28,7 +28,7 @@ sub usage {
   print STDERR "         --install-service <auto|path-to-file>\n";
   print STDERR "         --enable-service\n";
   print STDERR "         --start-service\n";
-  print STDERR "         --initsys <auto|systemd|debian|upstart|rhel6>\n";
+  print STDERR "         --initsys <auto|systemd|sysvinit|debian|upstart|rhel6>\n";
   print STDERR "         --bindir <auto|dir> (e.g. /usr/bin)\n";
   exit -1;
 }
@@ -65,6 +65,13 @@ $cfg{upstart}{start}  = "/sbin/start pmtr";
 $cfg{upstart}{stop}  = "/sbin/stop pmtr";
 $cfg{upstart}{service}= "/etc/init/pmtr.conf";
 $cfg{upstart}{mode}=    0644;
+
+$cfg{sysvinit}{enable}  = "/usr/sbin/update-rc.d pmtr defaults";
+$cfg{sysvinit}{disable}  = "/usr/sbin/update-rc.d -f pmtr remove";
+$cfg{sysvinit}{start}   = "/etc/init.d/pmtr start";
+$cfg{sysvinit}{stop}   = "/etc/init.d/pmtr stop";
+$cfg{sysvinit}{service} = "/etc/init.d/pmtr";
+$cfg{sysvinit}{mode}=    0755;
 
 $cfg{debian}{enable}  = "/usr/sbin/update-rc.d pmtr defaults";
 $cfg{debian}{disable}  = "/usr/sbin/update-rc.d -f pmtr remove";
@@ -106,6 +113,7 @@ sub guess_initsystem {
   elsif (-d "/usr/lib/upstart")                     { $initsys = "upstart"; }
   elsif (-f "/etc/redhat-release")                  { $initsys = "rhel6";   }
   elsif (-f "/etc/debian_version")                  { $initsys = "debian";  }
+  elsif (-d "/etc/init.d")                          { $initsys = "sysvinit";}
   else { die "can't guess initsystem"; }
   print "Initsystem: $initsys\n" if $verbose;
 }

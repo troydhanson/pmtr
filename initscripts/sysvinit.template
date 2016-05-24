@@ -1,0 +1,49 @@
+#!/bin/sh
+#
+# Starts pmtr
+#
+
+umask 077
+
+# Source function library.
+. /etc/init.d/functions
+
+if [ -d /var/run ]
+then
+    PIDFILE=/var/run/pmtr.pid
+else
+    PIDFILE=/tmp/pmtr.pid
+fi
+
+start() {
+	start-stop-daemon --start --pidfile $PIDFILE --exec /usr/bin/pmtr -- -p $PIDFILE
+}
+stop() {
+	start-stop-daemon --stop --pidfile /var/run/pmtr.pid
+	if [ $? -eq 0 ]; then rm -f $PIDFILE; fi
+}
+restart() {
+	stop
+	start
+}
+
+case "$1" in
+  start)
+	start
+	;;
+  stop)
+	stop
+	;;
+  restart|reload)
+	restart
+	;;
+  status)
+	status pmtr
+	;;
+  *)
+	echo $"Usage: $0 {start|stop|restart|status}"
+	exit 1
+esac
+
+exit $?
+
