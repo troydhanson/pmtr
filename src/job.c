@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <sys/types.h>
+#include <grp.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <sys/resource.h>
@@ -15,6 +16,7 @@
 #include <pwd.h>
 
 //#define DEBUG 1
+#define PMTR_MAX_USER 100
 
 #include "utarray.h"
 #include "pmtr.h"
@@ -32,7 +34,6 @@ void job_ini(job_t *job) {
   utarray_init(&job->depv, &ut_str_icd); 
   utarray_init(&job->rlim, &rlimit_icd); 
   job->respawn=1;
-  job->uid=-1;
 }
 void job_fin(job_t *job) { 
   if (job->name) free(job->name);
@@ -55,7 +56,7 @@ void job_cpy(job_t *dst, const job_t *src) {
   dst->out = src->out ? strdup(src->out) : NULL;
   dst->err = src->err ? strdup(src->err) : NULL;
   dst->in = src->in ? strdup(src->in) : NULL;
-  dst->uid = src->uid;
+  memcpy(dst->user, src->user, PMTR_MAX_USER);
   dst->pid = src->pid;
   dst->start_ts = src->start_ts;
   dst->start_at = src->start_at;
@@ -141,18 +142,13 @@ void set_bounce(parse_t *ps, char *timespec) {
 }
 
 void set_user(parse_t *ps, char *user) { 
-
-  /* if syntax check only, don't validate username */
-  if (ps->cfg->test_only) return; 
-
-  struct passwd *p;
-  p = getpwnam(user);
-  if (p == NULL) {
-    utstring_printf(ps->em, "can't find uid for user %s", user);
+  size_t len = strlen(user);
+  if (len+1 > PMTR_MAX_USER) {
+    utstring_printf(ps->em, "user name too long");
     ps->rc = -1;
     return;
   }
-  ps->job->uid = p->pw_uid;
+  memcpy(ps->job->user, user, len+1);
 }
 
 #define unlimited(a) 
@@ -469,13 +465,19 @@ void do_jobs(pmtr_t *cfg) {
     sigemptyset(&none);
     sigprocmask(SIG_SETMASK,&none,NULL);
 
-    /* change the real and effective user ids */
-    if ((job->uid != -1) && (setuid(job->uid) == -1))        {rc=-7; goto fail;}
+    /* change the real and effective user ids, and set the gid and supp groups */
+    if (*job->user) {
+      struct passwd *p;
+      if ( (p = getpwnam(job->user)) == NULL)                {rc=-7; goto fail;}
+      if (setgid(p->pw_gid) == -1)                           {rc=-8; goto fail;}
+      if (initgroups(job->user, p->pw_gid) == -1)            {rc=-9; goto fail;}
+      if (setuid(p->pw_uid) == -1)                           {rc=-10; goto fail;}
+    }
 
     /* at last. we're ready to run the child process */
     argv = (char**)utarray_front(&job->cmdv);
     pathname = *argv;
-    if (execv(pathname, argv) == -1)                         {rc=-8; goto fail;}
+    if (execv(pathname, argv) == -1)                        {rc=-11; goto fail;}
 
     /* not reached - child has exec'd */
     assert(0); 
@@ -487,8 +489,11 @@ void do_jobs(pmtr_t *cfg) {
     if (rc==-4) syslog(LOG_ERR,"can't open %s: %s", e, strerror(errno));
     if (rc==-5) syslog(LOG_ERR,"can't dup: %s", strerror(errno));
     if (rc==-6) syslog(LOG_ERR,"can't setrlimit: %s", strerror(errno));
-    if (rc==-7) syslog(LOG_ERR,"can't setuid %d: %s", job->uid,strerror(errno));
-    if (rc==-8) syslog(LOG_ERR,"can't exec %s: %s", pathname, strerror(errno));
+    if (rc==-7) syslog(LOG_ERR,"can't getpwnam %s: %s", job->user, strerror(errno));
+    if (rc==-8) syslog(LOG_ERR,"can't setgid %s: %s", job->user, strerror(errno));
+    if (rc==-9) syslog(LOG_ERR,"can't initgroups %s: %s", job->user, strerror(errno));
+    if (rc==-10) syslog(LOG_ERR,"can't setuid %s: %s", job->user, strerror(errno));
+    if (rc==-11) syslog(LOG_ERR,"can't exec %s: %s", pathname, strerror(errno));
     exit(-1);  /* child exit */
   }
 }
@@ -619,7 +624,7 @@ int job_cmp(job_t *a, job_t *b) {
   if ((!a->in && b->in) || (a->in && !b->in) ) return a->in-b->in;
   if ((a->in && b->in) && (rc = strcmp(a->in,b->in))) return rc;
 
-  if (a->uid != b->uid) return a->uid - b->uid;
+  if ( (rc = memcmp(a->user, b->user, PMTR_MAX_USER))) return rc;
   if (a->order != b->order) return a->order - b->order;
   if (a->disabled != b->disabled) return a->disabled - b->disabled;
   if (a->wait != b->wait) return a->wait - b->wait;
