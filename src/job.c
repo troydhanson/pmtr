@@ -373,7 +373,7 @@ void signal_job(job_t *job) {
 void do_jobs(pmtr_t *cfg) {
   pid_t pid;
   time_t now, elapsed;
-  int es, n, fo, fe, fi, rc=-1, sig, kr;
+  int es, n, fo, fe, fi, rc=-1, ds;
   char *pathname, *o, *e, *i, **argv, **env;
 
   job_t *job = NULL;
@@ -432,20 +432,6 @@ void do_jobs(pmtr_t *cfg) {
      * we closelog() _before_ dups below, otherwise it can clobber wrong fd */
     closelog(); 
 
-    /* setup child stdin/stdout/stderr */
-    i = job->in  ? job->in  : "/dev/null";
-    o = job->out ? job->out : "/dev/null";
-    e = job->err ? job->err : "/dev/null";
-
-    fi = open(i,O_RDONLY);                        if(fi==-1) {rc=-2; goto fail;}
-    fo = open(o,O_WRONLY|O_APPEND|O_CREAT, 0644); if(fo==-1) {rc=-3; goto fail;}
-    fe = open(e,O_WRONLY|O_APPEND|O_CREAT, 0644); if(fe==-1) {rc=-4; goto fail;}
-
-    rc = -5;
-    if (fi!=STDIN_FILENO)  {if(dup2(fi,STDIN_FILENO) ==-1)goto fail; close(fi);}
-    if (fo!=STDOUT_FILENO) {if(dup2(fo,STDOUT_FILENO)==-1)goto fail; close(fo);}
-    if (fe!=STDERR_FILENO) {if(dup2(fe,STDERR_FILENO)==-1)goto fail; close(fe);}
-
     /* set environment variables */
     env=NULL;
     while ( (env=(char**)utarray_next(&job->envv,env))) putenv(*env);
@@ -473,6 +459,43 @@ void do_jobs(pmtr_t *cfg) {
       if (setuid(p->pw_uid) == -1)                           {rc=-10; goto fail;}
     }
 
+    /* setup child stdin/stdout/stderr. the default is /dev/null unless -I was
+     * given to pmtr (so that they inherit it from pmtr itself) */
+    char *default_io = cfg->inherit_stdout ? NULL : "/dev/null";
+    i = job->in  ? job->in  : default_io;
+    o = job->out ? job->out : default_io;
+    e = job->err ? job->err : default_io;
+
+    if (i) {
+      fi = open(i ,O_RDONLY);
+      if (fi < 0) { rc=-2; goto fail; }
+      if (fi != STDIN_FILENO)  {
+        ds = dup2(fi, STDIN_FILENO);
+        if (ds < 0) { rc=-5; goto fail; }
+        close(fi);
+      }
+    }
+
+    if (o) {
+      fo = open(o ,O_WRONLY|O_APPEND|O_CREAT, 0644);
+      if (fo < 0) { rc=-3; goto fail; }
+      if (fo != STDOUT_FILENO) {
+        ds = dup2(fo, STDOUT_FILENO);
+        if (ds < 0) { rc=-5; goto fail; }
+        close(fo);
+      }
+    }
+
+    if (e) {
+      fe = open(e ,O_WRONLY|O_APPEND|O_CREAT, 0644);
+      if (fe < 0) { rc=-4; goto fail; }
+      if (fe != STDERR_FILENO) {
+        ds = dup2(fe, STDERR_FILENO);
+        if (ds < 0) { rc=-5; goto fail; }
+        close(fe);
+      }
+    }
+
     /* at last. we're ready to run the child process */
     argv = (char**)utarray_front(&job->cmdv);
     pathname = *argv;
@@ -488,7 +511,7 @@ void do_jobs(pmtr_t *cfg) {
     if (rc==-4) syslog(LOG_ERR,"can't open %s: %s", e, strerror(errno));
     if (rc==-5) syslog(LOG_ERR,"can't dup: %s", strerror(errno));
     if (rc==-6) syslog(LOG_ERR,"can't setrlimit: %s", strerror(errno));
-    if (rc==-7) syslog(LOG_ERR,"can't getpwnam %s: %s", job->user, strerror(errno));
+    if (rc==-7) syslog(LOG_ERR,"unknown user: %s", job->user);
     if (rc==-8) syslog(LOG_ERR,"can't setgid %s: %s", job->user, strerror(errno));
     if (rc==-9) syslog(LOG_ERR,"can't initgroups %s: %s", job->user, strerror(errno));
     if (rc==-10) syslog(LOG_ERR,"can't setuid %s: %s", job->user, strerror(errno));

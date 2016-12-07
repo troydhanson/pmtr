@@ -284,6 +284,7 @@ pmtr manually. These are the command line options that pmtr accepts.
 |==========================================================================
 | -h        | show help    
 | -F        | stay in foreground 
+| -I        | jobs inherit stdio/stdout/stderr from pmtr by default
 | -c <file> | specify configuration file
 | -t        | test syntax (parse config file and exit)
 | -v        | verbose logging (repeatable), -vv shows parsing

@@ -20,6 +20,7 @@ typedef struct {
   int verbose;
   int foreground;
   int test_only;
+  int inherit_stdout; /* if jobs should inherit pmtr's stderr/stdout */
   pid_t dm_pid;       /* pid of dependency monitor sub process */
   UT_array *jobs;
   time_t next_alarm;
