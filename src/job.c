@@ -16,7 +16,6 @@
 #include <pwd.h>
 
 //#define DEBUG 1
-#define PMTR_MAX_USER 100
 
 #include "utarray.h"
 #include "pmtr.h"

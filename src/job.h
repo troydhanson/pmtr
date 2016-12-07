@@ -4,6 +4,7 @@
 #include <sys/types.h>
 #include <sys/resource.h>
 #include <unistd.h>
+#include <stdarg.h>
 #include <time.h>
 #include <signal.h>
 
@@ -15,6 +16,7 @@
 
 /* exit status that a job can use to indicate it does not want to be respawned */
 #define PMTR_NO_RESTART 33
+#define PMTR_MAX_USER 100
 
 /* signals that we'll allow (unblock) during sigsuspend */
 static const int sigs[] = {SIGHUP,SIGCHLD,SIGTERM,SIGINT,SIGQUIT,
@@ -95,7 +97,12 @@ void push_job(parse_t *ps);
 job_t *get_job_by_pid(UT_array *jobs, pid_t pid);
 job_t *get_job_by_name(UT_array *jobs, char *name);
 int job_cmp(job_t *a, job_t *b);
+void job_fin(job_t *job);
+void job_cpy(job_t *dst, const job_t *src);
+void collect_jobs(pmtr_t *cfg, UT_string *sm);
 void set_name(parse_t *ps, char *name);
+void set_ulimit(parse_t *ps, char *rname, char *value_a);
+void set_bounce(parse_t *ps, char *timespec);
 char *unquote(char *str);
 void alarm_within(pmtr_t *cfg, int sec);
 int get_tok(char *c_orig, char **c, size_t *bsz, size_t *toksz, int *line);
@@ -111,6 +118,7 @@ void set_wait(parse_t *ps);
 void set_once(parse_t *ps);
 void set_cmd(parse_t *ps, char *s);
 char *fpath(job_t *job, char *file);
+pid_t dep_monitor(char *file);
 
 
 #endif /* _JOB_H_ */
