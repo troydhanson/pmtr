@@ -21,7 +21,7 @@ I wrote pmtr with a few goals in mind:
 * to insulate myself from the underlying init system
 * to exist under (not to replace) the underlying init system
 * to be a tiny C program 
-* to consume no resources
+* to consume few resources
 * to have few features
 * no dependencies
 
