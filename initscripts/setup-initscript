@@ -24,6 +24,7 @@ use File::Basename;
 sub usage {
   print STDERR "usage: $0 [options]\n";
   print STDERR "options: --quiet\n";
+  print STDERR "         --auto\n";
   print STDERR "         --dry-run\n";
   print STDERR "         --install-service <auto|path-to-file>\n";
   print STDERR "         --enable-service\n";
@@ -34,6 +35,7 @@ sub usage {
   exit -1;
 }
 
+our $auto = 0;
 our $dry_run = 0;
 our $start = 0;
 our $enable = 0;
@@ -88,6 +90,7 @@ $cfg{debian}{mode}=    0755;
 
 usage unless GetOptions( "quiet"             => \$quiet,
                          "verbose+"          => \$verbose,
+                         "auto"              => \$auto,
                          "dry-run"           => \$dry_run,
                          "bindir=s"          => \$bindir,
                          "initsys=s"         => \$initsys,
@@ -99,6 +102,12 @@ usage unless GetOptions( "quiet"             => \$quiet,
                          "no-color"          => \$nocolor,
                          "help"              => \$help);
 usage if $help;
+# auto is a shortcut for --install-service auto --enable-service --start-service
+if ($auto) {
+  $install="auto";
+  $enable=1;
+  $start=1;
+}
 usage unless ($install or $start or $stop or $uninstall);
 
 #die "Please run as root. Exiting.\n" unless ($dry_run or ($> == 0));
