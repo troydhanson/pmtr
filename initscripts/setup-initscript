@@ -23,13 +23,14 @@ use File::Basename;
 
 sub usage {
   print STDERR "usage: $0 [options]\n";
-  print STDERR "options: --verbose\n";
+  print STDERR "options: --quiet\n";
   print STDERR "         --dry-run\n";
   print STDERR "         --install-service <auto|path-to-file>\n";
   print STDERR "         --enable-service\n";
   print STDERR "         --start-service\n";
   print STDERR "         --initsys <auto|systemd|sysvinit|debian|upstart|rhel6>\n";
   print STDERR "         --bindir <auto|dir> (e.g. /usr/bin)\n";
+  print STDERR "         --no-color\n";
   exit -1;
 }
 
@@ -40,9 +41,14 @@ our $stop = 0;
 our $install;
 our $uninstall = 0;
 our $verbose = 0;
+our $quiet = 0;
 our $initsys = "auto";
 our $bindir = "auto";
 our $help = 0;
+our $nocolor = 0;
+our $bold="";
+our $normal="";
+our $green="";
 
 my %cfg;
 $cfg{systemd}{enable} = "systemctl enable pmtr";
@@ -80,7 +86,8 @@ $cfg{debian}{stop}   = "/usr/sbin/service pmtr stop";
 $cfg{debian}{service} = "/etc/init.d/pmtr";
 $cfg{debian}{mode}=    0755;
 
-usage unless GetOptions( "verbose+"          => \$verbose,
+usage unless GetOptions( "quiet"             => \$quiet,
+                         "verbose+"          => \$verbose,
                          "dry-run"           => \$dry_run,
                          "bindir=s"          => \$bindir,
                          "initsys=s"         => \$initsys,
@@ -89,11 +96,29 @@ usage unless GetOptions( "verbose+"          => \$verbose,
                          "stop-service"      => \$stop,
                          "install-service=s" => \$install,
                          "uninstall-service" => \$uninstall,
+                         "no-color"          => \$nocolor,
                          "help"              => \$help);
 usage if $help;
 usage unless ($install or $start or $stop or $uninstall);
 
 #die "Please run as root. Exiting.\n" unless ($dry_run or ($> == 0));
+
+sub check_colors {
+   `tput colors 2>/dev/null`;
+   $nocolor=1 if $?;
+   return if $nocolor;
+	
+   $bold=`tput bold`;
+   $normal=`tput sgr0`;
+   $green=`tput setaf 2`;
+}
+
+# bold/colorize input string if colors enabled
+sub emit {
+  my $label = shift;
+  my $in = shift;
+  printf("%-20s: %s\n", $label, "${bold}${green}${in}${normal}") unless $quiet;
+}
 
 sub guess_bindir {
   my @dirs = qw(/bin /usr/bin /sbin /usr/sbin /usr/local/bin);
@@ -106,6 +131,11 @@ sub guess_bindir {
   die "can't locate pmtr executable: try using --bindir\n";
 }
 
+sub locate_bindir {
+  guess_bindir if $bindir eq "auto";
+  emit("pmtr", "${bindir}/pmtr");
+}
+
 sub guess_initsystem {
   my $target = readlink "/sbin/init";
 
@@ -115,7 +145,7 @@ sub guess_initsystem {
   elsif (-f "/etc/debian_version")                  { $initsys = "debian";  }
   elsif (-d "/etc/init.d")                          { $initsys = "sysvinit";}
   else { die "can't guess initsystem"; }
-  print "Initsystem: $initsys\n" if $verbose;
+  emit("initsystem", ${initsys});
 }
 
 sub install_service {
@@ -143,12 +173,14 @@ sub install_service {
 
   my $dir = dirname($path);
   $cmd = "install -d $dir";
+  emit("services", $dir);
   die "error creating $dir: $!" if system $cmd;
 
   open SCRIPT, ">$path" or die "can't open $path: $!\n";
   print SCRIPT $script;
   close SCRIPT;
   chmod $cfg{$initsys}{mode}, $path;
+  emit("initscript", $path);
 
 }
 
@@ -162,7 +194,7 @@ sub enable_service {
 
   # enable the new service
   $cmd = $cfg{$initsys}{enable};
-  print "$cmd\n" if $verbose;
+  emit("enabling", $cmd);
   die "error enabling iniscript" if system $cmd;
 }
 
@@ -178,10 +210,11 @@ sub uninstall_service {
 
   # disable the service
   $cmd = $cfg{$initsys}{disable};
-  print "$cmd\n" if $verbose;
+  emit("disabling", $cmd);
   die "error disabling iniscript" if system $cmd;
 
   # remove its script
+  emit("unlinking", $cfg{$initsys}{service});
   unlink $cfg{$initsys}{service} or 
      die "can't unlink $cfg{$initsys}{service}: $!\n";
 
@@ -193,7 +226,7 @@ sub start_service {
     print STDERR "dry-run: run $cmd\n";
     return;
   }
-  print "$cmd\n" if $verbose;
+  emit("starting service", $cmd);
   die "error starting service" if system $cmd;
 }
 
@@ -203,12 +236,13 @@ sub stop_service {
     print STDERR "dry-run: run $cmd\n";
     return;
   }
-  print "$cmd\n" if $verbose;
+  emit("stopping service", $cmd);
   die "error stopping service" if system $cmd;
 }
 
+check_colors unless $nocolor;
 guess_initsystem if $initsys eq "auto";
-guess_bindir if $bindir eq "auto";
+locate_bindir;
 stop_service if $stop;
 install_service if $install;
 enable_service if $enable;
