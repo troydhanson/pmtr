@@ -2,247 +2,53 @@ Guide to pmtr
 =============
 Troy D. Hanson <tdh@tkhanson.net>
 
+Pmtr is one of my http://troydhanson.github.io/[many C projects]. 
 Back to the https://github.com/troydhanson/pmtr[pmtr Github page].
 
-To run services on Linux systems one typically writes an initscript. The init
-mechanism, and the syntax of initscripts, vary depending on the distribution.
+.About
+
+To run services on a Linux host, one traditionally writes an initscript. The
+init mechanism, and the syntax of initscripts, varies considerably across Linux
+distributions.  Many Linux flavors are settling on systemd now, but sysvinit, and
+upstart are still part of the landscape. The rise of supervisory daemons
+reflect how locally-developed software is often deployed. The supervisor runs
+the local software (maybe in a container). I made pmtr as a simple supervisory
+daemon for my own needs. 
+
+I wrote pmtr with a few goals in mind:
+
+* to have one configuration file listing _my_ processes to run
+* to insulate myself from the underlying init system
+* to exist under (not to replace) the underlying init system
+* to be a tiny C program 
+* to consume no resources
+* to have few features
+* no dependencies
+
+To have few features makes it more predictable (stable memory usage, etc). I
+have used it since 2011 across many Linux platforms (x86 servers, ARM boards)
+to manage the cooperating processes that make up my appliances and gadgets.
+
+Pmtr is for Linux only, and is link:LICENSE.txt[MIT] licensed.
 
 pmtr
 ----
-
-Pmtr is one of my http://troydhanson.github.io/[many C projects]. I wrote it
-for sensors and appliances that have lots of related jobs that are easier to
-manage through one configuration file. Also, to insulate the developer from
-the underlying init system.
-
-I wrote 'pmtr' to complement rather than replace the underlying init system.
-It runs under systemd, sysvinit or upstart that already exists on a Linux host.
-Its configuration file `/etc/pmtr.conf` lists the services it should start.
-It starts them at boot, and restarts them as needed.  Pmtr is written in C,
-Linux only, and is link:LICENSE.txt[MIT] licensed.
 
 [[platforms]]
 Platforms
 ~~~~~~~~~
 
-Pmtr has been used on:
+Pmtr runs on these flavors of Linux and probably more:
 
-* Ubuntu (12, 13, 14, 15, 16)
-* CentOS/RHEL (5, 6, 7)
-* Raspberry Pi (Raspbian)
+* Ubuntu 12-16
+* CentOS/RHEL 5-7
+* Raspbian on Raspberry Pi
 * Debian 
 * Arch
-* Yocto https://github.com/troydhanson/meta-pmtr[(layer)]
+* Yocto https://github.com/troydhanson/meta-pmtr[layer]
 
-pmtr.conf
-~~~~~~~~~
-
-The pmtr configuration is, by default, `/etc/pmtr.conf`. Here's an example:
-
-./etc/pmtr.conf
---------------------------------------------------------
-job {
-  name set-audio-source
-  cmd /usr/bin/Record_from_lineIn.sh
-  wait
-  once
-}
-
-job {
-  name send-audio-to-icecast
-  cmd /usr/bin/darkice -c /etc/darkice.cfg
-  depends {
-      /etc/darkice.cfg
-  }
-}
-
-job {
-  name tunnel
-  cmd /usr/bin/ssh -i key -TNL 5901:127.0.0.1:5901 192.168.0.1
-}
-
---------------------------------------------------------
-
-Here pmtr runs three services (jobs). The first one is a one-time, setup job
-that pmtr won't restart. The next two are a Darkice audio streamer and a
-persistent SSH tunnel.  There are many <<config_options,pmtr configuration
-options>>.  The minimal requirement is that each job has a name and a cmd.
-
-.No shell expansion or $PATH searching
-
-There is no shell interpretation of the command or its arguments. There is no
-searching for the command in $PATH. Use absolute paths on commands.  Pmtr is
-a C program and it starts these jobs directly using `execv`. 
-
-.One time setup jobs (wait and once)
-
-As a concession to real life, pmtr has basic support for one-time setup jobs.
-The first job in the example above uses `once` and `wait` to prevent pmtr
-from restarting the job, and to delay starting the subsequent jobs until the
-setup job has finished.
-
-.depends
-
-In the example above, darkice depends on `/etc/darkice.cfg`. This makes pmtr 
-restart darkice whenever darkice.cfg is edited. Pmtr watches for these file
-events efficiently using inotify. It restarts darkice if the content (thus, the
-hash) of darkice.cfg changes. A simple open/close of darkice.cfg with no changes
-will not restart the job. A job can depend on multiple files, listed one per
-line.
-
-.Quoting
-
-Double-quotes make a single argument from the quoted content. Tip: this can be
-useful, in a pinch, to pass a script (as a quoted string) into a shell. 
-
-  cmd /bin/bash -c "killall Xvnc; vncserver :1"
-
-.General syntax 
-
-* Each job is in a curly-brace delimited block.  
-* The order of options inside does not matter. 
-* Only the `name` and `cmd` are required.
-* Indentation is optional. 
-* Blank lines are ok.  
-* Comments start with `#` and must be on their own line.
-
-.General job requirements
-
-* Processes that run under pmtr should,
-** stay in the foreground
-** exit on SIGTERM or SIGKILL 
-** clean up their own sub-processes
-
-Here is another job with many options.
-
-.Another example job 
----------------------------------------------------
-# example of a process with lots of options
-job {
-  name generate-data
-  dir /home/discovery
-  cmd /usr/bin/perl gen.pl --remotes /tmp/a /tmp/b
-  depends {
-    /tmp/a
-    /tmp/b
-  }
-  user daemon
-  env PERLLIB=/home/discovery/lib
-  ulimit -n infinity
-  bounce every 1d
-  out /var/log/gen.log
-  err /var/log/gen.err
-}
-
----------------------------------------------------
-
-.bounce every
-
-Among the options shown job above is `bounce every 1d`. (The `d` is for day).
-This options is for scripts or other processes that might benefit from a
-periodic restart. It also takes hour or minute units e.g. `2h` or `5m`.
-
-.ulimit
-
-The job above can open infinite file descriptors (well, it can try) because
-`ulimit -n infinite` allows it. The Linux kernel enforces the process ulimits.
-Many limits can be set this way. Type `ulimit -a` to see them.
-
-.stdout and stderr
-
-As shown the stdout and stderr can be redirected to files. Otherwise they
-are sent to `/dev/null`.
-
-.Environment variables
-
-Environment variables can be set for a job by lines of the form `env VAR=value`.
-
-.Edits take effect immediately
-
-When you edit and save `pmtr.conf`, pmtr applies the changes immediately.
-
- * A newly-added job gets started.
- * A deleted job is terminated.
- * A changed job is restarted with its new configuration.
-
-.Testing the configuration
-
-You can run `pmtr -t` to check the config file syntax and report any errors. 
-This checks the file without running any jobs.  In normal background operation,
-pmtr logs syntax errors to syslog.
-
-Status and control 
-~~~~~~~~~~~~~~~~~~
-
-To start, stop or get status of pmtr, use the host system management commands.
-When pmtr starts, it starts all its jobs; when pmtr stops, it signals its
-jobs to terminate, then exits itself.
-
-.On a systemd-based host
-
-  systemctl start pmtr 
-  systemctl stop pmtr 
-  systemctl status pmtr 
-
-.'systemctl status pmtr' example
-----------------------------------------------------------------------------
-% systemctl status pmtr
-● pmtr.service - pmtr process manager
-   Loaded: loaded (/lib/systemd/system/pmtr.service; enabled)
-   Active: active (running) since Mon 2015-11-23 02:18:58 UTC; 12min ago
-     Docs: http://troydhanson.github.io/pmtr
- Main PID: 1463 (pmtr)
-   CGroup: /system.slice/pmtr.service
-           ├─1463 /usr/bin/pmtr -F -c /etc/pmtr.conf
-           ├─1556 /usr/bin/darkice -c /etc/darkice.cfg
-           └─1557 /usr/bin/ssh -i key -TNL 5901:127.0.0.1:5901 192.168.0.1
-----------------------------------------------------------------------------
-
-.On many other systems
-
-  service pmtr status
-  service pmtr start
-  service pmtr stop
-
-Logs
-~~~~
-
-Pmtr logs to syslog. Typically the host puts them in `/var/log/syslog` or
-`/var/log/messages`.  Look there for messages about pmtr starting or
-restarting jobs. Any errors in parsing `pmtr.conf` are logged. It is 
-recommended to check the logs after any configuration changes.
-
-.On systemd
-
-On 'systemd'-based hosts, use `journalctl -u pmtr` to see pmtr logs.
-
-Job termination and restart
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.Pmtr-induced 
-
-To terminate a job, pmtr sends SIGTERM to it, then SIGKILL shortly afterward.
-(That is, if it's still running). Pmtr terminates a job when that job is
-deleted, disabled, needs to be restarted due to changes to its command or other
-options, is being bounced, or because pmtr itself is shutting down.
-
-.Externally-induced
-
-If a job terminates by itself, when pmtr did not signal it to exit, (and the
-job does not have the `once` option), pmtr restarts it. However, if the job
-died within 10 seconds of starting, pmtr waits 10 seconds to restart it.
-
-.Restart management
-
-This has two benefits: a job that is waiting for some resource (say, to connect
-to a remote server that is temporarily offline) can exit, counting on being
-restarted periodically. It does not need its own retry logic. Secondly, a job
-that is misconfigured (say, with a typo in its command string, causing it to
-die immediately) has little impact on the host because pmtr only tries to
-restart it every 10 seconds. Restarts are visible in the log.
-
-Installation
-~~~~~~~~~~~~
+Build & Install
+~~~~~~~~~~~~~~~
 
 .Download
 
@@ -259,36 +65,213 @@ Installation
 
     sudo make install
     sudo touch /etc/pmtr.conf
-
-This installs the executable `/usr/bin/pmtr` and the configuration file
-`/etc/pmtr.conf`.
-
-.Initscript
-
-To install an initscript or systemd service file to run pmtr at startup, a
-setup script is included.
-
     cd initscripts
-    sudo ./setup-initscript --install-service auto --bindir /usr/bin \
-       --enable-service --start-service 
+    sudo ./setup-initscript --auto
 
-Note that `--bindir` should match the one given to "configure" in the build
-step.  The `bindir` is needed to set the pmtr executable path in the service
-file.
+pmtr.conf
+~~~~~~~~~
 
-Run `./setup-initscript -h` to see its full set of options.
+The pmtr configuration is, by default, `/etc/pmtr.conf`. Note that `/etc`
+comes from the `--sysconfidir` option to `configure`. If you omit that 
+option to configure, it may default to `/usr/local/etc` instead.
 
-.User-specified paths
+.General job requirements
 
-The script can be used to install a service definition in a specific place,
-using a specific init system, rather than auto-detecting it. For example on
-a 'systemd' host this could be used:
+Processes that run under pmtr should stay in the foreground, exit on SIGTERM or
+SIGKILL, and clean up after their own sub-processes when exiting.
 
-    sudo ./setup-initscript --install-service /etc/systemd/system \
-       --initsys systemd --bindir /usr/bin
+.Example /etc/pmtr.conf
+--------------------------------------------------------
+job {
+  name capture
+  dir /mnt/archive
+  cmd /usr/sbin/tcpdump -i eth0 -s 0 -G 10 -w %Y%m%d%H%M%S.pcap
+}
 
-This usage stops short of enabling or starting the service since it omits
-`--enable-service` and `--start-service`.
+job {
+  name tunnel
+  cmd /usr/bin/ssh -i key -TNL 5901:127.0.0.1:5901 192.168.0.1
+}
+
+--------------------------------------------------------
+
+The minimal requirement is that each job has a `name` and a `cmd`.  The order
+of options inside does not matter.  Indentation is optional.  Blank lines are
+ok.  Comment lines start with `#`.  
+
+These options may appear in a job definition.
+
+.Job options
+[width="90%",cols="20m,50",grid="none",options="header"]
+|===============================================================================
+|option         | argument
+|name           | descriptive job name used for logging - must be unique
+|cmd            | executable (fully-qualified) and any arguments 
+|dir            | working directory (fully qualified) to run the process in
+|out            | send stdout to this file
+|err            | send stderr to this file
+|in             | hook stdin to this file
+|env            | environment variable to set (repeatable)
+|user           | unix username under whose id to run the process 
+|ulimit         | process ulimits
+|bounce every   | a time interval to restart the process
+|depends        | files to watch, any changes induce the job to restart 
+|disable        | disables the job 
+|wait           | (special) wait for the job to finish before going on
+|once           | (special) do not restart the job
+|===============================================================================
+
+More details on each option follows.
+
+cmd
+^^^
+* Specifies the *absolute path* to the executable (there is no $PATH searching!)
+* `cmd` may have arguments (like `cmd /usr/bin/python rest.py`)
+* You can use double-quotes in arguments (see example below)
+* `cmd` does no shell expansion: no wildcards, backticks, variables, etc. 
+* If you need shell features in your command, wrap it with a shell script.
+
+Tip: you can invoke shell features right inside a command in this way:
+
+  job {
+    name py-server
+    dir /home/py
+    cmd /bin/bash -c "ifconfig eth1 up; sleep 5; exec python server.py"
+  }
+
+env
+^^^
+* Use `env` to push an environment variable into a job, e.g. `env DEBUG=1`.
+* Use `env` repeatedly to set multiple environment variables.
+
+disable
+^^^^^^^
+* `disable` on a line by itself is like commenting the job out
+
+out, err, in
+^^^^^^^^^^^^
+* Use `out`, `err`, and `in` to attach stdout, stderr or stdin to a file.
+* The stdout, stderr and stdin default to `/dev/null`.
+
+user
+^^^^
+* `user` is the unix username under whose uid/gid the process runs
+* it defaults to _root_ (if pmtr is running as root, as it normally is)
+
+depends
+^^^^^^^
+* Use a `depends` block to specify files, one per line, that the job depends on.
+* pmtr watches the dependencies, and restarts the job if they change
+
+    depends {
+      /etc/ssh/sshd_config
+      /root/.ssh/id_rsa.pub
+    }
+
+bounce every
+^^^^^^^^^^^^
+* The `bounce every` option restarts the job every so often. 
+* It's for jobs that don't behave well as long-running processes. 
+* It takes a number and unit, like `5m` to restart a job every five minutes. 
+* The units are `smhd`- (s)econds, (m)inutes, (h)ours or (d)ays. 
+* The exact timing of the restart is approximate.
+
+ulimit
+^^^^^^
+* Use `ulimit` to modify the kernel-enforced resource limits for the job.
+* It takes a flag denoting which limit to set, and a value, e.g., `ulimit -n 30`.  
+* The values are all numeric or the keyword `infinity`.
+* To see the current kernel limits on a process, run `cat /proc/<pid>/limits`.
+* pmtr sets both the "hard" and "soft" ulimit to the same value.
+* If there is an error setting the ulimits, it's logged to syslog.
+
+For info on what ulimits are available, you can run these commands in `bash`:
+
+* `ulimit -a` to list flags, and the values in your shell
+* `help ulimit` for more information about the ulimits
+* `man prlimit` for more technical information and the units
+
+wait/once
+^^^^^^^^^
+* Pmtr has rudimentary support for "one-time" setup jobs using `wait` and `once`.
+* `wait` pauses startup of subsequent jobs until this one finishes
+* `once` tells pmtr not to restart this job upon exit
+
+    job {
+      name initial-setup
+      cmd /bin/mkdir -p /dev/shm/work
+      wait
+      once
+    }
+
+Operational notes
+-----------------
+
+.Edits take effect immediately
+
+When you edit and save `pmtr.conf`, pmtr applies the changes immediately. (It
+watches the file using `inotify`).
+
+ * A newly-added job gets started.
+ * A deleted job is terminated.
+ * A changed job is restarted with its new configuration.
+
+.Testing the configuration
+
+You can run `pmtr -t` to check the config file syntax and report any errors. 
+This checks the file without running any jobs.  
+
+Status and control 
+~~~~~~~~~~~~~~~~~~
+
+To start, stop or get status of pmtr, use the host system management commands.
+
+.Management on a systemd-based host
+
+  systemctl start pmtr 
+  systemctl stop pmtr 
+  systemctl status pmtr 
+
+.Management on most other systems
+
+  service pmtr status
+  service pmtr start
+  service pmtr stop
+
+When pmtr is started, it starts all the jobs in `pmtr.conf`, likewise, pmtr 
+terminates them when it is stopped.
+
+Logs
+~~~~
+
+Pmtr logs typically go to `/var/log/syslog` or `/var/log/messages`, according
+to the host `syslog` configuration.  It is recommended to check the logs after
+any `pmtr.conf` changes.  Any errors in parsing `pmtr.conf` are logged. Job
+starts, exits and restarts are logged.  On systemd-based hosts, you can use
+`journalctl -u pmtr` to see pmtr logs.
+
+Job termination and restart
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.Jobs that exit on their own
+
+If a job terminates by itself, when pmtr did not signal it to exit, (and the
+job does not have the `once` option), pmtr restarts it. However, if the job
+exited within 10 seconds of when it started, pmtr waits 10 seconds to restart it.
+
+.Restart management
+
+This has two benefits: a job that is waiting for some resource- say, to connect
+to a remote server that is still booting up- can just exit instead of retrying.
+It can expect pmtr to restart it 10 seconds later when it can try again.
+The 10-second wait also prevents fork bombs (rapid process cycling).
+
+.How pmtr kills a job
+
+Pmtr terminates a job when it is deleted, disabled, or altered in `pmtr.conf`,
+or is being bounced due to the `bounce every` option; or because pmtr itself is
+being shut down.  To terminate a job, pmtr sends SIGTERM to it, then SIGKILL
+shortly afterward, if it's still running. 
 
 Command line options
 ~~~~~~~~~~~~~~~~~~~~
@@ -307,99 +290,12 @@ pmtr manually. These are the command line options that pmtr accepts.
 | -p <file> | make pidfile
 |==========================================================================
 
-[[config_options]]
-Appendix A: Job options
-~~~~~~~~~~~~~~~~~~~~~~~
+UDP control
+~~~~~~~~~~~
 
-These options may appear in a job definition.
+NOTE: This feature is disabled by default.
 
-[[options]]
-[width="90%",cols="20m,50",grid="none",options="header"]
-|===============================================================================
-|option         | argument
-|name           | descriptive job name used for logging - must be unique
-|cmd            | executable (fully-qualified) and any arguments 
-|dir            | working directory (fully qualified) to run the process in
-|out            | send stdout to this file
-|err            | send stderr to this file
-|in             | hook stdin to this file
-|env            | environment variable setting `VAR=VALUE` (repeatable)
-|user           | unix username under whose id to run the process 
-|ulimit         | a flag and value, or a curly-brace delimited list of them
-|bounce every   | a time interval like 5m (five minutes) - units are `smhd`
-|depends        | a curly-brace delimited list of files, one per line
-|disable        | this keyword disables the job 
-|wait           | (special) wait for the job to finish before going on
-|once           | (special) do not restart the job
-|===============================================================================
-
-More details on each option follows.
-
-cmd
-^^^
-* The executable named in the `cmd` must have its executable-bit set. 
-* The `cmd` may include trailing arguments e.g. `cmd /bin/node server.js`.  
-* The `cmd` may contain double-quoted arguments e.g. `cmd /bin/echo "hello world"`
-* The `cmd` does no shell expansion: no wildcards, backticks, variables, etc. 
-* If you need shell features in your command, wrap it with a shell script. 
-
-env
-^^^
-* Use `env` to push an environment variable into a job, e.g. `env TMPDIR=/tmp`.
-* Use `env` repeatedly to set multiple environment variables.
-
-disable
-^^^^^^^
-* `disable` on a line by itself is like commenting the job out
-
-out, err, in
-^^^^^^^^^^^^
-* Use `out`, `err`, and `in` to attach stdout, stderr or stdin to a file.
-* The stdout, stderr and stdin default to `/dev/null`.
-
-user
-^^^^
-* The `user` option is the unix username that should be the process owner.
-* The `user` defaults to root if pmtr is running as root (it normally is)
-
-depends
-^^^^^^^
-* Use a `depends` block to specify files, one per line, that the job depends on.
-* If the content of any of the dependencies changes, pmtr restarts the job.
-
-bounce every
-^^^^^^^^^^^^
-* The `bounce every` option restarts the job every so often. 
-* It's intended for jobs that don't behave well as long-running processes. 
-* It takes a number and unit, like `5m` to restart a job every five minutes. 
-* The units are `smhd`- (s)econds, (m)inutes, (h)ours or (d)ays. 
-* The exact timing of the restart is approximate.
-
-ulimit
-^^^^^^
-* Use `ulimit` to modify the kernel-enforced resource limits for the job.
-* It takes a flag denoting which limit to set, and a value, e.g., `ulimit -n 30`.  
-* In bash, type `ulimit -a` in bash to list flags, and the values in your shell;
-* In bash, type `help ulimit` for more information about the ulimits;
-* In bash, type `man prlimit` to see a more technical description and the units.
-* The values are all numeric or the keyword `infinity`.
-* To see the current kernel limits on a process, run `cat /proc/<pid>/limits`.
-* pmtr sets both the "hard" and "soft" ulimit to the same value.
-* If there is an error setting the ulimits, it's logged to syslog.
-
-wait/once
-^^^^^^^^^
-* Pmtr has basic support for one-time setup jobs using `wait` and `once`.
-* They are used together in setup jobs at the top of `pmtr.conf`
-* `once` prevents pmtr from restarting the job when it exits
-* `wait` delays subsequent jobs from starting until this one exits
-
-Appendix B: UDP control
-~~~~~~~~~~~~~~~~~~~~~~~
-
-NOTE: These features are disabled by default.
-
-These configuration options may appear in `pmtr.conf` at the global scope.
+These options may appear in `pmtr.conf` at the global scope.
 
   report to udp://127.0.0.1:9999
   listen on udp://0.0.0.0:10000
