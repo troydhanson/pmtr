@@ -119,6 +119,7 @@ void set_once(parse_t *ps);
 void set_cmd(parse_t *ps, char *s);
 char *fpath(job_t *job, char *file);
 pid_t dep_monitor(char *file);
+int instantiate_cfg_file(pmtr_t *cfg);
 
 
 #endif /* _JOB_H_ */

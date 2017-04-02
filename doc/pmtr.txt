@@ -42,9 +42,11 @@ Pmtr runs on these flavors of Linux and probably more:
 
 * Ubuntu 12-16
 * CentOS/RHEL 5-7
-* Raspbian on Raspberry Pi
+* Amazon Linux (AMI)
 * Debian 
 * Arch
+* Raspberry Pi (Raspbian)
+* Beaglebone Black (Debian)
 * Yocto https://github.com/troydhanson/meta-pmtr[layer]
 
 Build & Install

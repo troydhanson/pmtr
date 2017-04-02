@@ -152,6 +152,9 @@ sub guess_initsystem {
   elsif (-d "/usr/lib/upstart")                     { $initsys = "upstart"; }
   elsif (-f "/etc/redhat-release")                  { $initsys = "rhel6";   }
   elsif (-f "/etc/debian_version")                  { $initsys = "debian";  }
+  # Amazon Linux AMI (2016.09) uses rhel6 init
+  elsif ((-f "/etc/system-release") and 
+         (-x "/sbin/chkconfig"))                    { $initsys = "rhel6";}
   elsif (-d "/etc/init.d")                          { $initsys = "sysvinit";}
   else { die "can't guess initsystem"; }
   emit("initsystem", ${initsys});

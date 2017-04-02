@@ -677,3 +677,27 @@ void alarm_within(pmtr_t *cfg, int sec) {
   alarm(sec);
 }
 
+/* if the config file needs to be made, create a blank one */
+int instantiate_cfg_file(pmtr_t *cfg) {
+  int rc = -1, sr, cs;
+  struct stat s;
+
+  /* does it exist? */
+  sr = stat(cfg->file, &s);
+  if (sr == 0) { rc = 0; goto done; } /* yes, done */
+
+  /* try to create it */
+  syslog(LOG_INFO,"creating empty %s", cfg->file);
+  cs = open(cfg->file, O_WRONLY|O_CREAT|O_EXCL, 0600);
+  if (cs < 0) {
+    syslog(LOG_ERR,"can't create %s: %s", cfg->file, strerror(errno));
+    goto done;
+  } else {
+    close(cs);
+  }
+
+  rc = 0;
+
+ done:
+  return rc;
+}

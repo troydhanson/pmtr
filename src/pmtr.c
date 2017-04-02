@@ -223,6 +223,7 @@ int main (int argc, char *argv[]) {
 
   /* parse config file. we blocked signals above because we can get SIGIO 
    * during parsing if we open UDP listeners and get any datagrams */
+  if (instantiate_cfg_file(&cfg) == -1) goto final;
   if (parse_jobs(&cfg, em) == -1) {
     syslog(LOG_ERR,"parse failed: %s", utstring_body(em));
     goto final;
