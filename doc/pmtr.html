@@ -778,28 +778,25 @@ asciidoc.install(2);
 <div class="sectionbody">
 <div class="paragraph"><p>Pmtr is one of my <a href="http://troydhanson.github.io/">many C projects</a>.
 Back to the <a href="https://github.com/troydhanson/pmtr">pmtr Github page</a>.</p></div>
-<div class="paragraph"><div class="title">About</div><p>To run services on a Linux host, one traditionally writes an initscript. The
-init mechanism, and the syntax of initscripts, varies considerably across Linux
-distributions.  Many Linux flavors are settling on systemd now, but sysvinit, and
-upstart are still part of the landscape. The rise of supervisory daemons
-reflect how locally-developed software is often deployed. The supervisor runs
-the local software (maybe in a container). I made pmtr as a simple supervisory
-daemon for my own needs.</p></div>
-<div class="paragraph"><p>I wrote pmtr with a few goals in mind:</p></div>
+<div class="paragraph"><div class="title">About</div><p>I wrote pmtr as a simple supervisory daemon for my own needs.  Pmtr runs under
+systemd as well as other init mechanisms (sysvinit, upstart, etc), or it can run
+as process 1 inside a container.  When installing on many flavors of Linux, it
+can auto-detect the underlying init system and set itself up to start at boot
+appropriately. I wrote pmtr with a few goals in mind:</p></div>
 <div class="ulist"><ul>
 <li>
 <p>
-to have one configuration file listing <em>my</em> processes to run
-</p>
-</li>
-<li>
-<p>
-to insulate myself from the underlying init system
+to have one configuration file listing all processes to run
 </p>
 </li>
 <li>
 <p>
 to exist under (not to replace) the underlying init system
+</p>
+</li>
+<li>
+<p>
+to insulate myself from the underlying init system
 </p>
 </li>
 <li>
@@ -823,10 +820,32 @@ no dependencies
 </p>
 </li>
 </ul></div>
-<div class="paragraph"><p>To have few features makes it more predictable (stable memory usage, etc). I
-have used it since 2011 across many Linux platforms (x86 servers, ARM boards)
-to manage the cooperating processes that make up my appliances and gadgets.</p></div>
-<div class="paragraph"><p>Pmtr is for Linux only, and is <a href="LICENSE.txt">MIT</a> licensed.</p></div>
+<div class="paragraph"><p>I use pmtr to abstract away the underlying init system, listing my processes
+inside the <code>pmtr.conf</code> configuration file. Only pmtr itself is managed as a
+system service.  Pmtr is for Linux only, and is <a href="LICENSE.txt">MIT</a> licensed.</p></div>
+<div class="listingblock">
+<div class="title">Example /etc/pmtr.conf</div>
+<div class="content">
+<pre><code>job {
+  name tunnel
+  cmd /usr/bin/ssh -i key -TNL 5901:127.0.0.1:5901 192.168.0.1
+}
+
+job {
+  name capture
+  dir /data
+  cmd /usr/sbin/tcpdump -i eth0 -s 0 -G 10 -w %Y%m%d%H%M%S.pcap
+}</code></pre>
+</div></div>
+<div class="paragraph"><p>There are options to customize each job (process) including where to send its
+stdout and stderr streams (default is to syslog them), its ulimits, user id,
+environment variables, etc, as documented below. A job that exits gets restarted
+and if it exits too quickly (less than 10 seconds after it started), pmtr delays
+its restart slightly to avoid rapid process cycling.  Processes can often simply
+die on error conditions (such as failure to connect to a network server) and
+rely on pmtr to restart them, rather than embedding retry logic in each process.
+If the operator edits <code>pmtr.conf</code> and saves the file, the changes take effect
+immediately. There is no need to tell pmtr to reload its configuration file.</p></div>
 </div>
 </div>
 <div class="sect1">
@@ -909,23 +928,9 @@ comes from the <code>--sysconfidir</code> option to <code>configure</code>. If y
 option to configure, it may default to <code>/usr/local/etc</code> instead.</p></div>
 <div class="paragraph"><div class="title">General job requirements</div><p>Processes that run under pmtr should stay in the foreground, exit on SIGTERM or
 SIGKILL, and clean up after their own sub-processes when exiting.</p></div>
-<div class="listingblock">
-<div class="title">Example /etc/pmtr.conf</div>
-<div class="content">
-<pre><code>job {
-  name capture
-  dir /mnt/archive
-  cmd /usr/sbin/tcpdump -i eth0 -s 0 -G 10 -w %Y%m%d%H%M%S.pcap
-}
-
-job {
-  name tunnel
-  cmd /usr/bin/ssh -i key -TNL 5901:127.0.0.1:5901 192.168.0.1
-}</code></pre>
-</div></div>
-<div class="paragraph"><p>The minimal requirement is that each job has a <code>name</code> and a <code>cmd</code>.  The order
-of options inside does not matter.  Indentation is optional.  Blank lines are
-ok.  Comment lines start with <code>#</code>.</p></div>
+<div class="paragraph"><p>The minimal requirement is that each job specification has a <code>name</code> and a <code>cmd</code>.
+The order of options inside does not matter.  Indentation is optional.  Blank
+lines are ok.  Comment lines start with <code>#</code>.</p></div>
 <div class="paragraph"><p>These options may appear in a job definition.</p></div>
 <div class="tableblock">
 <table rules="none"
@@ -988,7 +993,7 @@ cellspacing="0" cellpadding="4">
 </tr>
 <tr>
 <td align="left" valign="top"><p class="table"><code>disable</code></p></td>
-<td align="left" valign="top"><p class="table">disables the job</p></td>
+<td align="left" valign="top"><p class="table">disable the job</p></td>
 </tr>
 <tr>
 <td align="left" valign="top"><p class="table"><code>wait</code></p></td>
@@ -1035,7 +1040,7 @@ If you need shell features in your command, wrap it with a shell script.
 <div class="literalblock">
 <div class="content">
 <pre><code>job {
-  name py-server
+  name api-server
   dir /home/py
   cmd /bin/bash -c "ifconfig eth1 up; sleep 5; exec python server.py"
 }</code></pre>
@@ -1076,7 +1081,22 @@ Use <code>out</code>, <code>err</code>, and <code>in</code> to attach stdout, st
 </li>
 <li>
 <p>
-The stdout, stderr and stdin default to <code>/dev/null</code>.
+stdin defaults to <code>/dev/null</code>.
+</p>
+</li>
+<li>
+<p>
+attach stdout or stderr to <code>/dev/null</code> to discard it.
+</p>
+</li>
+<li>
+<p>
+jobs' stdout and stderr go to syslog by default
+</p>
+</li>
+<li>
+<p>
+the keyword <code>syslog</code> is reserved (<code>out syslog</code>, <code>err syslog</code> are default)
 </p>
 </li>
 </ul></div>
@@ -1091,7 +1111,7 @@ The stdout, stderr and stdin default to <code>/dev/null</code>.
 </li>
 <li>
 <p>
-it defaults to <em>root</em> (if pmtr is running as root, as it normally is)
+it defaults to root (if pmtr is running as root, as it normally is)
 </p>
 </li>
 </ul></div>
@@ -1322,7 +1342,7 @@ cellspacing="0" cellpadding="4">
 </tr>
 <tr>
 <td align="left" valign="top"><p class="table"><code>-I</code></p></td>
-<td align="left" valign="top"><p class="table">jobs inherit stdio/stdout/stderr from pmtr by default</p></td>
+<td align="left" valign="top"><p class="table">make jobs' stdout/err inherit pmtr&#8217;s instead of syslog</p></td>
 </tr>
 <tr>
 <td align="left" valign="top"><p class="table"><code>-c &lt;file&gt;</code></p></td>
@@ -1381,7 +1401,7 @@ edited or pmtr is restarted.</p></div>
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2017-04-02 18:28:56 UTC
+Last updated 2017-09-21 03:30:26 UTC
 </div>
 </div>
 </body>

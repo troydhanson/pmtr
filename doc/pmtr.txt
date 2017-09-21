@@ -7,29 +7,47 @@ Back to the https://github.com/troydhanson/pmtr[pmtr Github page].
 
 .About
 
-To run services on a Linux host, one traditionally writes an initscript. The
-init mechanism, and the syntax of initscripts, varies considerably across Linux
-distributions.  Many Linux flavors are settling on systemd now, but sysvinit, and
-upstart are still part of the landscape. The rise of supervisory daemons
-reflect how locally-developed software is often deployed. The supervisor runs
-the local software (maybe in a container). I made pmtr as a simple supervisory
-daemon for my own needs. 
+I wrote pmtr as a simple supervisory daemon for my own needs.  Pmtr runs under
+systemd as well as other init mechanisms (sysvinit, upstart, etc), or it can run
+as process 1 inside a container.  When installing on many flavors of Linux, it
+can auto-detect the underlying init system and set itself up to start at boot
+appropriately. I wrote pmtr with a few goals in mind:
 
-I wrote pmtr with a few goals in mind:
-
-* to have one configuration file listing _my_ processes to run
-* to insulate myself from the underlying init system
+* to have one configuration file listing all processes to run
 * to exist under (not to replace) the underlying init system
+* to insulate myself from the underlying init system
 * to be a tiny C program 
 * to consume few resources
 * to have few features
 * no dependencies
 
-To have few features makes it more predictable (stable memory usage, etc). I
-have used it since 2011 across many Linux platforms (x86 servers, ARM boards)
-to manage the cooperating processes that make up my appliances and gadgets.
+I use pmtr to abstract away the underlying init system, listing my processes
+inside the `pmtr.conf` configuration file. Only pmtr itself is managed as a
+system service.  Pmtr is for Linux only, and is link:LICENSE.txt[MIT] licensed.
 
-Pmtr is for Linux only, and is link:LICENSE.txt[MIT] licensed.
+.Example /etc/pmtr.conf
+--------------------------------------------------------
+job {
+  name tunnel
+  cmd /usr/bin/ssh -i key -TNL 5901:127.0.0.1:5901 192.168.0.1
+}
+
+job {
+  name capture
+  dir /data
+  cmd /usr/sbin/tcpdump -i eth0 -s 0 -G 10 -w %Y%m%d%H%M%S.pcap
+}
+--------------------------------------------------------
+
+There are options to customize each job (process) including where to send its
+stdout and stderr streams (default is to syslog them), its ulimits, user id,
+environment variables, etc, as documented below. A job that exits gets restarted
+and if it exits too quickly (less than 10 seconds after it started), pmtr delays
+its restart slightly to avoid rapid process cycling.  Processes can often simply
+die on error conditions (such as failure to connect to a network server) and
+rely on pmtr to restart them, rather than embedding retry logic in each process.
+If the operator edits `pmtr.conf` and saves the file, the changes take effect
+immediately. There is no need to tell pmtr to reload its configuration file.
 
 pmtr
 ----
@@ -82,24 +100,9 @@ option to configure, it may default to `/usr/local/etc` instead.
 Processes that run under pmtr should stay in the foreground, exit on SIGTERM or
 SIGKILL, and clean up after their own sub-processes when exiting.
 
-.Example /etc/pmtr.conf
---------------------------------------------------------
-job {
-  name capture
-  dir /mnt/archive
-  cmd /usr/sbin/tcpdump -i eth0 -s 0 -G 10 -w %Y%m%d%H%M%S.pcap
-}
-
-job {
-  name tunnel
-  cmd /usr/bin/ssh -i key -TNL 5901:127.0.0.1:5901 192.168.0.1
-}
-
---------------------------------------------------------
-
-The minimal requirement is that each job has a `name` and a `cmd`.  The order
-of options inside does not matter.  Indentation is optional.  Blank lines are
-ok.  Comment lines start with `#`.  
+The minimal requirement is that each job specification has a `name` and a `cmd`.
+The order of options inside does not matter.  Indentation is optional.  Blank
+lines are ok.  Comment lines start with `#`.  
 
 These options may appear in a job definition.
 
@@ -118,7 +121,7 @@ These options may appear in a job definition.
 |ulimit         | process ulimits
 |bounce every   | a time interval to restart the process
 |depends        | files to watch, any changes induce the job to restart 
-|disable        | disables the job 
+|disable        | disable the job 
 |wait           | (special) wait for the job to finish before going on
 |once           | (special) do not restart the job
 |===============================================================================
@@ -136,7 +139,7 @@ cmd
 Tip: you can invoke shell features right inside a command in this way:
 
   job {
-    name py-server
+    name api-server
     dir /home/py
     cmd /bin/bash -c "ifconfig eth1 up; sleep 5; exec python server.py"
   }
@@ -153,12 +156,15 @@ disable
 out, err, in
 ^^^^^^^^^^^^
 * Use `out`, `err`, and `in` to attach stdout, stderr or stdin to a file.
-* The stdout, stderr and stdin default to `/dev/null`.
+* stdin defaults to `/dev/null`.
+* attach stdout or stderr to `/dev/null` to discard it.
+* jobs' stdout and stderr go to syslog by default
+* the keyword `syslog` is reserved (`out syslog`, `err syslog` are default)
 
 user
 ^^^^
 * `user` is the unix username under whose uid/gid the process runs
-* it defaults to _root_ (if pmtr is running as root, as it normally is)
+* it defaults to root (if pmtr is running as root, as it normally is)
 
 depends
 ^^^^^^^
@@ -286,7 +292,7 @@ pmtr manually. These are the command line options that pmtr accepts.
 |==========================================================================
 | -h        | show help    
 | -F        | stay in foreground 
-| -I        | jobs inherit stdio/stdout/stderr from pmtr by default
+| -I        | make jobs' stdout/err inherit pmtr's instead of syslog
 | -c <file> | specify configuration file
 | -t        | test syntax (parse config file and exit)
 | -v        | verbose logging (repeatable), -vv shows parsing

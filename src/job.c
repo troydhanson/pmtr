@@ -369,6 +369,67 @@ void signal_job(job_t *job) {
   }
 }
 
+/* open descriptor to the logger socket on given fd */
+int logger_on(pmtr_t *cfg, int dst_fd) {
+  struct sockaddr_un addr;
+  int sc, fd, rc = -1;
+
+  fd = socket(AF_UNIX, SOCK_STREAM, 0);
+  if (fd == -1) goto done;
+
+  memset(&addr, 0, sizeof(addr));
+  addr.sun_family = AF_UNIX;
+  assert(cfg->logger_namelen > 0);
+  memcpy(addr.sun_path, cfg->logger_socket, cfg->logger_namelen);
+
+  socklen_t len = sizeof(sa_family_t) + cfg->logger_namelen;
+  sc = connect(fd, (struct sockaddr*)&addr, len);
+  if (sc == -1) goto done;
+
+  if (fd != dst_fd) {
+		sc = dup2(fd, dst_fd);
+		if (sc < 0) goto done;
+		sc = close(fd);
+		if (sc < 0) goto done;
+  }
+
+  rc = 0;
+
+ done:
+  return rc;
+}
+
+/* open filename and dup so fileno becomes attached to it */ 
+int redirect(pmtr_t *cfg, int fileno, char *filename, int flags, int mode) {
+  int rc = -1, fd, sc;
+
+  if (filename == NULL) { /* nothing to do */
+    rc = 0;
+    goto done;
+  }
+
+  /* handle reserved word - syslog */
+  if (!strcmp(filename, "syslog")) {
+    rc = logger_on(cfg, fileno);
+    goto done;
+  }
+
+  /* regular file */
+  fd = open(filename, flags, mode);
+  if (fd < 0) goto done;
+
+  if (fd != fileno) {
+    sc = dup2(fd, fileno);
+    if (sc < 0) goto done;
+    close(fd);
+  }
+
+  rc = 0;
+
+ done:
+  return rc;
+}
+
 /* start up the jobs that are not already running */
 void do_jobs(pmtr_t *cfg) {
   pid_t pid;
@@ -394,7 +455,9 @@ void do_jobs(pmtr_t *cfg) {
       continue;
     }
 
-    if ( (pid = fork()) == -1) {
+    pid = fork();
+
+    if (pid == -1) {
       syslog(LOG_ERR,"fork error\n");
       kill(getpid(), 15); /* induce graceful shutdown in main loop */
       return;
@@ -404,8 +467,7 @@ void do_jobs(pmtr_t *cfg) {
       job->pid = pid;
       job->start_ts = time(NULL);
       syslog(LOG_INFO,"started job %s [%d]", job->name, (int)job->pid);
-      /* support the 'wait' feature which pauses (blocks) for a job to finish.
-       * this is most likely useful with 'order 0' to do some pre-init work. */
+      /* support the 'wait' feature which pauses (blocks) for a job to finish.*/
       if (job->wait) {
         syslog(LOG_INFO,"pausing for job %s to finish",job->name);
         if (waitpid(job->pid, &es, 0) != job->pid) {
@@ -461,40 +523,18 @@ void do_jobs(pmtr_t *cfg) {
 
     /* setup child stdin/stdout/stderr. the default is /dev/null unless -I was
      * given to pmtr (so that they inherit it from pmtr itself) */
-    char *default_io = cfg->inherit_stdout ? NULL : "/dev/null";
-    i = job->in  ? job->in  : default_io;
-    o = job->out ? job->out : default_io;
-    e = job->err ? job->err : default_io;
+    char *default_out;
+    if      (cfg->default_syslog) default_out = "syslog";
+    else if (cfg->inherit_stdout) default_out = NULL;
+    else                          default_out = "/dev/null";
+    i = job->in  ? job->in  : "/dev/null";
+    o = job->out ? job->out : default_out;
+    e = job->err ? job->err : default_out;
 
-    if (i) {
-      fi = open(i ,O_RDONLY);
-      if (fi < 0) { rc=-2; goto fail; }
-      if (fi != STDIN_FILENO)  {
-        ds = dup2(fi, STDIN_FILENO);
-        if (ds < 0) { rc=-5; goto fail; }
-        close(fi);
-      }
-    }
-
-    if (o) {
-      fo = open(o ,O_WRONLY|O_APPEND|O_CREAT, 0644);
-      if (fo < 0) { rc=-3; goto fail; }
-      if (fo != STDOUT_FILENO) {
-        ds = dup2(fo, STDOUT_FILENO);
-        if (ds < 0) { rc=-5; goto fail; }
-        close(fo);
-      }
-    }
-
-    if (e) {
-      fe = open(e ,O_WRONLY|O_APPEND|O_CREAT, 0644);
-      if (fe < 0) { rc=-4; goto fail; }
-      if (fe != STDERR_FILENO) {
-        ds = dup2(fe, STDERR_FILENO);
-        if (ds < 0) { rc=-5; goto fail; }
-        close(fe);
-      }
-    }
+    int flags_wr = O_WRONLY|O_CREAT|O_APPEND;
+    if (redirect(cfg, STDIN_FILENO,  i, O_RDONLY, 0)    < 0) { rc=-2; goto fail;}
+    if (redirect(cfg, STDOUT_FILENO, o, flags_wr, 0644) < 0) { rc=-3; goto fail;}
+    if (redirect(cfg, STDERR_FILENO, e, flags_wr, 0644) < 0) { rc=-4; goto fail;}
 
     /* at last. we're ready to run the child process */
     argv = (char**)utarray_front(&job->cmdv);
@@ -506,10 +546,10 @@ void do_jobs(pmtr_t *cfg) {
 
    fail:
     if (rc==-1) syslog(LOG_ERR,"can't chdir %s: %s", job->dir, strerror(errno));
-    if (rc==-2) syslog(LOG_ERR,"can't open %s: %s", i, strerror(errno));
-    if (rc==-3) syslog(LOG_ERR,"can't open %s: %s", o, strerror(errno));
-    if (rc==-4) syslog(LOG_ERR,"can't open %s: %s", e, strerror(errno));
-    if (rc==-5) syslog(LOG_ERR,"can't dup: %s", strerror(errno));
+    if (rc==-2) syslog(LOG_ERR,"can't open/dup %s: %s", i, strerror(errno));
+    if (rc==-3) syslog(LOG_ERR,"can't open/dup %s: %s", o, strerror(errno));
+    if (rc==-4) syslog(LOG_ERR,"can't open/dup %s: %s", e, strerror(errno));
+    assert (rc!=-5); /* no longer used */
     if (rc==-6) syslog(LOG_ERR,"can't setrlimit: %s", strerror(errno));
     if (rc==-7) syslog(LOG_ERR,"unknown user: %s", job->user);
     if (rc==-8) syslog(LOG_ERR,"can't setgid %s: %s", job->user, strerror(errno));
@@ -531,6 +571,11 @@ void collect_jobs(pmtr_t *cfg, UT_string *sm) {
     /* just respawn if it's our dependency monitor */
     if (pid==cfg->dm_pid) { 
       cfg->dm_pid = dep_monitor(cfg->file);
+      continue;
+    }
+    /* if it's our logger sub process ... */
+    if (pid==cfg->logger_pid) { 
+      kill(getpid(), 15); /* induce graceful shutdown in main loop */
       continue;
     }
     /* find the job.  we should always find it by pid. */
