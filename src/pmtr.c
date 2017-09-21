@@ -140,7 +140,6 @@ int setup_logger(void) {
 }
 
 
-/* fork a logger helper process */
 /* The Linux-specific, read-only SO_PEERCRED socket option returns
  * credential information about the peer, as described in socket(7).
  *
@@ -230,7 +229,7 @@ pid_t start_logger(void) {
   ev.data.fd= cfg.logger_fd;
   sc = epoll_ctl(epoll_fd, EPOLL_CTL_ADD, cfg.logger_fd, &ev);
   if (sc < 0) {
-    fprintf(stderr,"epoll_ctl: %s\n", strerror(errno));
+    syslog(LOG_ERR,"epoll_ctl: %s\n", strerror(errno));
     goto fatal;
   }
 
