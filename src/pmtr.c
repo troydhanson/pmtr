@@ -5,7 +5,6 @@
 
 pmtr_t cfg = {
   .logger_fd = -1,
-  .default_syslog = 1,
 };
 
 void usage(char *prog) {
@@ -14,7 +13,7 @@ void usage(char *prog) {
   fprintf(stderr, "   -v           (verbose)\n");
   fprintf(stderr, "   -c <file>    (config file)\n");
   fprintf(stderr, "   -p <file>    (make pidfile)\n");
-  fprintf(stderr, "   -I           (jobs use pmtr's stderr/stdout)\n");
+  fprintf(stderr, "   -I           (echo syslog to stderr)\n");
   fprintf(stderr, "   -F           (stay in foreground)\n");
   fprintf(stderr, "   -t           (just test config file)\n");
   fprintf(stderr, "\n");
@@ -390,14 +389,15 @@ int main (int argc, char *argv[]) {
       case 'v': cfg.verbose++; break;
       case 'p': cfg.pidfile=strdup(optarg); break;
       case 'F': cfg.foreground=1; break;
-      case 'I': cfg.inherit_stdout=1; break;
+      case 'I': cfg.echo_syslog_to_stderr=1; break;
       case 'c': cfg.file=strdup(optarg); break;
       case 't': cfg.test_only=1; cfg.foreground=1; break;
       case 'h': default: usage(argv[0]); break;
     }
   }
+
   log_opt = LOG_PID;
-  if (isatty(STDERR_FILENO)) log_opt |= LOG_PERROR;
+  if (cfg.echo_syslog_to_stderr || isatty(STDERR_FILENO)) log_opt |= LOG_PERROR;
   openlog("pmtr", log_opt, LOG_LOCAL0);
   if (!cfg.file) cfg.file = strdup(DEFAULT_PMTR_CONFIG);
 

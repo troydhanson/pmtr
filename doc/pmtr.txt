@@ -70,6 +70,12 @@ Pmtr runs on these flavors of Linux and probably more:
 Build & Install
 ~~~~~~~~~~~~~~~
 
+.RPM 
+
+An RPM for RHEL7/CentOS7 (x86_64) can be
+https://packagecloud.io/troydhanson/pmtr[found here].
+Alternatively it can be built from source as follows.
+
 .Download
 
     git clone https://github.com/troydhanson/pmtr.git
@@ -292,7 +298,7 @@ pmtr manually. These are the command line options that pmtr accepts.
 |==========================================================================
 | -h        | show help    
 | -F        | stay in foreground 
-| -I        | make jobs' stdout/err inherit pmtr's instead of syslog
+| -I        | echo syslog to stderr
 | -c <file> | specify configuration file
 | -t        | test syntax (parse config file and exit)
 | -v        | verbose logging (repeatable), -vv shows parsing

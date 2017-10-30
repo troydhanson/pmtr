@@ -3,7 +3,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
 <head>
 <meta http-equiv="Content-Type" content="application/xhtml+xml; charset=UTF-8" />
-<meta name="generator" content="AsciiDoc 8.6.8" />
+<meta name="generator" content="AsciiDoc 8.6.9" />
 <title>Guide to pmtr</title>
 <style type="text/css">
 /* Shared CSS for AsciiDoc xhtml11 and html5 backends */
@@ -94,7 +94,9 @@ ul > li > * { color: black; }
   padding: 0;
   margin: 0;
 }
-
+pre {
+  white-space: pre-wrap;
+}
 
 #author {
   color: #527bbd;
@@ -223,7 +225,7 @@ div.exampleblock > div.content {
 }
 
 div.imageblock div.content { padding-left: 0; }
-span.image img { border-style: none; }
+span.image img { border-style: none; vertical-align: text-bottom; }
 a.image:visited { color: white; }
 
 dl {
@@ -899,6 +901,9 @@ Yocto <a href="https://github.com/troydhanson/meta-pmtr">layer</a>
 </div>
 <div class="sect2">
 <h3 id="_build_amp_install">Build &amp; Install</h3>
+<div class="paragraph"><div class="title">RPM</div><p>An RPM for RHEL7/CentOS7 (x86_64) can be
+<a href="https://packagecloud.io/troydhanson/pmtr">found here</a>.
+Alternatively it can be built from source as follows.</p></div>
 <div class="literalblock">
 <div class="title">Download</div>
 <div class="content">
@@ -1342,7 +1347,7 @@ cellspacing="0" cellpadding="4">
 </tr>
 <tr>
 <td align="left" valign="top"><p class="table"><code>-I</code></p></td>
-<td align="left" valign="top"><p class="table">make jobs' stdout/err inherit pmtr&#8217;s instead of syslog</p></td>
+<td align="left" valign="top"><p class="table">echo syslog to stderr</p></td>
 </tr>
 <tr>
 <td align="left" valign="top"><p class="table"><code>-c &lt;file&gt;</code></p></td>
@@ -1401,7 +1406,8 @@ edited or pmtr is restarted.</p></div>
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2017-09-21 03:30:26 UTC
+Last updated
+ 2017-10-29 21:46:25 PDT
 </div>
 </div>
 </body>

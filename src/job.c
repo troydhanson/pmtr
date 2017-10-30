@@ -521,15 +521,10 @@ void do_jobs(pmtr_t *cfg) {
       if (setuid(p->pw_uid) == -1)                           {rc=-10; goto fail;}
     }
 
-    /* setup child stdin/stdout/stderr. the default is /dev/null unless -I was
-     * given to pmtr (so that they inherit it from pmtr itself) */
-    char *default_out;
-    if      (cfg->default_syslog) default_out = "syslog";
-    else if (cfg->inherit_stdout) default_out = NULL;
-    else                          default_out = "/dev/null";
+    /* redirect the child's stdout and stderr to syslog unless user specified */
     i = job->in  ? job->in  : "/dev/null";
-    o = job->out ? job->out : default_out;
-    e = job->err ? job->err : default_out;
+    o = job->out ? job->out : "syslog";
+    e = job->err ? job->err : "syslog";
 
     int flags_wr = O_WRONLY|O_CREAT|O_APPEND;
     if (redirect(cfg, STDIN_FILENO,  i, O_RDONLY, 0)    < 0) { rc=-2; goto fail;}
