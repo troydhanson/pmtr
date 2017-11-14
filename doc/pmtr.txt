@@ -8,22 +8,19 @@ Back to the https://github.com/troydhanson/pmtr[pmtr Github page].
 .About
 
 I wrote pmtr as a simple supervisory daemon for my own needs.  Pmtr runs under
-systemd as well as other init mechanisms (sysvinit, upstart, etc), or it can run
-as process 1 inside a container.  When installing on many flavors of Linux, it
-can auto-detect the underlying init system and set itself up to start at boot
-appropriately. I wrote pmtr with a few goals in mind:
+systemd as well as other init mechanisms like sysvinit, etc. It can also run as
+process 1 inside a container.  When installing on many flavors of Linux, it can
+detect the host init system and set itself up to start at boot appropriately. I
+wrote pmtr with a few goals in mind:
 
 * to have one configuration file listing all processes to run
-* to exist under (not to replace) the underlying init system
-* to insulate myself from the underlying init system
-* to be a tiny C program 
+* to exist under (not to replace) the host init system
+* to insulate myself from the host init system
 * to consume few resources
 * to have few features
 * no dependencies
 
-I use pmtr to abstract away the underlying init system, listing my processes
-inside the `pmtr.conf` configuration file. Only pmtr itself is managed as a
-system service.  Pmtr is for Linux only, and is link:LICENSE.txt[MIT] licensed.
+It is written in C, supports Linux only, and is MIT licensed.
 
 .Example /etc/pmtr.conf
 --------------------------------------------------------
@@ -33,50 +30,80 @@ job {
 }
 
 job {
+  name bitcoin-daemon
+  dir /home/bitcoin
+  cmd /usr/bin/bitcoind -conf=/etc/bitcoin/bitcoin.conf
+  user bitcoin
+  nice 5
+}
+
+job {
   name capture
   dir /data
   cmd /usr/sbin/tcpdump -i eth0 -s 0 -G 10 -w %Y%m%d%H%M%S.pcap
+  env LD_LIBRARY_PATH=/usr/local/lib
 }
 --------------------------------------------------------
 
-There are options to customize each job (process) including where to send its
-stdout and stderr streams (default is to syslog them), its ulimits, user id,
-environment variables, etc, as documented below. A job that exits gets restarted
-and if it exits too quickly (less than 10 seconds after it started), pmtr delays
-its restart slightly to avoid rapid process cycling.  Processes can often simply
-die on error conditions (such as failure to connect to a network server) and
-rely on pmtr to restart them, rather than embedding retry logic in each process.
+When pmtr is started, it starts all the jobs in `pmtr.conf`, likewise, pmtr 
+terminates them when it is stopped.
+
+In practice I let the host init system- often systemd- manage all the standard
+OS services. I use pmtr to run the local software- the parts that make up an
+appliance, often comprising a dozen or two dozen jobs that function together.
+
+There are many options to use inside the job, listed later below.
+
+Processes that run under pmtr should stay in the foreground, exit on SIGTERM or
+SIGKILL, and clean up after their own sub-processes when exiting.
+
+If a job exits, pmtr restarts it. If it exits too quickly- less than 10 seconds
+after it started- pmtr delays its restart 10 seconds to avoid rapid cycling.
+
 If the operator edits `pmtr.conf` and saves the file, the changes take effect
 immediately. There is no need to tell pmtr to reload its configuration file.
 
-pmtr
-----
-
-[[platforms]]
 Platforms
-~~~~~~~~~
+---------
 
-Pmtr runs on these flavors of Linux and probably more:
+Pmtr runs on these flavors of Linux, and probably others:
 
-* Ubuntu 12-16
+* Ubuntu 12-17
 * CentOS/RHEL 5-7
-* Amazon Linux (AMI)
+* Amazon Linux AMI
 * Debian 
 * Arch
-* Raspberry Pi (Raspbian)
-* Beaglebone Black (Debian)
-* Yocto https://github.com/troydhanson/meta-pmtr[layer]
+* Raspberry Pi Raspbian
+* Beaglebone Black Debian
+
+There is a Yocto https://github.com/troydhanson/meta-pmtr[layer] to bake pmtr
+into an embedded image.
 
 Build & Install
-~~~~~~~~~~~~~~~
+---------------
 
-.RPM 
+Option 1: RPM 
+~~~~~~~~~~~~~
 
-An RPM for RHEL7/CentOS7 (x86_64) can be
+A RHEL/CentOS 7 x86_64 RPM package for pmtr can be
 https://packagecloud.io/troydhanson/pmtr[found here].
-Alternatively it can be built from source as follows.
 
-.Download
+Option 2: Build from source
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To build pmtr from source follow these steps. 
+
+Install the prerequisite tools:
+
+.Ubuntu
+
+    sudo apt install git build-essential autoconf automake
+
+.RedHat/CentOS
+
+    sudo yum install git gcc autoconf automake
+
+.Clone pmtr
 
     git clone https://github.com/troydhanson/pmtr.git
 
@@ -91,26 +118,71 @@ Alternatively it can be built from source as follows.
 
     sudo make install
     sudo touch /etc/pmtr.conf
+
+.Set up initscript
+
+Do this to start pmtr automatically at boot.
+
     cd initscripts
     sudo ./setup-initscript --auto
 
-pmtr.conf
-~~~~~~~~~
+Using `setup-initscript --auto` detects common init managers like systemd and
+sets up pmtr to start at boot.  Run `./setup-initscript --help` to see further
+options.  Here's an example of running it on Ubuntu based on systemd:
 
-The pmtr configuration is, by default, `/etc/pmtr.conf`. Note that `/etc`
-comes from the `--sysconfidir` option to `configure`. If you omit that 
-option to configure, it may default to `/usr/local/etc` instead.
+    sudo ./setup-initscript --auto
+    initsystem          : systemd
+    pmtr                : /usr/bin/pmtr
+    services            : /etc/systemd/system
+    initscript          : /etc/systemd/system/pmtr.service
+    enabling            : systemctl enable pmtr
+    starting service    : systemctl start pmtr
 
-.General job requirements
+You can look at the syslog to confirm it is now running.
 
-Processes that run under pmtr should stay in the foreground, exit on SIGTERM or
-SIGKILL, and clean up after their own sub-processes when exiting.
+    grep pmtr /var/log/syslog   # ubuntu
+    grep pmtr /var/log/messages # redhat/centos
 
-The minimal requirement is that each job specification has a `name` and a `cmd`.
-The order of options inside does not matter.  Indentation is optional.  Blank
-lines are ok.  Comment lines start with `#`.  
+You should see something like:
 
-These options may appear in a job definition.
+    Nov 13 17:13:10 ubuntu systemd[1]: Started pmtr process manager.
+    Nov 13 17:13:10 ubuntu pmtr[10888]: pmtr: starting
+
+It is always a good idea to look in the syslog after making changes to the 
+configuration file. This is where pmtr reports on starting jobs, or on any
+errors in parsing the configuration file. Any output generated by the jobs
+also appears in the syslog, by default.
+
+Config file
+-----------
+
+The configuration file `/etc/pmtr.conf` drives pmtr.
+
+The config file can be changed using a command line option (`-c`) when running
+pmtr from the command line.
+
+As shown previously it consists of zero or more job definitions. A job is just
+a process definition. It looks like:
+
+    job {
+      name bitcoin-daemon
+      dir /home/bitcoin
+      cmd /usr/bin/bitcoind -conf /etc/bitcoin/bitcoin.conf
+      user bitcoin
+    }
+
+A job must have a `name` (used for logging only) and a `cmd`. Everything else 
+in the curly braces optional.
+
+ * Order does not matter.
+ * Indentation is optional.  
+ * Blank lines are ok.
+ * Comments start with `#`.  
+
+Options
+~~~~~~~
+
+The full list of options that may appear inside a job are listed here.
 
 .Job options
 [width="90%",cols="20m,50",grid="none",options="header"]
@@ -121,9 +193,10 @@ These options may appear in a job definition.
 |dir            | working directory (fully qualified) to run the process in
 |out            | send stdout to this file
 |err            | send stderr to this file
-|in             | hook stdin to this file
+|in             | take stdin from this file
 |env            | environment variable to set (repeatable)
 |user           | unix username under whose id to run the process 
+|nice           | unix priority between -19 (highest) and 20 (lowest)
 |ulimit         | process ulimits
 |bounce every   | a time interval to restart the process
 |depends        | files to watch, any changes induce the job to restart 
@@ -137,132 +210,154 @@ More details on each option follows.
 cmd
 ^^^
 * Specifies the *absolute path* to the executable (there is no $PATH searching!)
-* `cmd` may have arguments (like `cmd /usr/bin/python rest.py`)
-* You can use double-quotes in arguments (see example below)
-* `cmd` does no shell expansion: no wildcards, backticks, variables, etc. 
-* If you need shell features in your command, wrap it with a shell script.
+* It may have arguments after the executable (e.g. `cmd /usr/bin/python rest.py`)
+* Use double-quotes to make one argument from the quoted string.
+* No shell expansion: no wildcards, backticks, variables, etc. 
 
-Tip: you can invoke shell features right inside a command in this way:
+If you need shell features in your command, wrap it with a shell script. You
+can also use a quoted string as a shell script like this:
 
   job {
-    name api-server
-    dir /home/py
-    cmd /bin/bash -c "ifconfig eth1 up; sleep 5; exec python server.py"
+    name api
+    cmd /bin/bash -c "ifconfig eth1 up; sleep 5; exec /api/rest.py"
   }
 
 env
 ^^^
-* Use `env` to push an environment variable into a job, e.g. `env DEBUG=1`.
-* Use `env` repeatedly to set multiple environment variables.
+* Use to push an environment variable into a job, e.g. `env DEBUG=1`.
+* Use repeatedly on separate lines to set multiple environment variables.
 
 disable
 ^^^^^^^
-* `disable` on a line by itself is like commenting the job out
+* Use `disable` on a line by itself to make the job disabled.
+* This is sometimes quicker than commenting out the whole job.
 
 out, err, in
 ^^^^^^^^^^^^
-* Use `out`, `err`, and `in` to attach stdout, stderr or stdin to a file.
-* stdin defaults to `/dev/null`.
-* attach stdout or stderr to `/dev/null` to discard it.
-* jobs' stdout and stderr go to syslog by default
-* the keyword `syslog` is reserved (`out syslog`, `err syslog` are default)
+* Use `out` and `err` to send stdout or stderr to a file.
+* stdout and stderr go to syslog by default.
+* stdin defaults to `/dev/null`; use `in` to override
+
+nice
+^^^^
+* This changes the process priority
+* Takes a number in the range -19 (highest priority) to 20 (lowest)
 
 user
 ^^^^
-* `user` is the unix username under whose uid/gid the process runs
-* it defaults to root (if pmtr is running as root, as it normally is)
+* Specifies the unix username to run the process as.
+* That user's uid/gid becomes those of the process.
+* Defaults to root (when pmtr is running as root)
 
 depends
 ^^^^^^^
-* Use a `depends` block to specify files, one per line, that the job depends on.
-* pmtr watches the dependencies, and restarts the job if they change
+* Specifies a block of one or more files that the job depends on.
+* pmtr watches the dependencies for changes to their content.
+* Pmtr restarts the job if a change is detected.
 
+  job {
+    name bitcoin-daemon
+    dir /home/bitcoin
+    cmd /usr/bin/bitcoind -conf=/etc/bitcoin/bitcoin.conf
+    user bitcoin
     depends {
-      /etc/ssh/sshd_config
-      /root/.ssh/id_rsa.pub
+      /etc/bitcoin/bitcoin.conf
     }
+  }
 
 bounce every
 ^^^^^^^^^^^^
-* The `bounce every` option restarts the job every so often. 
-* It's for jobs that don't behave well as long-running processes. 
-* It takes a number and unit, like `5m` to restart a job every five minutes. 
-* The units are `smhd`- (s)econds, (m)inutes, (h)ours or (d)ays. 
+* Use `bounce every` to restart a job on a periodic interval.
+* It takes a number and unit [smhd] e.g. `bounce every 1d`.
+* Units [smhd] are seconds, minutes, hours or days.
 * The exact timing of the restart is approximate.
 
 ulimit
 ^^^^^^
-* Use `ulimit` to modify the kernel-enforced resource limits for the job.
-* It takes a flag denoting which limit to set, and a value, e.g., `ulimit -n 30`.  
-* The values are all numeric or the keyword `infinity`.
-* To see the current kernel limits on a process, run `cat /proc/<pid>/limits`.
-* pmtr sets both the "hard" and "soft" ulimit to the same value.
-* If there is an error setting the ulimits, it's logged to syslog.
+* Use to modify the system resource limits for the job.
+* Takes a flag and value, e.g., `ulimit -n 30`.  
+* Values are numeric or the keyword `infinity`.
 
-For info on what ulimits are available, you can run these commands in `bash`:
+To see the current limits on a process by its PID:
 
-* `ulimit -a` to list flags, and the values in your shell
-* `help ulimit` for more information about the ulimits
-* `man prlimit` for more technical information and the units
+    cat /proc/<pid>/limits
+
+Pmtr sets both the "hard" and "soft" limit to the same value.
+Any error in setting the limit is logged to syslog.
+
+See `man prlimit` for technical descriptions of each limit. 
+In the `bash` shell, `ulimit -a` and `help ulimit` display the
+limits and a list of flags and descriptions respectively.
+
+.ulimit flags 
+[width="80%",cols="20m,50",grid="none",options="none"]
+|==========================================================================
+|   -c |  the maximum size of core files created
+|   -d |  the maximum size of a process's data segment
+|   -e |  the maximum scheduling priority (taken as 20-limit)
+|   -f |  the maximum size of files the process may create
+|   -i |  the maximum number of pending signals
+|   -l |  the maximum bytes a process may lock into memory
+|   -m |  the maximum resident set size
+|   -n |  the maximum number of open file descriptors
+|   -q |  the maximum number of bytes in POSIX message queues
+|   -r |  the maximum real-time scheduling priority
+|   -s |  the maximum stack size
+|   -t |  the maximum amount of cpu time in seconds
+|   -u |  the maximum number processes or threads
+|   -v |  the maximum size of process virtual memory
+|==========================================================================
+
+The units are discussed in the prlimit(2) man page.
 
 wait/once
 ^^^^^^^^^
-* Pmtr has rudimentary support for "one-time" setup jobs using `wait` and `once`.
-* `wait` pauses startup of subsequent jobs until this one finishes
-* `once` tells pmtr not to restart this job upon exit
+* Used for setup jobs that need not be restarted.
+* `wait` pauses the startup of subsequent jobs.
+* `once` tells pmtr not to restart this job.
 
     job {
       name initial-setup
-      cmd /bin/mkdir -p /dev/shm/work
+      cmd /bin/mkdir /dev/shm/go
       wait
       once
     }
 
-Operational notes
------------------
+Operator notes
+--------------
 
-.Edits take effect immediately
-
-When you edit and save `pmtr.conf`, pmtr applies the changes immediately. (It
-watches the file using `inotify`).
+Pmtr detects writes to `pmtr.conf` and applies the changes immediately.
 
  * A newly-added job gets started.
  * A deleted job is terminated.
  * A changed job is restarted with its new configuration.
 
-.Testing the configuration
-
 You can run `pmtr -t` to check the config file syntax and report any errors. 
-This checks the file without running any jobs.  
 
 Status and control 
 ~~~~~~~~~~~~~~~~~~
 
 To start, stop or get status of pmtr, use the host system management commands.
 
-.Management on a systemd-based host
+.On a systemd-based host:
 
   systemctl start pmtr 
   systemctl stop pmtr 
   systemctl status pmtr 
 
-.Management on most other systems
+.On most other hosts:
 
   service pmtr status
   service pmtr start
   service pmtr stop
 
-When pmtr is started, it starts all the jobs in `pmtr.conf`, likewise, pmtr 
-terminates them when it is stopped.
-
 Logs
 ~~~~
 
-Pmtr logs typically go to `/var/log/syslog` or `/var/log/messages`, according
-to the host `syslog` configuration.  It is recommended to check the logs after
-any `pmtr.conf` changes.  Any errors in parsing `pmtr.conf` are logged. Job
-starts, exits and restarts are logged.  On systemd-based hosts, you can use
-`journalctl -u pmtr` to see pmtr logs.
+Logging from pmtr goes to syslog. Typically these logs go to `/var/log/syslog` or
+`/var/log/messages`.  Check the syslog after any change to `pmtr.conf`.  Errors in
+parsing `pmtr.conf` are logged there, as well as job start or exit events.  On
+systemd-based hosts, you can also use `journalctl -u pmtr` to see pmtr logs.
 
 Job termination and restart
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -278,7 +373,7 @@ exited within 10 seconds of when it started, pmtr waits 10 seconds to restart it
 This has two benefits: a job that is waiting for some resource- say, to connect
 to a remote server that is still booting up- can just exit instead of retrying.
 It can expect pmtr to restart it 10 seconds later when it can try again.
-The 10-second wait also prevents fork bombs (rapid process cycling).
+The 10-second wait also prevents rapid process cycling.
 
 .How pmtr kills a job
 
@@ -290,10 +385,11 @@ shortly afterward, if it's still running.
 Command line options
 ~~~~~~~~~~~~~~~~~~~~
 
-The host init system normally runs pmtr at system boot. However you can run
-pmtr manually. These are the command line options that pmtr accepts. 
+The host init system normally runs pmtr at system boot. You can instead run
+pmtr manually. Or, it can be the init process inside a container. In these 
+use cases, the following command line options may be useful.
 
-.pmtr options
+.pmtr command-line options
 [width="80%",cols="20m,50",grid="none",options="none"]
 |==========================================================================
 | -h        | show help    
@@ -304,6 +400,17 @@ pmtr manually. These are the command line options that pmtr accepts.
 | -v        | verbose logging (repeatable), -vv shows parsing
 | -p <file> | make pidfile
 |==========================================================================
+
+In a container
+~~~~~~~~~~~~~~
+To use pmtr as the init entrypoint (process 1) in a container, invoke it
+with `-F` to stay in the foreground. Also `-I` is convenient to make the
+log messages from pmtr and its jobs echo to stderr for greater visibility.
+If the container has the pmtr.conf in a custom location, use the `-c` flag.
+
+  # container entrypoint
+  /usr/bin/pmtr -IFc /path/to/pmtr.conf
+
 
 UDP control
 ~~~~~~~~~~~

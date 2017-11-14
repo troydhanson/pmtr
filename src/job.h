@@ -71,6 +71,7 @@ typedef struct {
   int respawn;
   int delete_when_collected;
   int order;
+  int nice;
   int disabled;
   int wait;
   int once;
@@ -112,6 +113,7 @@ void set_in(parse_t *ps, char *s);
 void set_err(parse_t *ps, char *s);
 void set_user(parse_t *ps, char *s);
 void set_ord(parse_t *ps, char *s);
+void set_nice(parse_t *ps, char *s);
 void set_env(parse_t *ps, char *s);
 void set_dis(parse_t *ps);
 void set_wait(parse_t *ps);

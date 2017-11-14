@@ -63,6 +63,7 @@ void job_cpy(job_t *dst, const job_t *src) {
   dst->delete_when_collected = src->delete_when_collected;
   dst->respawn = src->respawn;
   dst->order = src->order;
+  dst->nice = src->nice;
   dst->disabled = src->disabled;
   dst->wait = src->wait;
   dst->once = src->once;
@@ -107,6 +108,21 @@ void set_env(parse_t *ps, char *env) {
 void set_ord(parse_t *ps, char *ord) { 
   if (sscanf(ord,"%d",&ps->job->order) != 1) {
     utstring_printf(ps->em, "non-numeric order parameter");
+    ps->rc = -1;
+  }
+}
+
+#define MIN_NICE -20 /* highest priority */
+#define MAX_NICE  19 /* lowest priority */
+void set_nice(parse_t *ps, char *nice) { 
+  if (sscanf(nice,"%d",&ps->job->nice) != 1) {
+    utstring_printf(ps->em, "non-numeric nice parameter");
+    ps->rc = -1;
+  }
+
+  if ((ps->job->nice < MIN_NICE) ||
+      (ps->job->nice > MAX_NICE)) {
+    utstring_printf(ps->em, "nice out of range %d to %d", MIN_NICE, MAX_NICE);
     ps->rc = -1;
   }
 }
@@ -490,20 +506,22 @@ void do_jobs(pmtr_t *cfg) {
     /* setup working dir */
     if (job->dir && (chdir(job->dir) == -1))                 {rc=-1; goto fail;}
 
-    /* close inherited descriptors- just syslog. (our udp sockets close-on-exec).
-     * we closelog() _before_ dups below, otherwise it can clobber wrong fd */
+    /* close inherited descriptors */
     closelog(); 
 
     /* set environment variables */
     env=NULL;
     while ( (env=(char**)utarray_next(&job->envv,env))) putenv(*env);
 
+    /* set process priority / nice */
+    if (setpriority(PRIO_PROCESS, 0, job->nice) < 0)         {rc=-5; goto fail;}
+
     /* set ulimits */
     resource_rlimit_t *rt=NULL;
     while ( (rt=(resource_rlimit_t*)utarray_next(&job->rlim,rt))) {
       struct rlimit new_limit = {.rlim_cur=rt->rlim.rlim_cur,
                                  .rlim_max=rt->rlim.rlim_max};
-      if (setrlimit(rt->id, &new_limit))              {rc=-6; goto fail;}
+      if (setrlimit(rt->id, &new_limit))                     {rc=-6; goto fail;}
     }
 
     /* restore/unblock default handlers so they're unblocked after exec */
@@ -534,7 +552,7 @@ void do_jobs(pmtr_t *cfg) {
     /* at last. we're ready to run the child process */
     argv = (char**)utarray_front(&job->cmdv);
     pathname = *argv;
-    if (execv(pathname, argv) == -1)                        {rc=-11; goto fail;}
+    if (execv(pathname, argv) == -1)                         {rc=-11; goto fail;}
 
     /* not reached - child has exec'd */
     assert(0); 
@@ -544,7 +562,7 @@ void do_jobs(pmtr_t *cfg) {
     if (rc==-2) syslog(LOG_ERR,"can't open/dup %s: %s", i, strerror(errno));
     if (rc==-3) syslog(LOG_ERR,"can't open/dup %s: %s", o, strerror(errno));
     if (rc==-4) syslog(LOG_ERR,"can't open/dup %s: %s", e, strerror(errno));
-    assert (rc!=-5); /* no longer used */
+    if (rc==-5) syslog(LOG_ERR,"can't setpriority: %s", strerror(errno));
     if (rc==-6) syslog(LOG_ERR,"can't setrlimit: %s", strerror(errno));
     if (rc==-7) syslog(LOG_ERR,"unknown user: %s", job->user);
     if (rc==-8) syslog(LOG_ERR,"can't setgid %s: %s", job->user, strerror(errno));

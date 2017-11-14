@@ -19,7 +19,8 @@
 #define TOK_DISABLED                       19
 #define TOK_WAIT                           20
 #define TOK_ONCE                           21
-#define TOK_BOUNCE                         22
-#define TOK_EVERY                          23
-#define TOK_DEPENDS                        24
-#define TOK_QUOTEDSTR                      25
+#define TOK_NICE                           22
+#define TOK_BOUNCE                         23
+#define TOK_EVERY                          24
+#define TOK_DEPENDS                        25
+#define TOK_QUOTEDSTR                      26

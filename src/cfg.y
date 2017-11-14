@@ -38,6 +38,7 @@ kv ::= ULIMIT LCURLY pairs RCURLY.
 kv ::= DISABLED.                      {set_dis(ps);  }
 kv ::= WAIT.                          {set_wait(ps); }
 kv ::= ONCE.                          {set_once(ps); }
+kv ::= NICE STR(A).                   {set_nice(ps,A); }
 kv ::= BOUNCE EVERY STR(A).           {set_bounce(ps,A);}
 kv ::= DEPENDS LCURLY paths RCURLY.
 cmd ::= path(A).                      {set_cmd(ps,A);}
