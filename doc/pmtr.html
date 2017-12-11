@@ -829,16 +829,15 @@ no dependencies
 job {
   name bitcoin-daemon
   dir /home/bitcoin
-  cmd /usr/bin/bitcoind -conf=/etc/bitcoin/bitcoin.conf
+  cmd /usr/local/bin/bitcoind
   user bitcoin
-  nice 5
+  env HOME=/home/bitcoin
 }
 
 job {
   name capture
   dir /data
   cmd /usr/sbin/tcpdump -i eth0 -s 0 -G 10 -w %Y%m%d%H%M%S.pcap
-  env LD_LIBRARY_PATH=/usr/local/lib
 }</code></pre>
 </div></div>
 <div class="paragraph"><p>When pmtr is started, it starts all the jobs in <code>pmtr.conf</code>, likewise, pmtr
@@ -982,6 +981,8 @@ also appears in the syslog, by default.</p></div>
 <div class="sect1">
 <h2 id="_config_file">Config file</h2>
 <div class="sectionbody">
+<div class="sect2">
+<h3 id="_overview">Overview</h3>
 <div class="paragraph"><p>The configuration file <code>/etc/pmtr.conf</code> drives pmtr.</p></div>
 <div class="paragraph"><p>The config file can be changed using a command line option (<code>-c</code>) when running
 pmtr from the command line.</p></div>
@@ -992,8 +993,9 @@ a process definition. It looks like:</p></div>
 <pre><code>job {
   name bitcoin-daemon
   dir /home/bitcoin
-  cmd /usr/bin/bitcoind -conf /etc/bitcoin/bitcoin.conf
+  cmd /usr/local/bin/bitcoind
   user bitcoin
+  env HOME=/home/bitcoin
 }</code></pre>
 </div></div>
 <div class="paragraph"><p>A job must have a <code>name</code> (used for logging only) and a <code>cmd</code>. Everything else
@@ -1020,6 +1022,7 @@ Comments start with <code>#</code>.
 </p>
 </li>
 </ul></div>
+</div>
 <div class="sect2">
 <h3 id="_options">Options</h3>
 <div class="paragraph"><p>The full list of options that may appear inside a job are listed here.</p></div>
@@ -1102,8 +1105,9 @@ cellspacing="0" cellpadding="4">
 </table>
 </div>
 <div class="paragraph"><p>More details on each option follows.</p></div>
-<div class="sect3">
-<h4 id="_cmd">cmd</h4>
+</div>
+<div class="sect2">
+<h3 id="_cmd">cmd</h3>
 <div class="ulist"><ul>
 <li>
 <p>
@@ -1136,8 +1140,8 @@ can also use a quoted string as a shell script like this:</p></div>
 }</code></pre>
 </div></div>
 </div>
-<div class="sect3">
-<h4 id="_env">env</h4>
+<div class="sect2">
+<h3 id="_env">env</h3>
 <div class="ulist"><ul>
 <li>
 <p>
@@ -1151,8 +1155,8 @@ Use repeatedly on separate lines to set multiple environment variables.
 </li>
 </ul></div>
 </div>
-<div class="sect3">
-<h4 id="_disable">disable</h4>
+<div class="sect2">
+<h3 id="_disable">disable</h3>
 <div class="ulist"><ul>
 <li>
 <p>
@@ -1166,8 +1170,8 @@ This is sometimes quicker than commenting out the whole job.
 </li>
 </ul></div>
 </div>
-<div class="sect3">
-<h4 id="_out_err_in">out, err, in</h4>
+<div class="sect2">
+<h3 id="_out_err_in">out, err, in</h3>
 <div class="ulist"><ul>
 <li>
 <p>
@@ -1186,8 +1190,8 @@ stdin defaults to <code>/dev/null</code>; use <code>in</code> to override
 </li>
 </ul></div>
 </div>
-<div class="sect3">
-<h4 id="_nice">nice</h4>
+<div class="sect2">
+<h3 id="_nice">nice</h3>
 <div class="ulist"><ul>
 <li>
 <p>
@@ -1201,8 +1205,8 @@ Takes a number in the range -19 (highest priority) to 20 (lowest)
 </li>
 </ul></div>
 </div>
-<div class="sect3">
-<h4 id="_user">user</h4>
+<div class="sect2">
+<h3 id="_user">user</h3>
 <div class="ulist"><ul>
 <li>
 <p>
@@ -1221,8 +1225,8 @@ Defaults to root (when pmtr is running as root)
 </li>
 </ul></div>
 </div>
-<div class="sect3">
-<h4 id="_depends">depends</h4>
+<div class="sect2">
+<h3 id="_depends">depends</h3>
 <div class="ulist"><ul>
 <li>
 <p>
@@ -1243,18 +1247,19 @@ Pmtr restarts the job if a change is detected.
 <pre><code>job {
   name bitcoin-daemon
   dir /home/bitcoin
-  cmd /usr/bin/bitcoind -conf=/etc/bitcoin/bitcoin.conf
+  cmd /usr/bin/bitcoind
   user bitcoin
+  env HOME=/home/bitcoin
   depends {
-    /etc/bitcoin/bitcoin.conf
+    /home/bitcoin/.bitcoin/bitcoin.conf
   }
 }</code></pre>
 </div></div>
 </li>
 </ul></div>
 </div>
-<div class="sect3">
-<h4 id="_bounce_every">bounce every</h4>
+<div class="sect2">
+<h3 id="_bounce_every">bounce every</h3>
 <div class="ulist"><ul>
 <li>
 <p>
@@ -1278,8 +1283,8 @@ The exact timing of the restart is approximate.
 </li>
 </ul></div>
 </div>
-<div class="sect3">
-<h4 id="_ulimit">ulimit</h4>
+<div class="sect2">
+<h3 id="_ulimit">ulimit</h3>
 <div class="ulist"><ul>
 <li>
 <p>
@@ -1377,8 +1382,8 @@ cellspacing="0" cellpadding="4">
 </div>
 <div class="paragraph"><p>The units are discussed in the prlimit(2) man page.</p></div>
 </div>
-<div class="sect3">
-<h4 id="_wait_once">wait/once</h4>
+<div class="sect2">
+<h3 id="_wait_once">wait/once</h3>
 <div class="ulist"><ul>
 <li>
 <p>
@@ -1408,7 +1413,6 @@ Used for setup jobs that need not be restarted.
 </div>
 </div>
 </div>
-</div>
 <div class="sect1">
 <h2 id="_operator_notes">Operator notes</h2>
 <div class="sectionbody">
@@ -1432,24 +1436,6 @@ A changed job is restarted with its new configuration.
 </ul></div>
 <div class="paragraph"><p>You can run <code>pmtr -t</code> to check the config file syntax and report any errors.</p></div>
 <div class="sect2">
-<h3 id="_status_and_control">Status and control</h3>
-<div class="paragraph"><p>To start, stop or get status of pmtr, use the host system management commands.</p></div>
-<div class="literalblock">
-<div class="title">On a systemd-based host:</div>
-<div class="content">
-<pre><code>systemctl start pmtr
-systemctl stop pmtr
-systemctl status pmtr</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="title">On most other hosts:</div>
-<div class="content">
-<pre><code>service pmtr status
-service pmtr start
-service pmtr stop</code></pre>
-</div></div>
-</div>
-<div class="sect2">
 <h3 id="_logs">Logs</h3>
 <div class="paragraph"><p>Logging from pmtr goes to syslog. Typically these logs go to <code>/var/log/syslog</code> or
 <code>/var/log/messages</code>.  Check the syslog after any change to <code>pmtr.conf</code>.  Errors in
@@ -1457,14 +1443,32 @@ parsing <code>pmtr.conf</code> are logged there, as well as job start or exit ev
 systemd-based hosts, you can also use <code>journalctl -u pmtr</code> to see pmtr logs.</p></div>
 </div>
 <div class="sect2">
-<h3 id="_job_termination_and_restart">Job termination and restart</h3>
+<h3 id="_status_and_control">Status and control</h3>
+<div class="paragraph"><p>To start, stop or get status of pmtr, use the host system management commands.</p></div>
+<div class="literalblock">
+<div class="content">
+<pre><code># under systemd
+systemctl start pmtr
+systemctl stop pmtr
+systemctl status pmtr</code></pre>
+</div></div>
+<div class="paragraph"><p>or</p></div>
+<div class="literalblock">
+<div class="content">
+<pre><code># other initsystems
+service pmtr status
+service pmtr start
+service pmtr stop</code></pre>
+</div></div>
+</div>
+<div class="sect2">
+<h3 id="_job_exits">Job exits</h3>
 <div class="paragraph"><div class="title">Jobs that exit on their own</div><p>If a job terminates by itself, when pmtr did not signal it to exit, (and the
-job does not have the <code>once</code> option), pmtr restarts it. However, if the job
-exited within 10 seconds of when it started, pmtr waits 10 seconds to restart it.</p></div>
-<div class="paragraph"><div class="title">Restart management</div><p>This has two benefits: a job that is waiting for some resource- say, to connect
-to a remote server that is still booting up- can just exit instead of retrying.
-It can expect pmtr to restart it 10 seconds later when it can try again.
-The 10-second wait also prevents rapid process cycling.</p></div>
+job does not have the <code>once</code> option), pmtr restarts it. However, if it exited
+within 10 seconds of when it started, pmtr waits 10 seconds to restart it. The
+10-second wait prevents rapid process cycling.  Also, a job that&#8217;s waiting for
+something (like a network resource to come up) can be designed to exit instead
+of retry, relying on pmtr to restart it periodically to try again.</p></div>
 <div class="paragraph"><div class="title">How pmtr kills a job</div><p>Pmtr terminates a job when it is deleted, disabled, or altered in <code>pmtr.conf</code>,
 or is being bounced due to the <code>bounce every</code> option; or because pmtr itself is
 being shut down.  To terminate a job, pmtr sends SIGTERM to it, then SIGKILL
@@ -1518,15 +1522,14 @@ cellspacing="0" cellpadding="4">
 </div>
 <div class="sect2">
 <h3 id="_in_a_container">In a container</h3>
-<div class="paragraph"><p>To use pmtr as the init entrypoint (process 1) in a container, invoke it
-with <code>-F</code> to stay in the foreground. Also <code>-I</code> is convenient to make the
-log messages from pmtr and its jobs echo to stderr for greater visibility.
-If the container has the pmtr.conf in a custom location, use the <code>-c</code> flag.</p></div>
+<div class="paragraph"><p>To use pmtr as the init entrypoint (process 1) in a container, invoke it like:</p></div>
 <div class="literalblock">
 <div class="content">
 <pre><code># container entrypoint
 /usr/bin/pmtr -IFc /path/to/pmtr.conf</code></pre>
 </div></div>
+<div class="paragraph"><p>The &#8216;-F` makes it stay in the foreground. The <code>-I</code> makes the jobs&#8217; output
+more easily visible by echoing it from syslog.</p></div>
 </div>
 <div class="sect2">
 <h3 id="_udp_control">UDP control</h3>
@@ -1566,7 +1569,7 @@ edited or pmtr is restarted.</p></div>
 <div id="footer">
 <div id="footer-text">
 Last updated
- 2017-11-13 23:22:33 PST
+ 2017-12-09 20:18:04 PST
 </div>
 </div>
 </body>

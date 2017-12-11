@@ -32,16 +32,15 @@ job {
 job {
   name bitcoin-daemon
   dir /home/bitcoin
-  cmd /usr/bin/bitcoind -conf=/etc/bitcoin/bitcoin.conf
+  cmd /usr/local/bin/bitcoind
   user bitcoin
-  nice 5
+  env HOME=/home/bitcoin
 }
 
 job {
   name capture
   dir /data
   cmd /usr/sbin/tcpdump -i eth0 -s 0 -G 10 -w %Y%m%d%H%M%S.pcap
-  env LD_LIBRARY_PATH=/usr/local/lib
 }
 --------------------------------------------------------
 
@@ -156,6 +155,9 @@ also appears in the syslog, by default.
 Config file
 -----------
 
+Overview
+~~~~~~~~
+
 The configuration file `/etc/pmtr.conf` drives pmtr.
 
 The config file can be changed using a command line option (`-c`) when running
@@ -164,12 +166,14 @@ pmtr from the command line.
 As shown previously it consists of zero or more job definitions. A job is just
 a process definition. It looks like:
 
-    job {
-      name bitcoin-daemon
-      dir /home/bitcoin
-      cmd /usr/bin/bitcoind -conf /etc/bitcoin/bitcoin.conf
-      user bitcoin
-    }
+  job {
+    name bitcoin-daemon
+    dir /home/bitcoin
+    cmd /usr/local/bin/bitcoind
+    user bitcoin
+    env HOME=/home/bitcoin
+  }
+
 
 A job must have a `name` (used for logging only) and a `cmd`. Everything else 
 in the curly braces optional.
@@ -208,7 +212,7 @@ The full list of options that may appear inside a job are listed here.
 More details on each option follows.
 
 cmd
-^^^
+~~~
 * Specifies the *absolute path* to the executable (there is no $PATH searching!)
 * It may have arguments after the executable (e.g. `cmd /usr/bin/python rest.py`)
 * Use double-quotes to make one argument from the quoted string.
@@ -223,34 +227,34 @@ can also use a quoted string as a shell script like this:
   }
 
 env
-^^^
+~~~
 * Use to push an environment variable into a job, e.g. `env DEBUG=1`.
 * Use repeatedly on separate lines to set multiple environment variables.
 
 disable
-^^^^^^^
+~~~~~~~
 * Use `disable` on a line by itself to make the job disabled.
 * This is sometimes quicker than commenting out the whole job.
 
 out, err, in
-^^^^^^^^^^^^
+~~~~~~~~~~~~
 * Use `out` and `err` to send stdout or stderr to a file.
 * stdout and stderr go to syslog by default.
 * stdin defaults to `/dev/null`; use `in` to override
 
 nice
-^^^^
+~~~~
 * This changes the process priority
 * Takes a number in the range -19 (highest priority) to 20 (lowest)
 
 user
-^^^^
+~~~~
 * Specifies the unix username to run the process as.
 * That user's uid/gid becomes those of the process.
 * Defaults to root (when pmtr is running as root)
 
 depends
-^^^^^^^
+~~~~~~~
 * Specifies a block of one or more files that the job depends on.
 * pmtr watches the dependencies for changes to their content.
 * Pmtr restarts the job if a change is detected.
@@ -258,22 +262,23 @@ depends
   job {
     name bitcoin-daemon
     dir /home/bitcoin
-    cmd /usr/bin/bitcoind -conf=/etc/bitcoin/bitcoin.conf
+    cmd /usr/bin/bitcoind
     user bitcoin
+    env HOME=/home/bitcoin
     depends {
-      /etc/bitcoin/bitcoin.conf
+      /home/bitcoin/.bitcoin/bitcoin.conf
     }
   }
 
 bounce every
-^^^^^^^^^^^^
+~~~~~~~~~~~~
 * Use `bounce every` to restart a job on a periodic interval.
 * It takes a number and unit [smhd] e.g. `bounce every 1d`.
 * Units [smhd] are seconds, minutes, hours or days.
 * The exact timing of the restart is approximate.
 
 ulimit
-^^^^^^
+~~~~~~
 * Use to modify the system resource limits for the job.
 * Takes a flag and value, e.g., `ulimit -n 30`.  
 * Values are numeric or the keyword `infinity`.
@@ -311,7 +316,7 @@ limits and a list of flags and descriptions respectively.
 The units are discussed in the prlimit(2) man page.
 
 wait/once
-^^^^^^^^^
+~~~~~~~~~
 * Used for setup jobs that need not be restarted.
 * `wait` pauses the startup of subsequent jobs.
 * `once` tells pmtr not to restart this job.
@@ -334,23 +339,6 @@ Pmtr detects writes to `pmtr.conf` and applies the changes immediately.
 
 You can run `pmtr -t` to check the config file syntax and report any errors. 
 
-Status and control 
-~~~~~~~~~~~~~~~~~~
-
-To start, stop or get status of pmtr, use the host system management commands.
-
-.On a systemd-based host:
-
-  systemctl start pmtr 
-  systemctl stop pmtr 
-  systemctl status pmtr 
-
-.On most other hosts:
-
-  service pmtr status
-  service pmtr start
-  service pmtr stop
-
 Logs
 ~~~~
 
@@ -359,21 +347,34 @@ Logging from pmtr goes to syslog. Typically these logs go to `/var/log/syslog` o
 parsing `pmtr.conf` are logged there, as well as job start or exit events.  On
 systemd-based hosts, you can also use `journalctl -u pmtr` to see pmtr logs.
 
-Job termination and restart
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Status and control 
+~~~~~~~~~~~~~~~~~~
+
+To start, stop or get status of pmtr, use the host system management commands.
+
+  # under systemd
+  systemctl start pmtr 
+  systemctl stop pmtr 
+  systemctl status pmtr 
+
+or
+
+  # other initsystems
+  service pmtr status
+  service pmtr start
+  service pmtr stop
+
+Job exits
+~~~~~~~~~
 
 .Jobs that exit on their own
 
 If a job terminates by itself, when pmtr did not signal it to exit, (and the
-job does not have the `once` option), pmtr restarts it. However, if the job
-exited within 10 seconds of when it started, pmtr waits 10 seconds to restart it.
-
-.Restart management
-
-This has two benefits: a job that is waiting for some resource- say, to connect
-to a remote server that is still booting up- can just exit instead of retrying.
-It can expect pmtr to restart it 10 seconds later when it can try again.
-The 10-second wait also prevents rapid process cycling.
+job does not have the `once` option), pmtr restarts it. However, if it exited
+within 10 seconds of when it started, pmtr waits 10 seconds to restart it. The
+10-second wait prevents rapid process cycling.  Also, a job that's waiting for
+something (like a network resource to come up) can be designed to exit instead
+of retry, relying on pmtr to restart it periodically to try again.
 
 .How pmtr kills a job
 
@@ -403,14 +404,13 @@ use cases, the following command line options may be useful.
 
 In a container
 ~~~~~~~~~~~~~~
-To use pmtr as the init entrypoint (process 1) in a container, invoke it
-with `-F` to stay in the foreground. Also `-I` is convenient to make the
-log messages from pmtr and its jobs echo to stderr for greater visibility.
-If the container has the pmtr.conf in a custom location, use the `-c` flag.
+To use pmtr as the init entrypoint (process 1) in a container, invoke it like:
 
   # container entrypoint
   /usr/bin/pmtr -IFc /path/to/pmtr.conf
 
+The `-F` makes it stay in the foreground. The `-I` makes the jobs' output 
+more easily visible by echoing it from syslog.
 
 UDP control
 ~~~~~~~~~~~
