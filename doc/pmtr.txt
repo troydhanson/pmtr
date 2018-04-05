@@ -67,6 +67,7 @@ Platforms
 
 Pmtr runs on these flavors of Linux, and probably others:
 
+* Alpine
 * Ubuntu 12-17
 * CentOS/RHEL 5-7
 * Amazon Linux AMI
