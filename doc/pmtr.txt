@@ -67,17 +67,15 @@ Platforms
 
 Pmtr runs on these flavors of Linux, and probably others:
 
-* Alpine
-* Ubuntu 12-17
-* CentOS/RHEL 5-7
-* Amazon Linux AMI
-* Debian 
 * Arch
+* Alpine
+* Debian 
+* Ubuntu 12-18
+* CentOS/RHEL 5-7
+* Amazon Linux AMI 1/2
 * Raspberry Pi Raspbian
 * Beaglebone Black Debian
-
-There is a Yocto https://github.com/troydhanson/meta-pmtr[layer] to bake pmtr
-into an embedded image.
+* Yocto https://github.com/troydhanson/meta-pmtr[layer]
 
 Build & Install
 ---------------
