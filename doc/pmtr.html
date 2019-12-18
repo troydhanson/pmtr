@@ -799,7 +799,7 @@ to exist under (not to replace) the host init system
 </li>
 <li>
 <p>
-to insulate myself from the host init system
+to run under various host init systems
 </p>
 </li>
 <li>
@@ -833,6 +833,7 @@ job {
   cmd /usr/local/bin/bitcoind
   user bitcoin
   env HOME=/home/bitcoin
+  cpu 0-8
 }
 
 job {
@@ -882,7 +883,7 @@ Ubuntu 12-18
 </li>
 <li>
 <p>
-CentOS/RHEL 5-7
+CentOS/RHEL 5-8
 </p>
 </li>
 <li>
@@ -928,7 +929,7 @@ Yocto <a href="https://github.com/troydhanson/meta-pmtr">layer</a>
 <div class="literalblock">
 <div class="title">RedHat/CentOS</div>
 <div class="content">
-<pre><code>sudo yum install git gcc autoconf automake</code></pre>
+<pre><code>sudo yum install git gcc autoconf automake make</code></pre>
 </div></div>
 <div class="literalblock">
 <div class="title">Clone pmtr</div>
@@ -1087,6 +1088,10 @@ cellspacing="0" cellpadding="4">
 <td align="left" valign="top"><p class="table">unix priority between -19 (highest) and 20 (lowest)</p></td>
 </tr>
 <tr>
+<td align="left" valign="top"><p class="table"><code>cpu</code></p></td>
+<td align="left" valign="top"><p class="table">CPU affinity as hex mask (0xABCD) or number/ranges (0,2-4)</p></td>
+</tr>
+<tr>
 <td align="left" valign="top"><p class="table"><code>ulimit</code></p></td>
 <td align="left" valign="top"><p class="table">process ulimits</p></td>
 </tr>
@@ -1210,6 +1215,31 @@ This changes the process priority
 <li>
 <p>
 Takes a number in the range -19 (highest priority) to 20 (lowest)
+</p>
+</li>
+</ul></div>
+</div>
+<div class="sect2">
+<h3 id="_cpu">cpu</h3>
+<div class="ulist"><ul>
+<li>
+<p>
+This sets the CPU affinity- the list of CPU&#8217;s the task can run on
+</p>
+</li>
+<li>
+<p>
+Takes a CPU number (e.g. 0) or range (e.g. 2-4) or a mix (e.g. 0,2-4)
+</p>
+</li>
+<li>
+<p>
+Alternatively, can take a 0x-prefixed hex mask (e.g. 0x8f)
+</p>
+</li>
+<li>
+<p>
+Any CPUs in the set that are physically absent are ignored
 </p>
 </li>
 </ul></div>
@@ -1503,11 +1533,11 @@ cellspacing="0" cellpadding="4">
 </tr>
 <tr>
 <td align="left" valign="top"><p class="table"><code>-F</code></p></td>
-<td align="left" valign="top"><p class="table">stay in foreground</p></td>
+<td align="left" valign="top"><p class="table">stay in foreground (enabled by default when PID 1)</p></td>
 </tr>
 <tr>
 <td align="left" valign="top"><p class="table"><code>-I</code></p></td>
-<td align="left" valign="top"><p class="table">echo syslog to stderr</p></td>
+<td align="left" valign="top"><p class="table">echo syslog to stderr (enabled by default)</p></td>
 </tr>
 <tr>
 <td align="left" valign="top"><p class="table"><code>-c &lt;file&gt;</code></p></td>
@@ -1531,14 +1561,13 @@ cellspacing="0" cellpadding="4">
 </div>
 <div class="sect2">
 <h3 id="_in_a_container">In a container</h3>
-<div class="paragraph"><p>To use pmtr as the init entrypoint (process 1) in a container, invoke it like:</p></div>
+<div class="paragraph"><p>When pmtr is the init entrypoint (process 1) in a container, it stays in the
+foreground by default. An example invocation command is shown.</p></div>
 <div class="literalblock">
 <div class="content">
 <pre><code># container entrypoint
 /usr/bin/pmtr -IFc /path/to/pmtr.conf</code></pre>
 </div></div>
-<div class="paragraph"><p>The &#8216;-F` makes it stay in the foreground. The <code>-I</code> makes the jobs&#8217; output
-more easily visible by echoing it from syslog.</p></div>
 </div>
 <div class="sect2">
 <h3 id="_udp_control">UDP control</h3>
@@ -1578,7 +1607,7 @@ edited or pmtr is restarted.</p></div>
 <div id="footer">
 <div id="footer-text">
 Last updated
- 2018-05-01 02:01:43 UTC
+ 2019-12-18 22:37:37 UTC
 </div>
 </div>
 </body>

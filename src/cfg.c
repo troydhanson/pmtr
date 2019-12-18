@@ -67,7 +67,7 @@
 **                       defined, then do no error processing.
 */
 #define YYCODETYPE unsigned char
-#define YYNOCODE 41
+#define YYNOCODE 42
 #define YYACTIONTYPE unsigned char
 #define ParseTOKENTYPE char*
 typedef union {
@@ -81,8 +81,8 @@ typedef union {
 #define ParseARG_PDECL ,parse_t *ps
 #define ParseARG_FETCH parse_t *ps = yypParser->ps
 #define ParseARG_STORE yypParser->ps = ps
-#define YYNSTATE 63
-#define YYNRULE 37
+#define YYNSTATE 65
+#define YYNRULE 38
 #define YY_NO_ACTION      (YYNSTATE+YYNRULE+2)
 #define YY_ACCEPT_ACTION  (YYNSTATE+YYNRULE+1)
 #define YY_ERROR_ACTION   (YYNSTATE+YYNRULE)
@@ -152,49 +152,49 @@ static const YYMINORTYPE yyzerominor = { 0 };
 **  yy_default[]       Default action for each state.
 */
 static const YYACTIONTYPE yy_action[] = {
- /*     0 */    35,   21,    4,    9,   10,   11,   12,   22,   23,   24,
- /*    10 */    14,   54,   55,   56,   27,   28,   43,   30,   21,    4,
- /*    20 */     9,   10,   11,   12,   22,   23,   24,   14,   54,   55,
- /*    30 */    56,   27,   28,   40,   30,   63,   16,  101,    2,   18,
- /*    40 */    42,   20,    6,   62,   31,   32,    3,   61,   43,   36,
- /*    50 */     7,   25,   39,   59,   38,   13,   41,    8,   26,   60,
- /*    60 */    44,   45,   46,   52,   47,   15,   17,   19,   33,   34,
- /*    70 */     1,   37,   48,   49,   50,   51,   53,   57,   29,   58,
- /*    80 */   102,  102,    5,
+ /*     0 */    36,   21,    4,    9,   10,   11,   12,   22,   23,   24,
+ /*    10 */    14,   55,   56,   57,   27,   28,   37,   30,   31,   21,
+ /*    20 */     4,    9,   10,   11,   12,   22,   23,   24,   14,   55,
+ /*    30 */    56,   57,   27,   28,   41,   30,   31,   65,   16,  104,
+ /*    40 */     2,   18,   43,   20,    6,   64,   32,   33,    3,   62,
+ /*    50 */    44,   44,    7,   25,   40,   60,   39,   13,   42,    8,
+ /*    60 */    26,   61,   45,   46,   47,   53,   15,   48,   17,   19,
+ /*    70 */    34,   35,    1,   38,   49,   50,   51,   52,   54,   58,
+ /*    80 */    29,   59,   63,  105,    5,
 };
 static const YYCODETYPE yy_lookahead[] = {
  /*     0 */     8,    9,   10,   11,   12,   13,   14,   15,   16,   17,
- /*    10 */    18,   19,   20,   21,   22,   23,    3,   25,    9,   10,
- /*    20 */    11,   12,   13,   14,   15,   16,   17,   18,   19,   20,
- /*    30 */    21,   22,   23,    3,   25,    0,    1,   30,   31,    4,
- /*    40 */    29,    6,   34,   35,   32,   33,   28,   28,    3,   35,
- /*    50 */    39,    3,   29,    8,   36,    7,   26,   38,    3,   28,
- /*    60 */    28,   28,   28,    8,   28,   37,    2,    5,    3,    3,
- /*    70 */     7,    3,    3,    3,    3,    3,    3,    3,   24,    3,
- /*    80 */    40,   40,    7,
+ /*    10 */    18,   19,   20,   21,   22,   23,   36,   25,   26,    9,
+ /*    20 */    10,   11,   12,   13,   14,   15,   16,   17,   18,   19,
+ /*    30 */    20,   21,   22,   23,    3,   25,   26,    0,    1,   31,
+ /*    40 */    32,    4,   30,    6,   35,   36,   33,   34,   29,   29,
+ /*    50 */     3,    3,   40,    3,   30,    8,   37,    7,   27,   39,
+ /*    60 */     3,   29,   29,   29,   29,    8,   38,   29,    2,    5,
+ /*    70 */     3,    3,    7,    3,    3,    3,    3,    3,    3,    3,
+ /*    80 */    24,    3,    3,   41,    7,
 };
 #define YY_SHIFT_USE_DFLT (-9)
-#define YY_SHIFT_MAX 30
+#define YY_SHIFT_MAX 31
 static const signed char yy_shift_ofst[] = {
- /*     0 */    -9,    9,   35,   30,   13,   13,   -8,   30,   45,   13,
- /*    10 */    13,   13,   13,   -9,   48,   55,   64,   65,   62,   66,
- /*    20 */    63,   68,   69,   70,   71,   72,   73,   74,   54,   76,
- /*    30 */    75,
+ /*     0 */    -9,   10,   37,   31,   48,   48,   -8,   31,   47,   48,
+ /*    10 */    48,   48,   48,   -9,   50,   57,   66,   67,   64,   68,
+ /*    20 */    65,   70,   71,   72,   73,   74,   75,   76,   56,   78,
+ /*    30 */    77,   79,
 };
-#define YY_REDUCE_USE_DFLT (-1)
+#define YY_REDUCE_USE_DFLT (-21)
 #define YY_REDUCE_MAX 13
 static const signed char yy_reduce_ofst[] = {
- /*     0 */     7,    8,   12,   11,   18,   19,   14,   23,   31,   32,
- /*    10 */    33,   34,   36,   28,
+ /*     0 */     8,    9,   13,   12,   19,   20,  -20,   24,   32,   33,
+ /*    10 */    34,   35,   38,   28,
 };
 static const YYACTIONTYPE yy_default[] = {
- /*     0 */    66,  100,  100,   89,  100,  100,  100,   90,  100,  100,
- /*    10 */   100,  100,  100,   99,  100,  100,  100,  100,  100,  100,
- /*    20 */   100,  100,  100,  100,  100,  100,  100,  100,  100,  100,
- /*    30 */   100,   64,   65,   67,   68,   69,   70,   72,   73,   92,
- /*    40 */    94,   95,   93,   91,   74,   75,   76,   77,   78,   79,
- /*    50 */    80,   81,   82,   98,   83,   84,   85,   86,   87,   88,
- /*    60 */    96,   97,   71,
+ /*     0 */    68,  103,  103,   92,  103,  103,  103,   93,  103,  103,
+ /*    10 */   103,  103,  103,  102,  103,  103,  103,  103,  103,  103,
+ /*    20 */   103,  103,  103,  103,  103,  103,  103,  103,  103,  103,
+ /*    30 */   103,  103,   66,   67,   69,   70,   71,   72,   74,   75,
+ /*    40 */    95,   97,   98,   96,   94,   76,   77,   78,   79,   80,
+ /*    50 */    81,   82,   83,   84,  101,   85,   86,   87,   88,   89,
+ /*    60 */    90,   99,  100,   91,   73,
 };
 #define YY_SZ_ACTTAB (int)(sizeof(yy_action)/sizeof(yy_action[0]))
 
@@ -294,10 +294,11 @@ static const char *const yyTokenName[] = {
   "OUT",           "IN",            "ERR",           "USER",        
   "ORDER",         "ENV",           "ULIMIT",        "DISABLED",    
   "WAIT",          "ONCE",          "NICE",          "BOUNCE",      
-  "EVERY",         "DEPENDS",       "QUOTEDSTR",     "error",       
-  "path",          "arg",           "file",          "decls",       
-  "job",           "decl",          "sbody",         "kv",          
-  "cmd",           "pairs",         "paths",         "args",        
+  "EVERY",         "DEPENDS",       "CPUSET",        "QUOTEDSTR",   
+  "error",         "path",          "arg",           "file",        
+  "decls",         "job",           "decl",          "sbody",       
+  "kv",            "cmd",           "pairs",         "paths",       
+  "args",        
 };
 #endif /* NDEBUG */
 
@@ -331,17 +332,18 @@ static const char *const yyRuleName[] = {
  /*  23 */ "kv ::= NICE STR",
  /*  24 */ "kv ::= BOUNCE EVERY STR",
  /*  25 */ "kv ::= DEPENDS LCURLY paths RCURLY",
- /*  26 */ "cmd ::= path",
- /*  27 */ "cmd ::= path args",
- /*  28 */ "path ::= STR",
- /*  29 */ "args ::= args arg",
- /*  30 */ "args ::= arg",
- /*  31 */ "arg ::= STR",
- /*  32 */ "arg ::= QUOTEDSTR",
- /*  33 */ "paths ::= paths path",
- /*  34 */ "paths ::= path",
- /*  35 */ "pairs ::= pairs STR STR",
- /*  36 */ "pairs ::=",
+ /*  26 */ "kv ::= CPUSET STR",
+ /*  27 */ "cmd ::= path",
+ /*  28 */ "cmd ::= path args",
+ /*  29 */ "path ::= STR",
+ /*  30 */ "args ::= args arg",
+ /*  31 */ "args ::= arg",
+ /*  32 */ "arg ::= STR",
+ /*  33 */ "arg ::= QUOTEDSTR",
+ /*  34 */ "paths ::= paths path",
+ /*  35 */ "paths ::= path",
+ /*  36 */ "pairs ::= pairs STR STR",
+ /*  37 */ "pairs ::=",
 };
 #endif /* NDEBUG */
 
@@ -646,43 +648,44 @@ static const struct {
   YYCODETYPE lhs;         /* Symbol on the left-hand side of the rule */
   unsigned char nrhs;     /* Number of right-hand side symbols in the rule */
 } yyRuleInfo[] = {
-  { 30, 1 },
-  { 31, 2 },
-  { 31, 2 },
-  { 31, 0 },
-  { 33, 3 },
-  { 33, 3 },
-  { 32, 4 },
-  { 34, 2 },
-  { 34, 1 },
+  { 31, 1 },
+  { 32, 2 },
+  { 32, 2 },
+  { 32, 0 },
+  { 34, 3 },
+  { 34, 3 },
+  { 33, 4 },
   { 35, 2 },
-  { 35, 2 },
-  { 35, 2 },
-  { 35, 2 },
-  { 35, 2 },
-  { 35, 2 },
-  { 35, 2 },
-  { 35, 2 },
-  { 35, 2 },
-  { 35, 3 },
-  { 35, 4 },
   { 35, 1 },
-  { 35, 1 },
-  { 35, 1 },
-  { 35, 2 },
-  { 35, 3 },
-  { 35, 4 },
+  { 36, 2 },
+  { 36, 2 },
+  { 36, 2 },
+  { 36, 2 },
+  { 36, 2 },
+  { 36, 2 },
+  { 36, 2 },
+  { 36, 2 },
+  { 36, 2 },
+  { 36, 3 },
+  { 36, 4 },
+  { 36, 1 },
+  { 36, 1 },
   { 36, 1 },
   { 36, 2 },
-  { 28, 1 },
+  { 36, 3 },
+  { 36, 4 },
+  { 36, 2 },
+  { 37, 1 },
+  { 37, 2 },
+  { 29, 1 },
+  { 40, 2 },
+  { 40, 1 },
+  { 30, 1 },
+  { 30, 1 },
   { 39, 2 },
   { 39, 1 },
-  { 29, 1 },
-  { 29, 1 },
-  { 38, 2 },
-  { 38, 1 },
-  { 37, 3 },
-  { 37, 0 },
+  { 38, 3 },
+  { 38, 0 },
 };
 
 static void yy_accept(yyParser*);  /* Forward Declaration */
@@ -740,121 +743,126 @@ static void yy_reduce(
       case 4: /* decl ::= REPORT TO STR */
 #line 22 "cfg.y"
 {set_report(ps,yymsp[0].minor.yy0);}
-#line 744 "cfg.c"
+#line 747 "cfg.c"
         break;
       case 5: /* decl ::= LISTEN ON STR */
 #line 23 "cfg.y"
 {set_listen(ps,yymsp[0].minor.yy0);}
-#line 749 "cfg.c"
+#line 752 "cfg.c"
         break;
       case 6: /* job ::= JOB LCURLY sbody RCURLY */
 #line 24 "cfg.y"
 {push_job(ps);}
-#line 754 "cfg.c"
+#line 757 "cfg.c"
         break;
       case 9: /* kv ::= NAME STR */
 #line 27 "cfg.y"
 {set_name(ps,yymsp[0].minor.yy0);}
-#line 759 "cfg.c"
+#line 762 "cfg.c"
         break;
       case 11: /* kv ::= DIR path */
 #line 29 "cfg.y"
 {set_dir(ps,yymsp[0].minor.yy0);}
-#line 764 "cfg.c"
+#line 767 "cfg.c"
         break;
       case 12: /* kv ::= OUT path */
 #line 30 "cfg.y"
 {set_out(ps,yymsp[0].minor.yy0);}
-#line 769 "cfg.c"
+#line 772 "cfg.c"
         break;
       case 13: /* kv ::= IN path */
 #line 31 "cfg.y"
 {set_in(ps,yymsp[0].minor.yy0);}
-#line 774 "cfg.c"
+#line 777 "cfg.c"
         break;
       case 14: /* kv ::= ERR path */
 #line 32 "cfg.y"
 {set_err(ps,yymsp[0].minor.yy0);}
-#line 779 "cfg.c"
+#line 782 "cfg.c"
         break;
       case 15: /* kv ::= USER STR */
 #line 33 "cfg.y"
 {set_user(ps,yymsp[0].minor.yy0);}
-#line 784 "cfg.c"
+#line 787 "cfg.c"
         break;
       case 16: /* kv ::= ORDER STR */
 #line 34 "cfg.y"
 {set_ord(ps,yymsp[0].minor.yy0);}
-#line 789 "cfg.c"
+#line 792 "cfg.c"
         break;
       case 17: /* kv ::= ENV STR */
 #line 35 "cfg.y"
 {set_env(ps,yymsp[0].minor.yy0);}
-#line 794 "cfg.c"
+#line 797 "cfg.c"
         break;
       case 18: /* kv ::= ULIMIT STR STR */
-      case 35: /* pairs ::= pairs STR STR */ yytestcase(yyruleno==35);
+      case 36: /* pairs ::= pairs STR STR */ yytestcase(yyruleno==36);
 #line 36 "cfg.y"
 {set_ulimit(ps,yymsp[-1].minor.yy0,yymsp[0].minor.yy0);}
-#line 800 "cfg.c"
+#line 803 "cfg.c"
         break;
       case 20: /* kv ::= DISABLED */
 #line 38 "cfg.y"
 {set_dis(ps);  }
-#line 805 "cfg.c"
+#line 808 "cfg.c"
         break;
       case 21: /* kv ::= WAIT */
 #line 39 "cfg.y"
 {set_wait(ps); }
-#line 810 "cfg.c"
+#line 813 "cfg.c"
         break;
       case 22: /* kv ::= ONCE */
 #line 40 "cfg.y"
 {set_once(ps); }
-#line 815 "cfg.c"
+#line 818 "cfg.c"
         break;
       case 23: /* kv ::= NICE STR */
 #line 41 "cfg.y"
 {set_nice(ps,yymsp[0].minor.yy0); }
-#line 820 "cfg.c"
+#line 823 "cfg.c"
         break;
       case 24: /* kv ::= BOUNCE EVERY STR */
 #line 42 "cfg.y"
 {set_bounce(ps,yymsp[0].minor.yy0);}
-#line 825 "cfg.c"
+#line 828 "cfg.c"
         break;
-      case 26: /* cmd ::= path */
+      case 26: /* kv ::= CPUSET STR */
 #line 44 "cfg.y"
-{set_cmd(ps,yymsp[0].minor.yy0);}
-#line 830 "cfg.c"
+{set_cpu(ps,yymsp[0].minor.yy0); }
+#line 833 "cfg.c"
         break;
-      case 27: /* cmd ::= path args */
+      case 27: /* cmd ::= path */
 #line 45 "cfg.y"
-{set_cmd(ps,yymsp[-1].minor.yy0);}
-#line 835 "cfg.c"
+{set_cmd(ps,yymsp[0].minor.yy0);}
+#line 838 "cfg.c"
         break;
-      case 28: /* path ::= STR */
-      case 31: /* arg ::= STR */ yytestcase(yyruleno==31);
+      case 28: /* cmd ::= path args */
 #line 46 "cfg.y"
-{yygotominor.yy0=yymsp[0].minor.yy0;}
-#line 841 "cfg.c"
+{set_cmd(ps,yymsp[-1].minor.yy0);}
+#line 843 "cfg.c"
         break;
-      case 29: /* args ::= args arg */
-      case 30: /* args ::= arg */ yytestcase(yyruleno==30);
+      case 29: /* path ::= STR */
+      case 32: /* arg ::= STR */ yytestcase(yyruleno==32);
 #line 47 "cfg.y"
+{yygotominor.yy0=yymsp[0].minor.yy0;}
+#line 849 "cfg.c"
+        break;
+      case 30: /* args ::= args arg */
+      case 31: /* args ::= arg */ yytestcase(yyruleno==31);
+#line 48 "cfg.y"
 {utarray_push_back(&ps->job->cmdv,&yymsp[0].minor.yy0);}
-#line 847 "cfg.c"
+#line 855 "cfg.c"
         break;
-      case 32: /* arg ::= QUOTEDSTR */
-#line 50 "cfg.y"
-{yygotominor.yy0=unquote(yymsp[0].minor.yy0);}
-#line 852 "cfg.c"
-        break;
-      case 33: /* paths ::= paths path */
-      case 34: /* paths ::= path */ yytestcase(yyruleno==34);
+      case 33: /* arg ::= QUOTEDSTR */
 #line 51 "cfg.y"
+{yygotominor.yy0=unquote(yymsp[0].minor.yy0);}
+#line 860 "cfg.c"
+        break;
+      case 34: /* paths ::= paths path */
+      case 35: /* paths ::= path */ yytestcase(yyruleno==35);
+#line 52 "cfg.y"
 {utarray_push_back(&ps->job->depv,&yymsp[0].minor.yy0);}
-#line 858 "cfg.c"
+#line 866 "cfg.c"
         break;
       default:
       /* (0) file ::= decls */ yytestcase(yyruleno==0);
@@ -866,7 +874,7 @@ static void yy_reduce(
       /* (10) kv ::= CMD cmd */ yytestcase(yyruleno==10);
       /* (19) kv ::= ULIMIT LCURLY pairs RCURLY */ yytestcase(yyruleno==19);
       /* (25) kv ::= DEPENDS LCURLY paths RCURLY */ yytestcase(yyruleno==25);
-      /* (36) pairs ::= */ yytestcase(yyruleno==36);
+      /* (37) pairs ::= */ yytestcase(yyruleno==37);
         break;
   };
   yygoto = yyRuleInfo[yyruleno].lhs;
@@ -914,7 +922,7 @@ static void yy_parse_failed(
   ** parser fails */
 #line 14 "cfg.y"
 ps->rc=-1;
-#line 918 "cfg.c"
+#line 926 "cfg.c"
   ParseARG_STORE; /* Suppress warning about unused %extra_argument variable */
 }
 #endif /* YYNOERRORRECOVERY */
@@ -933,7 +941,7 @@ static void yy_syntax_error(
 
   utstring_printf(ps->em, "error in %s line %d ", ps->cfg->file, ps->line);
   ps->rc=-1;
-#line 937 "cfg.c"
+#line 945 "cfg.c"
   ParseARG_STORE; /* Suppress warning about unused %extra_argument variable */
 }
 

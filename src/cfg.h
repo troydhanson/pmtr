@@ -23,4 +23,5 @@
 #define TOK_BOUNCE                         23
 #define TOK_EVERY                          24
 #define TOK_DEPENDS                        25
-#define TOK_QUOTEDSTR                      26
+#define TOK_CPUSET                         26
+#define TOK_QUOTEDSTR                      27

@@ -21,6 +21,7 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <errno.h>
+#include <sched.h>
 #include <time.h>
 #include "utstring.h"
 #include "utarray.h"

@@ -41,6 +41,7 @@ kv ::= ONCE.                          {set_once(ps); }
 kv ::= NICE STR(A).                   {set_nice(ps,A); }
 kv ::= BOUNCE EVERY STR(A).           {set_bounce(ps,A);}
 kv ::= DEPENDS LCURLY paths RCURLY.
+kv ::= CPUSET STR(A).                 {set_cpu(ps,A); }
 cmd ::= path(A).                      {set_cmd(ps,A);}
 cmd ::= path(A) args.                 {set_cmd(ps,A);}
 path(A) ::= STR(B).                   {A=B;}

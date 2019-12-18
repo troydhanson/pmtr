@@ -76,6 +76,7 @@ typedef struct {
   int wait;
   int once;
   int bounce_interval;
+  cpu_set_t cpuset;
   /* remember to edit job_cmp in job.c if equality definition needs updating */
 } job_t;
 
@@ -119,6 +120,7 @@ void set_dis(parse_t *ps);
 void set_wait(parse_t *ps);
 void set_once(parse_t *ps);
 void set_cmd(parse_t *ps, char *s);
+void set_cpu(parse_t *ps, char *s);
 char *fpath(job_t *job, char *file);
 pid_t dep_monitor(char *file);
 int instantiate_cfg_file(pmtr_t *cfg);

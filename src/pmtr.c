@@ -396,6 +396,12 @@ int main (int argc, char *argv[]) {
     }
   }
 
+  /* always on, nowadays */
+  cfg.echo_syslog_to_stderr = 1;
+
+  /* as a container main process, stay in foreground */
+  if (getpid() == 1) cfg.foreground = 1;
+
   log_opt = LOG_PID;
   if (cfg.echo_syslog_to_stderr || isatty(STDERR_FILENO)) log_opt |= LOG_PERROR;
   openlog("pmtr", log_opt, LOG_LOCAL0);

@@ -15,7 +15,7 @@ wrote pmtr with a few goals in mind:
 
 * to have one configuration file listing all processes to run
 * to exist under (not to replace) the host init system
-* to insulate myself from the host init system
+* to run under various host init systems
 * to consume few resources
 * to have few features
 * no dependencies
@@ -35,6 +35,7 @@ job {
   cmd /usr/local/bin/bitcoind
   user bitcoin
   env HOME=/home/bitcoin
+  cpu 0-8
 }
 
 job {
@@ -71,7 +72,7 @@ Pmtr runs on these flavors of Linux, and probably others:
 * Alpine
 * Debian 
 * Ubuntu 12-18
-* CentOS/RHEL 5-7
+* CentOS/RHEL 5-8
 * Amazon Linux AMI 1/2
 * Raspberry Pi Raspbian
 * Beaglebone Black Debian
@@ -99,7 +100,7 @@ Install the prerequisite tools:
 
 .RedHat/CentOS
 
-    sudo yum install git gcc autoconf automake
+    sudo yum install git gcc autoconf automake make
 
 .Clone pmtr
 
@@ -200,6 +201,7 @@ The full list of options that may appear inside a job are listed here.
 |env            | environment variable to set (repeatable)
 |user           | unix username under whose id to run the process 
 |nice           | unix priority between -19 (highest) and 20 (lowest)
+|cpu            | CPU affinity as hex mask (0xABCD) or number/ranges (0,2-4)
 |ulimit         | process ulimits
 |bounce every   | a time interval to restart the process
 |depends        | files to watch, any changes induce the job to restart 
@@ -245,6 +247,13 @@ nice
 ~~~~
 * This changes the process priority
 * Takes a number in the range -19 (highest priority) to 20 (lowest)
+
+cpu
+~~~~
+* This sets the CPU affinity- the list of CPU's the task can run on
+* Takes a CPU number (e.g. 0) or range (e.g. 2-4) or a mix (e.g. 0,2-4)
+* Alternatively, can take a 0x-prefixed hex mask (e.g. 0x8f)
+* Any CPUs in the set that are physically absent are ignored
 
 user
 ~~~~
@@ -393,8 +402,8 @@ use cases, the following command line options may be useful.
 [width="80%",cols="20m,50",grid="none",options="none"]
 |==========================================================================
 | -h        | show help    
-| -F        | stay in foreground 
-| -I        | echo syslog to stderr
+| -F        | stay in foreground (enabled by default when PID 1)
+| -I        | echo syslog to stderr (enabled by default)
 | -c <file> | specify configuration file
 | -t        | test syntax (parse config file and exit)
 | -v        | verbose logging (repeatable), -vv shows parsing
@@ -403,13 +412,11 @@ use cases, the following command line options may be useful.
 
 In a container
 ~~~~~~~~~~~~~~
-To use pmtr as the init entrypoint (process 1) in a container, invoke it like:
+When pmtr is the init entrypoint (process 1) in a container, it stays in the
+foreground by default. An example invocation command is shown.
 
   # container entrypoint
   /usr/bin/pmtr -IFc /path/to/pmtr.conf
-
-The `-F` makes it stay in the foreground. The `-I` makes the jobs' output 
-more easily visible by echoing it from syslog.
 
 UDP control
 ~~~~~~~~~~~

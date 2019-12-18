@@ -1,3 +1,5 @@
+#define _GNU_SOURCE /* To get CPU_SET macros*/
+#include <sched.h>
 #include <stdio.h>
 #include <string.h>
 #include <syslog.h>
@@ -32,6 +34,7 @@ void job_ini(job_t *job) {
   utarray_init(&job->envv, &ut_str_icd); 
   utarray_init(&job->depv, &ut_str_icd); 
   utarray_init(&job->rlim, &rlimit_icd); 
+  CPU_ZERO(&job->cpuset);
   job->respawn=1;
 }
 void job_fin(job_t *job) { 
@@ -46,6 +49,7 @@ void job_fin(job_t *job) {
   if (job->in) free(job->in);
 }
 void job_cpy(job_t *dst, const job_t *src) {
+  int i;
   dst->name = src->name ? strdup(src->name) : NULL;
   utarray_init(&dst->cmdv, &ut_str_icd); utarray_concat(&dst->cmdv, &src->cmdv);
   utarray_init(&dst->envv, &ut_str_icd); utarray_concat(&dst->envv, &src->envv);
@@ -69,6 +73,12 @@ void job_cpy(job_t *dst, const job_t *src) {
   dst->once = src->once;
   dst->bounce_interval = src->bounce_interval;
   dst->deps_hash = src->deps_hash;
+  CPU_ZERO(&dst->cpuset);
+  for(i = 0; i < CPU_SETSIZE; i++) {
+    if (CPU_ISSET(i, &src->cpuset)) {
+      CPU_SET(i, &dst->cpuset);
+    }
+  }
 }
 const UT_icd job_mm={sizeof(job_t), (init_f*)job_ini, 
                     (ctor_f*)job_cpy, (dtor_f*)job_fin };
@@ -94,6 +104,94 @@ mk_setter(in);
 
 void set_cmd(parse_t *ps, char *cmd) { 
   utarray_insert(&ps->job->cmdv,&cmd,0);
+}
+
+/* cpuset is expressed as a hex mask in the form 0x4A
+ * or as a comma-delimited list of numbers and ranges
+ * e.g. 1,3-5,8
+ */
+void set_cpu(parse_t *ps, char *cpu_spec) { 
+  unsigned cpu, i, in_range, range_start, range_end, ndig;
+  unsigned char *c, d, peek;
+  size_t len;
+
+  len = strlen(cpu_spec);
+
+  /* parse 0xABC form of cpu mask */
+  if (strncmp(cpu_spec, "0x", 2) == 0) {
+    cpu_spec += 2;
+    len -= 2;
+    if (len == 0) {
+      utstring_printf(ps->em, "parse error in cpuset");
+      ps->rc = -1;
+      return;
+    }
+
+    for(c=cpu_spec; *c != '\0'; c++) {
+      if      (*c >= '0' && *c <= '9') d = *c-'0';
+      else if (*c >= 'a' && *c <= 'f') d = *c-'a'+10;
+      else if (*c >= 'A' && *c <= 'F') d = *c-'A'+10;
+      else {
+        utstring_printf(ps->em, "invalid hex in cpuset");
+        ps->rc = -1;
+        return;
+      }
+      /* parse one number in the range 0-15 into bits */
+      for(i = 0; i < 4; i++) {
+        if (d & (1 << i)) {
+          cpu = i + (len-1)*4;
+          CPU_SET(cpu, &ps->job->cpuset);
+        }
+      }
+      len--;
+    }
+    return;
+  }
+
+  /* parse numbers and ranges format e.g. "12,14-17" */
+  in_range = 0;
+  d = 0;
+  ndig = 0;
+  for(c = cpu_spec; *c != '\0'; c++) {
+    if (*c >= '0' && *c <= '9') {
+      d = (d*10) + *c-'0';
+      ndig++;
+      peek = *(c+1);
+      if (peek == '\0' || peek == ',') {
+          if (in_range) {
+            range_end = d;
+            in_range = 0;
+            if (range_end <= range_start) {
+              goto fail;
+            }
+          } else {
+            range_start = d;
+            range_end = d;
+          }
+          for(cpu = range_start; cpu <= range_end; cpu++) {
+            CPU_SET(cpu, &ps->job->cpuset);
+          }
+          d = 0;
+      }
+    } else if (*c == ',') {
+      peek = *(c+1);
+      if ((ndig == 0) || peek < '0' || peek > '9') goto fail;
+    } else if (*c == '-') {
+      if ((ndig == 0) || in_range) goto fail;
+      peek = *(c+1);
+      if (peek < '0' || peek > '9') goto fail;
+      range_start = d;
+      in_range = 1;
+      d = 0;
+    } else goto fail;
+  }
+
+  return;
+
+ fail:
+  utstring_printf(ps->em, "syntax error in cpuset");
+  ps->rc = -1;
+  return;
 }
 
 void set_env(parse_t *ps, char *env) { 
@@ -516,6 +614,10 @@ void do_jobs(pmtr_t *cfg) {
     /* set process priority / nice */
     if (setpriority(PRIO_PROCESS, 0, job->nice) < 0)         {rc=-5; goto fail;}
 
+    /* set cpu affinity, if any */
+    if ((CPU_COUNT(&job->cpuset) > 0) &&
+      sched_setaffinity(0, sizeof(cpu_set_t), &job->cpuset)) {rc=-12; goto fail;}
+
     /* set ulimits */
     resource_rlimit_t *rt=NULL;
     while ( (rt=(resource_rlimit_t*)utarray_next(&job->rlim,rt))) {
@@ -569,6 +671,7 @@ void do_jobs(pmtr_t *cfg) {
     if (rc==-9) syslog(LOG_ERR,"can't initgroups %s: %s", job->user, strerror(errno));
     if (rc==-10) syslog(LOG_ERR,"can't setuid %s: %s", job->user, strerror(errno));
     if (rc==-11) syslog(LOG_ERR,"can't exec %s: %s", pathname, strerror(errno));
+    if (rc==-12) syslog(LOG_ERR,"can't set cpu affinity: %s", strerror(errno));
     exit(-1);  /* child exit */
   }
 }
@@ -710,6 +813,7 @@ int job_cmp(job_t *a, job_t *b) {
   if (a->wait != b->wait) return a->wait - b->wait;
   if (a->once != b->once) return a->once - b->once;
   if (a->bounce_interval != b->bounce_interval) return a->bounce_interval - b->bounce_interval;
+  if (CPU_EQUAL(&a->cpuset, &b->cpuset) == 0) return -1;
   return 0;
 }
 

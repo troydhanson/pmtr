@@ -31,6 +31,7 @@ static struct {
  {"depends", 7, TOK_DEPENDS},
  {"ulimit",  6, TOK_ULIMIT},
  {"nice",    4, TOK_NICE},
+ {"cpu",     3, TOK_CPUSET},
 };
 static const int ws[256] = { ['\r']=1, ['\n']=1, ['\t']=1, [' ']=1 };
 
