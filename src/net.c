@@ -232,6 +232,8 @@ static void decode_msg(pmtr_t *cfg, char *buf, size_t n) {
         break;
       default: assert(0); break;
     }
+    /* induce dependency monitor restart */
+    if (cfg->dm_pid != -1) kill(cfg->dm_pid,SIGHUP);
   }
 
  done:
