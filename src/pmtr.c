@@ -45,19 +45,19 @@ pid_t dep_monitor(char *file) {
   prctl(PR_SET_NAME, "pmtr-dep");
   close_sockets(&cfg);
 
-  fd = inotify_init();
-  if (fd == -1) {
-    syslog(LOG_ERR, "inotify_init: %s", strerror(errno)); 
-    sleep(SHORT_DELAY);
-    exit(-1);
-  }
+//  fd = inotify_init();
+//  if (fd == -1) {
+//    syslog(LOG_ERR, "inotify_init: %s", strerror(errno));
+//    sleep(SHORT_DELAY);
+//    exit(-1);
+//  }
 
-  wd = inotify_add_watch(fd, file, IN_CLOSE_WRITE);
-  if (wd == -1) {
-    syslog(LOG_ERR, "can't watch %s: %s", file, strerror(errno)); 
-    sleep(SHORT_DELAY);  /* pmtr.conf unlinked pending rewrite? */
-    exit(-1);            /* parent will restart us to try again */
-  }
+//  wd = inotify_add_watch(fd, file, IN_CLOSE_WRITE);
+//  if (wd == -1) {
+//    syslog(LOG_ERR, "can't watch %s: %s", file, strerror(errno));
+//    sleep(SHORT_DELAY);  /* pmtr.conf unlinked pending rewrite? */
+//    exit(-1);            /* parent will restart us to try again */
+//  }
 
   /* loop over jobs' dependencies, adding watch on each one. if one
    * is missing, we log the error but not fatally, because parent
