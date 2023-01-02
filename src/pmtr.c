@@ -45,11 +45,22 @@ pid_t dep_monitor(char *file) {
   prctl(PR_SET_NAME, "pmtr-dep");
   close_sockets(&cfg);
 
+  /* This sub-process monitors pmtr.conf for changes, and also any
+   * files explicitly named by the "depends" keyword. It is based on
+   * inotify in Linux. In some situations, inotify is not available,
+   * e.g., in a Linux container on a Mac host that mounts a host folder.
+   * Log if inotify initialization fails but treat this as non-fatal. */
   fd = inotify_init();
   if (fd == -1) {
     syslog(LOG_ERR, "inotify_init: %s", strerror(errno)); 
-    sleep(SHORT_DELAY);
-    exit(-1);
+    job_t *job=NULL;
+    while ( (job=(job_t*)utarray_next(cfg.jobs,job))) {
+      if (job->disabled) continue;
+      if (utarray_len(&job->depv) > 0) {
+        syslog(LOG_ERR, "job %s: dependency watching disabled", job->name);
+      }
+    }
+    exit(PMTR_NO_RESTART); /* don't restart the dep_monitor process */
   }
 
   wd = inotify_add_watch(fd, file, IN_CLOSE_WRITE);

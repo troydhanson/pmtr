@@ -684,9 +684,14 @@ void collect_jobs(pmtr_t *cfg, UT_string *sm) {
 
   while ( (pid = waitpid(-1, &es, WNOHANG)) > 0) {
 
-    /* just respawn if it's our dependency monitor */
+    /* respawn if it's our dependency monitor, unless its flagged */
     if (pid==cfg->dm_pid) { 
-      cfg->dm_pid = dep_monitor(cfg->file);
+      if (WIFEXITED(es) && ((WEXITSTATUS(es)) == PMTR_NO_RESTART)) {
+        syslog(LOG_INFO, "inotify-based dependency monitoring disabled");
+        cfg->dm_pid = 0;
+      } else {
+        cfg->dm_pid = dep_monitor(cfg->file);
+      }
       continue;
     }
     /* if it's our logger sub process ... */
