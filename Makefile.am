@@ -1,3 +1,0 @@
-EXTRA_DIST = LICENSE doc
-
-SUBDIRS = src

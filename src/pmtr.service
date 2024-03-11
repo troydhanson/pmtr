@@ -1,0 +1,16 @@
+# This is a systemd unit file that runs pmtr as a service
+# To install and enable it, copy this file to /etc/systemd/system
+# and then run
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable pmtr.service
+#   sudo systemctl start pmtr.service
+
+[Unit]
+Description=pmtr process manager
+Documentation=http://troydhanson.github.io/pmtr
+
+[Service]
+ExecStart=/usr/bin/pmtr -F 
+
+[Install]
+WantedBy=multi-user.target

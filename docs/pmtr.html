@@ -4,7 +4,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
 <head>
 <meta http-equiv="Content-Type" content="application/xhtml+xml; charset=UTF-8" />
-<meta name="generator" content="AsciiDoc 8.6.10" />
+<meta name="generator" content="AsciiDoc 10.1.2" />
 <title>Guide to pmtr</title>
 <style type="text/css">
 /* Shared CSS for AsciiDoc xhtml11 and html5 backends */
@@ -436,7 +436,7 @@ thead, p.table.header {
 p.table {
   margin-top: 0;
 }
-/* Because the table frame attribute is overriden by CSS in most browsers. */
+/* Because the table frame attribute is overridden by CSS in most browsers. */
 div.tableblock > table[frame="void"] {
   border-style: none;
 }
@@ -770,7 +770,6 @@ asciidoc.install(2);
 <div id="header">
 <h1>Guide to pmtr</h1>
 <span id="author">Troy D. Hanson</span><br />
-<span id="email"><code>&lt;<a href="mailto:tdh@tkhanson.net">tdh@tkhanson.net</a>&gt;</code></span><br />
 <div id="toc">
   <div id="toctitle">Table of Contents</div>
   <noscript><p><b>JavaScript must be enabled in your browser to display the table of contents.</b></p></noscript>
@@ -781,44 +780,53 @@ asciidoc.install(2);
 <div class="sectionbody">
 <div class="paragraph"><p>Pmtr is one of my <a href="http://troydhanson.github.io/">many C projects</a>.
 Back to the <a href="https://github.com/troydhanson/pmtr">pmtr Github page</a>.</p></div>
-<div class="paragraph"><div class="title">About</div><p>I wrote pmtr as a simple supervisory daemon for my own needs.  Pmtr runs under
-systemd as well as other init mechanisms like sysvinit, etc. It can also run as
-process 1 inside a container.  When installing on many flavors of Linux, it can
-detect the host init system and set itself up to start at boot appropriately. I
-wrote pmtr with a few goals in mind:</p></div>
+<div class="paragraph"><div class="title">About</div><p>Back when I wrote pmtr in 2011, systemd had not yet been widely adopted.
+For several years, it provided a uniform way to run a set of services across
+various distributions. As systemd became widely adopted, it became the uniform
+system manager, but pmtr ended up being useful in two secondary roles.</p></div>
+<div class="paragraph"><p><strong>On a host</strong>: pmtr, running under systemd, is a quick way to run a group of
+processes from a single configuration file</p></div>
+<div class="paragraph"><p><strong>In a container</strong>: pmtr, as process 1, launches a set of processes when the
+ container starts</p></div>
+<div class="paragraph"><p>I wrote pmtr as a workalike to a proprietary process supervisor with these goals:</p></div>
 <div class="ulist"><ul>
 <li>
 <p>
-to have one configuration file listing all processes to run
+a single configuration file lists the processes to run
 </p>
 </li>
 <li>
 <p>
-to exist under (not to replace) the host init system
+to create the managed processes in a standard execution context where the only
+  open file descriptors are 0, 1, and 2 corresponding to standard input and
+  output
 </p>
 </li>
 <li>
 <p>
-to run under various host init systems
+for the supervisory process to consume few resources, and collect any exited
+  child processes
 </p>
 </li>
 <li>
 <p>
-to consume few resources
+to limit the restart rate of any failed or exiting child processes
 </p>
 </li>
 <li>
 <p>
-to have few features
+to signal child processes when the supervisory process itself is terminated
 </p>
 </li>
 <li>
 <p>
-no dependencies
+to have no dependencies
 </p>
 </li>
 </ul></div>
 <div class="paragraph"><p>It is written in C, supports Linux only, and is MIT licensed.</p></div>
+<div class="paragraph"><p>Over the years, pmtr has been used on many Linux variants including Ubuntu,
+RHEL, Arch, Amazon Linux, Pi OS and others.</p></div>
 <div class="listingblock">
 <div class="title">Example /etc/pmtr.conf</div>
 <div class="content">
@@ -828,11 +836,11 @@ no dependencies
 }
 
 job {
-  name bitcoin-daemon
-  dir /home/bitcoin
-  cmd /usr/local/bin/bitcoind
-  user bitcoin
-  env HOME=/home/bitcoin
+  name demo-daemon
+  dir /home/demo
+  cmd /usr/bin/demod
+  user demo
+  env HOME=/home/demo
   cpu 0-8
 }
 
@@ -844,10 +852,9 @@ job {
 </div></div>
 <div class="paragraph"><p>When pmtr is started, it starts all the jobs in <code>pmtr.conf</code>, likewise, pmtr
 terminates them when it is stopped.</p></div>
-<div class="paragraph"><p>In practice I let the host init system- often systemd- manage all the standard
-OS services. I use pmtr to run the local software- the parts that make up an
-appliance, often comprising a dozen or two dozen jobs that function together.</p></div>
-<div class="paragraph"><p>There are many options to use inside the job, listed later below.</p></div>
+<div class="paragraph"><p>Any syntax errors in pmtr.conf are reported through syslog, which will
+be echoed to the container logs (when run as a container entrypoint) or,
+on a systemd host, visible through <code>journalctl -u pmtr</code>.</p></div>
 <div class="paragraph"><p>Processes that run under pmtr should stay in the foreground, exit on SIGTERM or
 SIGKILL, and clean up after their own sub-processes when exiting.</p></div>
 <div class="paragraph"><p>If a job exits, pmtr restarts it. If it exits too quickly- less than 10 seconds
@@ -857,168 +864,105 @@ immediately. There is no need to tell pmtr to reload its configuration file.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="_platforms">Platforms</h2>
-<div class="sectionbody">
-<div class="paragraph"><p>Pmtr runs on these flavors of Linux, and probably others:</p></div>
-<div class="ulist"><ul>
-<li>
-<p>
-Arch
-</p>
-</li>
-<li>
-<p>
-Alpine
-</p>
-</li>
-<li>
-<p>
-Debian
-</p>
-</li>
-<li>
-<p>
-Ubuntu 12-18
-</p>
-</li>
-<li>
-<p>
-CentOS/RHEL 5-8
-</p>
-</li>
-<li>
-<p>
-Amazon Linux AMI 1/2
-</p>
-</li>
-<li>
-<p>
-Raspberry Pi Raspbian
-</p>
-</li>
-<li>
-<p>
-Beaglebone Black Debian
-</p>
-</li>
-<li>
-<p>
-Yocto <a href="https://github.com/troydhanson/meta-pmtr">layer</a>
-</p>
-</li>
-</ul></div>
-</div>
-</div>
-<div class="sect1">
 <h2 id="_build_amp_install">Build &amp; Install</h2>
 <div class="sectionbody">
-<div class="sect2">
-<h3 id="_option_1_rpm">Option 1: RPM</h3>
-<div class="paragraph"><p>A RHEL/CentOS 7 x86_64 RPM package for pmtr can be
-<a href="https://packagecloud.io/troydhanson/pmtr">found here</a>.</p></div>
-</div>
-<div class="sect2">
-<h3 id="_option_2_build_from_source">Option 2: Build from source</h3>
 <div class="paragraph"><p>To build pmtr from source follow these steps.</p></div>
-<div class="paragraph"><p>Install the prerequisite tools:</p></div>
-<div class="literalblock">
-<div class="title">Ubuntu</div>
-<div class="content">
-<pre><code>sudo apt install git build-essential autoconf automake</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="title">RedHat/CentOS</div>
-<div class="content">
-<pre><code>sudo yum install git gcc autoconf automake make</code></pre>
-</div></div>
 <div class="literalblock">
 <div class="title">Clone pmtr</div>
 <div class="content">
 <pre><code>git clone https://github.com/troydhanson/pmtr.git</code></pre>
 </div></div>
 <div class="literalblock">
-<div class="title">Build</div>
+<div class="title">Build and install</div>
 <div class="content">
 <pre><code>cd pmtr
-./autogen.sh
-./configure --bindir=/usr/bin --sysconfdir=/etc
-make</code></pre>
+mkdir build &amp;&amp; cd build
+cmake ..
+make
+sudo cmake --install . --prefix=/usr</code></pre>
 </div></div>
-<div class="literalblock">
-<div class="title">Install</div>
-<div class="content">
-<pre><code>sudo make install
-sudo touch /etc/pmtr.conf</code></pre>
-</div></div>
-<div class="paragraph"><div class="title">Set up initscript</div><p>Do this to start pmtr automatically at boot.</p></div>
+<div class="paragraph"><p>This will install the executable into /usr/bin/pmtr.</p></div>
+<div class="paragraph"><div class="title">Usage as a container entrypoint</div><p>Dockerfile syntax to configure pmtr as the entrypoint is:</p></div>
 <div class="literalblock">
 <div class="content">
-<pre><code>cd initscripts
-sudo ./setup-initscript --auto</code></pre>
+<pre><code>ENTRYPOINT ["/usr/bin/pmtr", "-Fc", "/etc/pmtr.conf"]</code></pre>
 </div></div>
-<div class="paragraph"><p>Using <code>setup-initscript --auto</code> detects common init managers like systemd and
-sets up pmtr to start at boot.  Run <code>./setup-initscript --help</code> to see further
-options.  Here&#8217;s an example of running it on Ubuntu based on systemd:</p></div>
+<div class="paragraph"><p>The pmtr options used above are</p></div>
 <div class="literalblock">
 <div class="content">
-<pre><code>sudo ./setup-initscript --auto
-initsystem          : systemd
-pmtr                : /usr/bin/pmtr
-services            : /etc/systemd/system
-initscript          : /etc/systemd/system/pmtr.service
-enabling            : systemctl enable pmtr
-starting service    : systemctl start pmtr</code></pre>
+<pre><code>-F        (run pmtr in the foreground, keeping container from exiting)
+-c &lt;file&gt; (path to pmtr configuration, defaults to /etc/pmtr.conf)</code></pre>
 </div></div>
-<div class="paragraph"><p>You can look at the syslog to confirm it is now running.</p></div>
+<div class="paragraph"><p>The pmtr logs will be sent to the container logs (e.g. <code>docker logs</code>).</p></div>
+<div class="paragraph"><div class="title">Usage as a systemd-managed service on a host</div><p>To set up pmtr to run under systemd on a host, build as shown above then
+install the systemd service, enable and start pmtr (and cause pmtr to
+start on future reboots), by issuing these commands:</p></div>
 <div class="literalblock">
 <div class="content">
-<pre><code>grep pmtr /var/log/syslog   # ubuntu
-grep pmtr /var/log/messages # redhat/centos</code></pre>
+<pre><code>sudo cp pmtr.service /etc/systemd/system
+sudo systemctl daemon-reload
+sudo systemctl enable pmtr.service
+sudo systemctl start pmtr.service</code></pre>
 </div></div>
-<div class="paragraph"><p>You should see something like:</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>Nov 13 17:13:10 ubuntu systemd[1]: Started pmtr process manager.
-Nov 13 17:13:10 ubuntu pmtr[10888]: pmtr: starting</code></pre>
-</div></div>
-<div class="paragraph"><p>It is always a good idea to look in the syslog after making changes to the
-configuration file. This is where pmtr reports on starting jobs, or on any
-errors in parsing the configuration file. Any output generated by the jobs
-also appears in the syslog, by default.</p></div>
-</div>
 </div>
 </div>
 <div class="sect1">
 <h2 id="_config_file">Config file</h2>
 <div class="sectionbody">
-<div class="sect2">
-<h3 id="_overview">Overview</h3>
-<div class="paragraph"><p>The configuration file <code>/etc/pmtr.conf</code> drives pmtr.</p></div>
-<div class="paragraph"><p>The config file can be changed using a command line option (<code>-c</code>) when running
-pmtr from the command line.</p></div>
-<div class="paragraph"><p>As shown previously it consists of zero or more job definitions. A job is just
-a process definition. It looks like:</p></div>
+<div class="paragraph"><p>You can create an empty file called <code>/etc/pmtr.conf</code> and add temporary content
+to get the hang of the pmtr configuration syntax, such as:</p></div>
 <div class="literalblock">
 <div class="content">
 <pre><code>job {
-  name bitcoin-daemon
-  dir /home/bitcoin
-  cmd /usr/local/bin/bitcoind
-  user bitcoin
-  env HOME=/home/bitcoin
+  name demo
+  cmd /bin/sleep 20
 }</code></pre>
 </div></div>
-<div class="paragraph"><p>A job must have a <code>name</code> (used for logging only) and a <code>cmd</code>. Everything else
-in the curly braces optional.</p></div>
+<div class="paragraph"><p>This is a minimal job having a name and a command.  Save the file. At this
+point, if you execute pmtr in the foreground, you can see it run the job,</p></div>
+<div class="literalblock">
+<div class="content">
+<pre><code>pmtr -F -c /etc/pmtr.conf</code></pre>
+</div></div>
+<div class="paragraph"><p>You will see output like this:</p></div>
+<div class="literalblock">
+<div class="content">
+<pre><code>pmtr[21992]: pmtr: starting
+pmtr[21992]: started job demo [21994]
+pmtr[21992]: job demo [21994] exited after 20 sec: exit status 0
+pmtr[21992]: started job demo [21997]</code></pre>
+</div></div>
+<div class="paragraph"><p>You can see that pmtr is restarting it when the <code>sleep</code> exits every 20 seconds.
+Press Ctrl-C to terminate pmtr and it will terminate the sleep subprocess too.</p></div>
+<div class="paragraph"><p>The config file can be changed to a different file using a command line option
+(<code>pmtr -c &lt;file&gt;</code>).</p></div>
+<div class="paragraph"><p>As shown previously pmtr.conf consists of zero or more job definitions. An empty
+<code>pmtr.conf</code> is valid, in which case pmtr will idle harmlessly. Add jobs using
+the curly brace delimited syntax. Another example of a job:</p></div>
+<div class="literalblock">
+<div class="content">
+<pre><code>job {
+  name demo
+  cmd /usr/bin/date
+  out /var/log/demo.out
+  err /var/log/demo.err
+}</code></pre>
+</div></div>
+<div class="paragraph"><p>A job must have a <code>name</code> (used to improve log readability only) and a <code>cmd</code> at a
+minimum. The contrived job above will log the date, and since it exits
+immediately, pmtr will wait 10 seconds and then restart it. This limits the
+impact of misconfigured, failing, or quick exiting jobs. If a job has been
+running more than ten seconds, then exits, pmtr will restart it immediately.</p></div>
+<div class="paragraph"><p>In the pmtr.conf syntax,</p></div>
 <div class="ulist"><ul>
 <li>
 <p>
-Order does not matter.
+Indentation is optional.
 </p>
 </li>
 <li>
 <p>
-Indentation is optional.
+The order of options does not matter.
 </p>
 </li>
 <li>
@@ -1032,7 +976,7 @@ Comments start with <code>#</code>.
 </p>
 </li>
 </ul></div>
-</div>
+<div class="paragraph"><p>You can run <code>pmtr -t -c /etc/pmtr.conf</code> to test the configuration file syntax.</p></div>
 <div class="sect2">
 <h3 id="_options">Options</h3>
 <div class="paragraph"><p>The full list of options that may appear inside a job are listed here.</p></div>
@@ -1130,36 +1074,24 @@ Specifies the <strong>absolute path</strong> to the executable (there is no $PAT
 </li>
 <li>
 <p>
-It may have arguments after the executable (e.g. <code>cmd /usr/bin/python rest.py</code>)
+It may have arguments after the executable (e.g. <code>cmd /usr/bin/python foo.py</code>)
 </p>
 </li>
 <li>
 <p>
-Use double-quotes to make one argument from the quoted string.
-</p>
-</li>
-<li>
-<p>
-No shell expansion: no wildcards, backticks, variables, etc.
+Use double-quotes to form a quoted string into a single argument.
 </p>
 </li>
 </ul></div>
-<div class="paragraph"><p>If you need shell features in your command, wrap it with a shell script. You
-can also use a quoted string as a shell script like this:</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>job {
-  name api
-  cmd /bin/bash -c "ifconfig eth1 up; sleep 5; exec /api/rest.py"
-}</code></pre>
-</div></div>
+<div class="paragraph"><p>There is no shell expansion: no wildcards, backticks, variables, etc.  If you
+need shell features in your command, invoke it through a shell script.</p></div>
 </div>
 <div class="sect2">
 <h3 id="_env">env</h3>
 <div class="ulist"><ul>
 <li>
 <p>
-Use to push an environment variable into a job, e.g. <code>env DEBUG=1</code>.
+Sets an environment variable for a job, e.g. <code>env DEBUG=1</code>.
 </p>
 </li>
 <li>
@@ -1284,13 +1216,13 @@ Pmtr restarts the job if a change is detected.
 <div class="literalblock">
 <div class="content">
 <pre><code>job {
-  name bitcoin-daemon
-  dir /home/bitcoin
-  cmd /usr/bin/bitcoind
-  user bitcoin
-  env HOME=/home/bitcoin
+  name demo-daemon
+  dir /home/demo
+  cmd /usr/bin/demod
+  user demo
+  env HOME=/home/demo
   depends {
-    /home/bitcoin/.bitcoin/bitcoin.conf
+    /home/demo/.demo/demo.conf
   }
 }</code></pre>
 </div></div>
@@ -1455,7 +1387,9 @@ Used for setup jobs that need not be restarted.
 <div class="sect1">
 <h2 id="_operator_notes">Operator notes</h2>
 <div class="sectionbody">
-<div class="paragraph"><p>Pmtr detects writes to <code>pmtr.conf</code> and applies the changes immediately.</p></div>
+<div class="paragraph"><p>Pmtr detects writes to <code>pmtr.conf</code> and applies the changes immediately.
+This allows a user to edit the config file manually, and save it, and
+immediately have pmtr read the config file, taking appropriate action.</p></div>
 <div class="ulist"><ul>
 <li>
 <p>
@@ -1475,40 +1409,31 @@ A changed job is restarted with its new configuration.
 </ul></div>
 <div class="paragraph"><p>You can run <code>pmtr -t</code> to check the config file syntax and report any errors.</p></div>
 <div class="sect2">
-<h3 id="_logs">Logs</h3>
-<div class="paragraph"><p>Logging from pmtr goes to syslog. Typically these logs go to <code>/var/log/syslog</code> or
-<code>/var/log/messages</code>.  Check the syslog after any change to <code>pmtr.conf</code>.  Errors in
-parsing <code>pmtr.conf</code> are logged there, as well as job start or exit events.  On
-systemd-based hosts, you can also use <code>journalctl -u pmtr</code> to see pmtr logs.</p></div>
+<h3 id="_viewing_the_logs">Viewing the logs</h3>
+<div class="paragraph"><p>When pmtr is a container entrypoint, the pmtr logs can be viewed using <code>docker
+logs</code> for that container.</p></div>
+<div class="paragraph"><p>On a host, use <code>journalctl -u pmtr</code> to view pmtr logs.</p></div>
 </div>
 <div class="sect2">
-<h3 id="_status_and_control">Status and control</h3>
-<div class="paragraph"><p>To start, stop or get status of pmtr, use the host system management commands.</p></div>
+<h3 id="_checking_status_and_starting_and_stopping_pmtr">Checking status, and starting and stopping pmtr</h3>
+<div class="paragraph"><p>Use the systemd management commands to start or stop pmtr or check the pmtr
+status on a systemd-managed host.</p></div>
 <div class="literalblock">
 <div class="content">
-<pre><code># under systemd
+<pre><code>systemctl status pmtr
 systemctl start pmtr
-systemctl stop pmtr
-systemctl status pmtr</code></pre>
-</div></div>
-<div class="paragraph"><p>or</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code># other initsystems
-service pmtr status
-service pmtr start
-service pmtr stop</code></pre>
+systemctl stop pmtr</code></pre>
 </div></div>
 </div>
 <div class="sect2">
-<h3 id="_job_exits">Job exits</h3>
+<h3 id="_behavior_when_a_job_exits">Behavior when a job exits</h3>
 <div class="paragraph"><div class="title">Jobs that exit on their own</div><p>If a job terminates by itself, when pmtr did not signal it to exit, (and the
 job does not have the <code>once</code> option), pmtr restarts it. However, if it exited
 within 10 seconds of when it started, pmtr waits 10 seconds to restart it. The
 10-second wait prevents rapid process cycling.  Also, a job that&#8217;s waiting for
 something (like a network resource to come up) can be designed to exit instead
 of retry, relying on pmtr to restart it periodically to try again.</p></div>
-<div class="paragraph"><div class="title">How pmtr kills a job</div><p>Pmtr terminates a job when it is deleted, disabled, or altered in <code>pmtr.conf</code>,
+<div class="paragraph"><div class="title">How pmtr terminates a job</div><p>Pmtr terminates a job when it is deleted, disabled, or altered in <code>pmtr.conf</code>,
 or is being bounced due to the <code>bounce every</code> option; or because pmtr itself is
 being shut down.  To terminate a job, pmtr sends SIGTERM to it, then SIGKILL
 shortly afterward, if it&#8217;s still running.</p></div>
@@ -1536,10 +1461,6 @@ cellspacing="0" cellpadding="4">
 <td align="left" valign="top"><p class="table">stay in foreground (enabled by default when PID 1)</p></td>
 </tr>
 <tr>
-<td align="left" valign="top"><p class="table"><code>-I</code></p></td>
-<td align="left" valign="top"><p class="table">echo syslog to stderr (enabled by default)</p></td>
-</tr>
-<tr>
 <td align="left" valign="top"><p class="table"><code>-c &lt;file&gt;</code></p></td>
 <td align="left" valign="top"><p class="table">specify configuration file</p></td>
 </tr>
@@ -1560,14 +1481,36 @@ cellspacing="0" cellpadding="4">
 </div>
 </div>
 <div class="sect2">
-<h3 id="_in_a_container">In a container</h3>
-<div class="paragraph"><p>When pmtr is the init entrypoint (process 1) in a container, it stays in the
-foreground by default. An example invocation command is shown.</p></div>
+<h3 id="_onconnect_utility">"onconnect" utility</h3>
+<div class="paragraph"><p>For processes that run in response to an accepted network connection,
+pmtr includes a helper that will only run the process when a client
+actually connects to that socket. Until then, only the socket listener
+will run; when the client connects, the listener will fork and execute
+the program to handle it. This is a way to defer running a network
+service until a client connects to it. A new instance of the service
+will be started for each client connection. To use it, configure a
+job using the "onconnect" utility as the command, followed by the service
+itself. For example, a hypothetical Gstreamer pipeline could be started
+only upon a client connection on port 5000 like this:</p></div>
 <div class="literalblock">
 <div class="content">
-<pre><code># container entrypoint
-/usr/bin/pmtr -IFc /path/to/pmtr.conf</code></pre>
+<pre><code>job {
+  name gstreamer-job
+  cmd /usr/bin/onconnect -p 5000 /path/to/gstreamer-job &lt;args&gt;
+}</code></pre>
 </div></div>
+<div class="paragraph"><p>The "onconnect" utility is built with pmtr and installed alongside it
+so it will be in /usr/bin if you ran <code>cmake --install . --prefix=/usr</code>.</p></div>
+<div class="paragraph"><p>The full syntax for onconnect includes the ability to customize the
+IP address it listens on (for a multihomed host); all is the default.</p></div>
+<div class="literalblock">
+<div class="content">
+<pre><code>onconnect [-a 0.0.0.0] -p &lt;port&gt; /process/to/fork [args]</code></pre>
+</div></div>
+<div class="paragraph"><p>When a client connection is made to this port, onconnect will fork
+and execute the named subprocess with the accepted client connection on
+file descriptor 3. The subprocess must be coded to expect the client
+connection on that descriptor.</p></div>
 </div>
 <div class="sect2">
 <h3 id="_udp_control">UDP control</h3>
@@ -1607,7 +1550,7 @@ edited or pmtr is restarted.</p></div>
 <div id="footer">
 <div id="footer-text">
 Last updated
- 2019-12-18 22:37:37 UTC
+ 2024-03-11 03:04:31 UTC
 </div>
 </div>
 </body>

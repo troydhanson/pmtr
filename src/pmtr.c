@@ -13,7 +13,6 @@ void usage(char *prog) {
   fprintf(stderr, "   -v           (verbose)\n");
   fprintf(stderr, "   -c <file>    (config file)\n");
   fprintf(stderr, "   -p <file>    (make pidfile)\n");
-  fprintf(stderr, "   -I           (echo syslog to stderr)\n");
   fprintf(stderr, "   -F           (stay in foreground)\n");
   fprintf(stderr, "   -t           (just test config file)\n");
   fprintf(stderr, "\n");
