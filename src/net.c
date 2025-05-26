@@ -248,7 +248,7 @@ void service_socket(pmtr_t *cfg) {
   ssize_t rc;
   int *fd = (int*)utarray_front(cfg->listen); assert(fd);
   do {
-    rc = read(*fd, buf, sizeof(buf));   /* fd is non-blocking, thus */
+    rc = read(*fd, buf, BUF_SZ);        /* fd is non-blocking, thus */
     if (rc > 0) decode_msg(cfg,buf,rc); /* we get rc==-1 after last */
   } while (rc >= 0);
 }
