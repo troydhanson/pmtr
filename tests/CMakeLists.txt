@@ -1,7 +1,13 @@
 # Tests CMakeLists.txt for pmtr
 # Builds and runs unit and integration tests
+#
+# NOTE: pmtr is Linux-only (uses inotify, signalfd, prctl, SO_PEERCRED)
+# Tests will only build and run on Linux systems.
 
 enable_testing()
+
+# Strict compiler warnings for test code
+add_compile_options(-Wall -Wextra -Werror -Wno-unused-function)
 
 # Include directories
 include_directories(${CMAKE_SOURCE_DIR}/src/include)
@@ -81,3 +87,66 @@ add_custom_target(run_tests_verbose
     DEPENDS test_tokenizer test_setters test_job test_integration test_edge_cases test_net
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 )
+
+# =============================================================================
+# Sanitizer builds (AddressSanitizer + UndefinedBehaviorSanitizer)
+# Usage: cmake -DCMAKE_BUILD_TYPE=Sanitize ..
+# =============================================================================
+set(SANITIZER_FLAGS "-fsanitize=address,undefined -fno-omit-frame-pointer -g")
+
+if(CMAKE_BUILD_TYPE STREQUAL "Sanitize")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${SANITIZER_FLAGS}")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${SANITIZER_FLAGS}")
+    message(STATUS "Building with AddressSanitizer and UndefinedBehaviorSanitizer")
+endif()
+
+# =============================================================================
+# Coverage builds (gcov/lcov)
+# Usage: cmake -DCMAKE_BUILD_TYPE=Coverage ..
+#        make run_tests
+#        make coverage
+# =============================================================================
+if(CMAKE_BUILD_TYPE STREQUAL "Coverage")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} --coverage -fprofile-arcs -ftest-coverage -g -O0")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --coverage")
+    message(STATUS "Building with code coverage instrumentation")
+
+    find_program(LCOV lcov)
+    find_program(GENHTML genhtml)
+
+    if(LCOV AND GENHTML)
+        add_custom_target(coverage
+            COMMAND ${LCOV} --capture --directory . --output-file coverage.info
+            COMMAND ${LCOV} --remove coverage.info '/usr/*' --output-file coverage.info
+            COMMAND ${GENHTML} coverage.info --output-directory coverage_report
+            COMMAND ${CMAKE_COMMAND} -E echo "Coverage report: ${CMAKE_BINARY_DIR}/coverage_report/index.html"
+            WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+            DEPENDS run_tests
+            COMMENT "Generating code coverage report"
+        )
+    else()
+        message(WARNING "lcov/genhtml not found, coverage target disabled")
+    endif()
+endif()
+
+# =============================================================================
+# Valgrind memory checking
+# Usage: make valgrind
+# =============================================================================
+find_program(VALGRIND valgrind)
+
+if(VALGRIND)
+    add_custom_target(valgrind
+        COMMAND ${VALGRIND} --leak-check=full --error-exitcode=1 $<TARGET_FILE:test_tokenizer>
+        COMMAND ${VALGRIND} --leak-check=full --error-exitcode=1 $<TARGET_FILE:test_setters>
+        COMMAND ${VALGRIND} --leak-check=full --error-exitcode=1 $<TARGET_FILE:test_job>
+        COMMAND ${VALGRIND} --leak-check=full --error-exitcode=1 $<TARGET_FILE:test_integration>
+        COMMAND ${VALGRIND} --leak-check=full --error-exitcode=1 $<TARGET_FILE:test_edge_cases>
+        COMMAND ${VALGRIND} --leak-check=full --error-exitcode=1 $<TARGET_FILE:test_net>
+        DEPENDS test_tokenizer test_setters test_job test_integration test_edge_cases test_net
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        COMMENT "Running tests under Valgrind"
+    )
+else()
+    message(STATUS "Valgrind not found, valgrind target disabled")
+endif()
