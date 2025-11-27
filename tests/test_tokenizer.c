@@ -562,6 +562,185 @@ TEST_CASE(tok_curlies_with_newlines) {
 }
 
 /*
+ * Boundary and Robustness Tests
+ */
+TEST_CASE(tok_very_long_string) {
+    /* Test a very long unquoted string token */
+    char input[1024];
+    memset(input, 'a', 1000);
+    input[1000] = ' ';
+    input[1001] = '\0';
+
+    size_t toksz;
+    int id = tokenize_single(input, &toksz);
+    TEST_ASSERT_EQ(TOK_STR, id);
+    TEST_ASSERT_EQ(1000, toksz);
+}
+
+TEST_CASE(tok_very_long_quoted_string) {
+    /* Test a very long quoted string */
+    char input[1024];
+    input[0] = '"';
+    memset(input + 1, 'x', 998);
+    input[999] = '"';
+    input[1000] = ' ';
+    input[1001] = '\0';
+
+    size_t toksz;
+    int id = tokenize_single(input, &toksz);
+    TEST_ASSERT_EQ(TOK_QUOTEDSTR, id);
+    TEST_ASSERT_EQ(1000, toksz);  /* includes quotes */
+}
+
+TEST_CASE(tok_quoted_with_special_chars) {
+    /* Quoted strings can contain special characters */
+    size_t toksz;
+    int id = tokenize_single("\"hello=world;test\" ", &toksz);
+    TEST_ASSERT_EQ(TOK_QUOTEDSTR, id);
+    TEST_ASSERT_EQ(18, toksz);
+}
+
+TEST_CASE(tok_quoted_with_hash) {
+    /* Hash inside quotes is not a comment */
+    size_t toksz;
+    int id = tokenize_single("\"test#notcomment\" ", &toksz);
+    TEST_ASSERT_EQ(TOK_QUOTEDSTR, id);
+    TEST_ASSERT_EQ(17, toksz);
+}
+
+TEST_CASE(tok_quoted_with_curly) {
+    /* Curlies inside quotes are literal */
+    size_t toksz;
+    int id = tokenize_single("\"{json: value}\" ", &toksz);
+    TEST_ASSERT_EQ(TOK_QUOTEDSTR, id);
+    TEST_ASSERT_EQ(15, toksz);
+}
+
+TEST_CASE(tok_many_consecutive_newlines) {
+    /* Many newlines should increment line counter correctly */
+    char input[] = "\n\n\n\n\n\n\n\n\n\njob ";
+    char *c = input;
+    size_t bsz = strlen(input);
+    size_t toksz;
+    int line = 1;
+
+    int id = get_tok(input, &c, &bsz, &toksz, &line);
+    TEST_ASSERT_EQ(TOK_JOB, id);
+    TEST_ASSERT_EQ(11, line);  /* 10 newlines = line 11 */
+}
+
+TEST_CASE(tok_comment_with_special_chars) {
+    /* Comments can contain any characters */
+    char input[] = "# {{{ job = \"test\" }}} #!@#$%\njob ";
+    char *c = input;
+    size_t bsz = strlen(input);
+    size_t toksz;
+    int line = 1;
+
+    int id = get_tok(input, &c, &bsz, &toksz, &line);
+    TEST_ASSERT_EQ(TOK_JOB, id);
+    TEST_ASSERT_EQ(2, line);
+}
+
+TEST_CASE(tok_string_with_equals) {
+    /* Unquoted strings can contain equals */
+    size_t toksz;
+    int id = tokenize_single("VAR=value ", &toksz);
+    TEST_ASSERT_EQ(TOK_STR, id);
+    TEST_ASSERT_EQ(9, toksz);
+}
+
+TEST_CASE(tok_string_with_slashes) {
+    /* Unquoted strings with multiple path separators */
+    size_t toksz;
+    int id = tokenize_single("/usr/local/bin/program ", &toksz);
+    TEST_ASSERT_EQ(TOK_STR, id);
+    TEST_ASSERT_EQ(22, toksz);
+}
+
+TEST_CASE(tok_string_with_dots) {
+    /* Unquoted strings with dots (like filenames) */
+    size_t toksz;
+    int id = tokenize_single("config.file.txt.bak ", &toksz);
+    TEST_ASSERT_EQ(TOK_STR, id);
+    TEST_ASSERT_EQ(19, toksz);
+}
+
+TEST_CASE(tok_only_whitespace_variants) {
+    /* Various whitespace-only inputs */
+    size_t toksz;
+    int id;
+
+    id = tokenize_single("   ", &toksz);
+    TEST_ASSERT_EQ(0, id);
+
+    id = tokenize_single("\t\t\t", &toksz);
+    TEST_ASSERT_EQ(0, id);
+
+    id = tokenize_single("\r\r\r", &toksz);
+    TEST_ASSERT_EQ(0, id);
+
+    id = tokenize_single(" \t\r\n \t\r\n ", &toksz);
+    TEST_ASSERT_EQ(0, id);
+}
+
+TEST_CASE(tok_comment_at_eof_no_newline) {
+    /* Comment at end of file without trailing newline */
+    size_t toksz;
+    int id = tokenize_single("# comment without newline", &toksz);
+    TEST_ASSERT_EQ(0, id);  /* End of input */
+}
+
+TEST_CASE(tok_adjacent_quoted_strings) {
+    /* Two quoted strings separated only by space */
+    token_info_t tokens[10];
+    char input[] = "\"first\" \"second\"\n";
+    int count = tokenize_all(input, tokens, 10);
+
+    TEST_ASSERT_EQ(2, count);
+    TEST_ASSERT_EQ(TOK_QUOTEDSTR, tokens[0].id);
+    TEST_ASSERT_EQ(TOK_QUOTEDSTR, tokens[1].id);
+}
+
+TEST_CASE(tok_mixed_tokens_complex) {
+    /* Complex mix of keywords, strings, quotes, braces */
+    token_info_t tokens[20];
+    char input[] = "job {\n  name \"my job\"\n  cmd /bin/test arg1\n}\n";
+    int count = tokenize_all(input, tokens, 20);
+
+    TEST_ASSERT_EQ(9, count);
+    TEST_ASSERT_EQ(TOK_JOB, tokens[0].id);
+    TEST_ASSERT_EQ(TOK_LCURLY, tokens[1].id);
+    TEST_ASSERT_EQ(TOK_NAME, tokens[2].id);
+    TEST_ASSERT_EQ(TOK_QUOTEDSTR, tokens[3].id);
+    TEST_ASSERT_EQ(TOK_CMD, tokens[4].id);
+    TEST_ASSERT_EQ(TOK_STR, tokens[5].id);  /* /bin/test */
+    TEST_ASSERT_EQ(TOK_STR, tokens[6].id);  /* arg1 */
+    TEST_ASSERT_EQ(TOK_RCURLY, tokens[7].id);
+}
+
+TEST_CASE(tok_keyword_like_prefix_in_string) {
+    /* String that starts with keyword-like text */
+    size_t toksz;
+    int id;
+
+    /* "jobname" starts with "job" but isn't the keyword */
+    id = tokenize_single("jobname ", &toksz);
+    TEST_ASSERT_EQ(TOK_STR, id);
+    TEST_ASSERT_EQ(7, toksz);
+
+    /* "cmdline" starts with "cmd" */
+    id = tokenize_single("cmdline ", &toksz);
+    TEST_ASSERT_EQ(TOK_STR, id);
+    TEST_ASSERT_EQ(7, toksz);
+
+    /* "username" starts with "user" */
+    id = tokenize_single("username ", &toksz);
+    TEST_ASSERT_EQ(TOK_STR, id);
+    TEST_ASSERT_EQ(8, toksz);
+}
+
+/*
  * Test Runner
  */
 int main(int argc, char *argv[]) {
@@ -657,6 +836,24 @@ int main(int argc, char *argv[]) {
     RUN_TEST(tok_curly_without_space);
     RUN_TEST(tok_multiple_curlies);
     RUN_TEST(tok_curlies_with_newlines);
+    TEST_SUITE_END();
+
+    TEST_SUITE_BEGIN("Tokenizer Boundary/Robustness");
+    RUN_TEST(tok_very_long_string);
+    RUN_TEST(tok_very_long_quoted_string);
+    RUN_TEST(tok_quoted_with_special_chars);
+    RUN_TEST(tok_quoted_with_hash);
+    RUN_TEST(tok_quoted_with_curly);
+    RUN_TEST(tok_many_consecutive_newlines);
+    RUN_TEST(tok_comment_with_special_chars);
+    RUN_TEST(tok_string_with_equals);
+    RUN_TEST(tok_string_with_slashes);
+    RUN_TEST(tok_string_with_dots);
+    RUN_TEST(tok_only_whitespace_variants);
+    RUN_TEST(tok_comment_at_eof_no_newline);
+    RUN_TEST(tok_adjacent_quoted_strings);
+    RUN_TEST(tok_mixed_tokens_complex);
+    RUN_TEST(tok_keyword_like_prefix_in_string);
     TEST_SUITE_END();
 
     print_test_results();
