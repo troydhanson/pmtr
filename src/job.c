@@ -351,16 +351,16 @@ int slurp(char *file, char **text, size_t *len) {
   int fd = -1, rc=-1, nr;
   *text=NULL; *len = 0;
 
-  if (stat(file, &s) == -1) {
+  if ( (fd = open(file, O_RDONLY)) == -1) {
+    syslog(LOG_ERR,"can't open %s: %s", file, strerror(errno));
+    goto done;
+  }
+  if (fstat(fd, &s) == -1) {
     syslog(LOG_ERR,"can't stat %s: %s", file, strerror(errno));
     goto done;
   }
   *len = s.st_size;
   if (*len == 0) {rc=0; goto done;} // special case, empty file
-  if ( (fd = open(file, O_RDONLY)) == -1) {
-    syslog(LOG_ERR,"can't open %s: %s", file, strerror(errno));
-    goto done;
-  }
   if ( (*text = malloc(*len)) == NULL) goto done;
   if ( (nr=read(fd, *text, *len)) != *len) {
    if (nr == -1) {
