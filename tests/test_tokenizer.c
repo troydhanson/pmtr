@@ -704,11 +704,12 @@ TEST_CASE(tok_adjacent_quoted_strings) {
 
 TEST_CASE(tok_mixed_tokens_complex) {
     /* Complex mix of keywords, strings, quotes, braces */
+    /* job { name "my job" cmd /bin/test arg1 } = 8 tokens */
     token_info_t tokens[20];
     char input[] = "job {\n  name \"my job\"\n  cmd /bin/test arg1\n}\n";
     int count = tokenize_all(input, tokens, 20);
 
-    TEST_ASSERT_EQ(9, count);
+    TEST_ASSERT_EQ(8, count);
     TEST_ASSERT_EQ(TOK_JOB, tokens[0].id);
     TEST_ASSERT_EQ(TOK_LCURLY, tokens[1].id);
     TEST_ASSERT_EQ(TOK_NAME, tokens[2].id);

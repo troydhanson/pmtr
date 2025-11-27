@@ -1623,6 +1623,196 @@ TEST_CASE(set_ulimit_large_value) {
 }
 
 /*
+ * Error Message Content Tests
+ * Verify that error messages contain helpful information
+ */
+TEST_CASE(error_msg_env_no_equals) {
+    pmtr_t cfg;
+    job_t job;
+    UT_string *em;
+    parse_t ps;
+
+    init_test_cfg(&cfg);
+    job_ini(&job);
+    utstring_new(em);
+    init_test_parse(&ps, &cfg, &job, em);
+
+    set_env(&ps, "INVALID");
+
+    TEST_ASSERT_EQ(-1, ps.rc);
+    TEST_ASSERT(utstring_len(em) > 0);
+    TEST_ASSERT(strstr(utstring_body(em), "VAR=VALUE") != NULL);
+
+    job_fin(&job);
+    utstring_free(em);
+    free_test_cfg(&cfg);
+}
+
+TEST_CASE(error_msg_ulimit_unknown) {
+    pmtr_t cfg;
+    job_t job;
+    UT_string *em;
+    parse_t ps;
+
+    init_test_cfg(&cfg);
+    job_ini(&job);
+    utstring_new(em);
+    init_test_parse(&ps, &cfg, &job, em);
+
+    set_ulimit(&ps, "-z", "100");
+
+    TEST_ASSERT_EQ(-1, ps.rc);
+    TEST_ASSERT(utstring_len(em) > 0);
+    TEST_ASSERT(strstr(utstring_body(em), "unknown") != NULL ||
+                strstr(utstring_body(em), "-z") != NULL);
+
+    job_fin(&job);
+    utstring_free(em);
+    free_test_cfg(&cfg);
+}
+
+TEST_CASE(error_msg_ulimit_non_numeric) {
+    pmtr_t cfg;
+    job_t job;
+    UT_string *em;
+    parse_t ps;
+
+    init_test_cfg(&cfg);
+    job_ini(&job);
+    utstring_new(em);
+    init_test_parse(&ps, &cfg, &job, em);
+
+    set_ulimit(&ps, "-n", "notanumber");
+
+    TEST_ASSERT_EQ(-1, ps.rc);
+    TEST_ASSERT(utstring_len(em) > 0);
+    TEST_ASSERT(strstr(utstring_body(em), "non-numeric") != NULL);
+
+    job_fin(&job);
+    utstring_free(em);
+    free_test_cfg(&cfg);
+}
+
+TEST_CASE(error_msg_ulimit_nofile_infinity) {
+    pmtr_t cfg;
+    job_t job;
+    UT_string *em;
+    parse_t ps;
+
+    init_test_cfg(&cfg);
+    job_ini(&job);
+    utstring_new(em);
+    init_test_parse(&ps, &cfg, &job, em);
+
+    set_ulimit(&ps, "-n", "infinity");
+
+    TEST_ASSERT_EQ(-1, ps.rc);
+    TEST_ASSERT(utstring_len(em) > 0);
+    TEST_ASSERT(strstr(utstring_body(em), "finite") != NULL ||
+                strstr(utstring_body(em), "-n") != NULL);
+
+    job_fin(&job);
+    utstring_free(em);
+    free_test_cfg(&cfg);
+}
+
+TEST_CASE(error_msg_nice_out_of_range) {
+    pmtr_t cfg;
+    job_t job;
+    UT_string *em;
+    parse_t ps;
+
+    init_test_cfg(&cfg);
+    job_ini(&job);
+    utstring_new(em);
+    init_test_parse(&ps, &cfg, &job, em);
+
+    set_nice(&ps, "100");
+
+    TEST_ASSERT_EQ(-1, ps.rc);
+    TEST_ASSERT(utstring_len(em) > 0);
+    TEST_ASSERT(strstr(utstring_body(em), "range") != NULL ||
+                strstr(utstring_body(em), "-20") != NULL);
+
+    job_fin(&job);
+    utstring_free(em);
+    free_test_cfg(&cfg);
+}
+
+TEST_CASE(error_msg_user_too_long) {
+    pmtr_t cfg;
+    job_t job;
+    UT_string *em;
+    parse_t ps;
+
+    init_test_cfg(&cfg);
+    job_ini(&job);
+    utstring_new(em);
+    init_test_parse(&ps, &cfg, &job, em);
+
+    char long_user[200];
+    memset(long_user, 'a', sizeof(long_user) - 1);
+    long_user[sizeof(long_user) - 1] = '\0';
+
+    set_user(&ps, long_user);
+
+    TEST_ASSERT_EQ(-1, ps.rc);
+    TEST_ASSERT(utstring_len(em) > 0);
+    TEST_ASSERT(strstr(utstring_body(em), "long") != NULL);
+
+    job_fin(&job);
+    utstring_free(em);
+    free_test_cfg(&cfg);
+}
+
+TEST_CASE(error_msg_cpu_syntax) {
+    pmtr_t cfg;
+    job_t job;
+    UT_string *em;
+    parse_t ps;
+
+    init_test_cfg(&cfg);
+    job_ini(&job);
+    utstring_new(em);
+    init_test_parse(&ps, &cfg, &job, em);
+
+    set_cpu(&ps, "abc");
+
+    TEST_ASSERT_EQ(-1, ps.rc);
+    TEST_ASSERT(utstring_len(em) > 0);
+    TEST_ASSERT(strstr(utstring_body(em), "syntax") != NULL ||
+                strstr(utstring_body(em), "cpuset") != NULL);
+
+    job_fin(&job);
+    utstring_free(em);
+    free_test_cfg(&cfg);
+}
+
+TEST_CASE(error_msg_bounce_invalid_unit) {
+    pmtr_t cfg;
+    job_t job;
+    UT_string *em;
+    parse_t ps;
+    char timespec[] = "10x";
+
+    init_test_cfg(&cfg);
+    job_ini(&job);
+    utstring_new(em);
+    init_test_parse(&ps, &cfg, &job, em);
+
+    set_bounce(&ps, timespec);
+
+    TEST_ASSERT_EQ(-1, ps.rc);
+    TEST_ASSERT(utstring_len(em) > 0);
+    TEST_ASSERT(strstr(utstring_body(em), "unit") != NULL ||
+                strstr(utstring_body(em), "time") != NULL);
+
+    job_fin(&job);
+    utstring_free(em);
+    free_test_cfg(&cfg);
+}
+
+/*
  * unquote Tests
  */
 TEST_CASE(unquote_basic) {
@@ -1807,6 +1997,17 @@ int main(int argc, char *argv[]) {
     RUN_TEST(fpath_absolute);
     RUN_TEST(fpath_relative_no_dir);
     RUN_TEST(fpath_relative_with_dir);
+    TEST_SUITE_END();
+
+    TEST_SUITE_BEGIN("Error Message Content");
+    RUN_TEST(error_msg_env_no_equals);
+    RUN_TEST(error_msg_ulimit_unknown);
+    RUN_TEST(error_msg_ulimit_non_numeric);
+    RUN_TEST(error_msg_ulimit_nofile_infinity);
+    RUN_TEST(error_msg_nice_out_of_range);
+    RUN_TEST(error_msg_user_too_long);
+    RUN_TEST(error_msg_cpu_syntax);
+    RUN_TEST(error_msg_bounce_invalid_unit);
     TEST_SUITE_END();
 
     print_test_results();
