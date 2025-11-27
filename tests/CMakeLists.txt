@@ -120,24 +120,19 @@ if(CMAKE_BUILD_TYPE STREQUAL "Coverage")
     message(STATUS "Building with code coverage instrumentation")
 
     find_program(LCOV lcov)
-    find_program(GENHTML genhtml)
-
-    if(LCOV AND GENHTML)
+    if(LCOV)
         add_custom_target(coverage
-            COMMAND ${LCOV} --capture --directory . --output-file coverage.info
-            COMMAND ${LCOV} --remove coverage.info '/usr/*' --output-file coverage.info
-            COMMAND ${GENHTML} coverage.info --output-directory coverage_report
+            COMMAND ${LCOV} --capture --directory . --output-file coverage.info --ignore-errors source,gcov
+            COMMAND ${LCOV} --remove coverage.info '/usr/*' '*/test_*' --output-file coverage.info --ignore-errors unused
             COMMAND ${CMAKE_COMMAND} -E echo ""
             COMMAND ${CMAKE_COMMAND} -E echo "=== Coverage Summary ==="
-            COMMAND ${LCOV} --summary coverage.info
-            COMMAND ${CMAKE_COMMAND} -E echo ""
-            COMMAND ${CMAKE_COMMAND} -E echo "Full report: ${CMAKE_BINARY_DIR}/coverage_report/index.html"
+            COMMAND ${LCOV} --list coverage.info
             WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
             DEPENDS run_tests
             COMMENT "Generating code coverage report"
         )
     else()
-        message(WARNING "lcov/genhtml not found, coverage target disabled")
+        message(WARNING "lcov not found, coverage target disabled")
     endif()
 endif()
 
