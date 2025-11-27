@@ -3,11 +3,11 @@
 # Run pmtr tests in a Docker container (for macOS/Windows development)
 #
 # Usage: ./scripts/test-in-docker.sh [build_type]
-#   build_type: Debug (default), Release, Sanitize, or Coverage
+#   build_type: Coverage (default), Debug, Release, or Sanitize
 #
 set -e
 
-BUILD_TYPE="${1:-Debug}"
+BUILD_TYPE="${1:-Coverage}"
 IMAGE_NAME="pmtr-test"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
