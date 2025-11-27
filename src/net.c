@@ -132,6 +132,8 @@ void set_report(parse_t *ps, char *dest) {
   if (fcntl(fd, F_SETFD, flags) == -1) {rc = -3; goto done;}
 
   gethostname(ps->cfg->report_id, sizeof(ps->cfg->report_id));
+  /* ensure null-termination in case hostname length >= buffer */
+  ps->cfg->report_id[sizeof(ps->cfg->report_id) - 1] = '\0';
 
   /* use a specific NIC if one was specified, supported here for multicast */
   if (iface) {
@@ -151,8 +153,21 @@ void set_report(parse_t *ps, char *dest) {
     if (ioctl(fd, SIOCGIFADDR, &ifr)) {utstring_printf(ps->em,"ioctl: %s\n", strerror(errno)); goto done;} 
     iface_addr = (((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr);
     // utstring_printf(ps->em,"iface %s has addr %s\n", iface, inet_ntoa(iface_addr));
-    strcat(ps->cfg->report_id, " ");
-    strcat(ps->cfg->report_id, inet_ntoa(iface_addr));
+    {
+      /* append space and interface address safely */
+      size_t ridx = strlen(ps->cfg->report_id);
+      const char *ip = inet_ntoa(iface_addr);
+      size_t iplen = strlen(ip);
+      if (ridx + 1 + iplen < sizeof(ps->cfg->report_id)) {
+        ps->cfg->report_id[ridx] = ' ';
+        ps->cfg->report_id[ridx + 1] = '\0';
+        strncat(ps->cfg->report_id, ip,
+                sizeof(ps->cfg->report_id) - ridx - 1);
+      } else {
+        utstring_printf(ps->em, "report_id buffer overflow prevented\n");
+        goto done;
+      }
+    }
 
     /* ask kernel to use its IP address for outgoing multicast */
     if (setsockopt(fd, IPPROTO_IP, IP_MULTICAST_IF, &iface_addr, sizeof(iface_addr))) {
@@ -248,7 +263,7 @@ void service_socket(pmtr_t *cfg) {
   ssize_t rc;
   int *fd = (int*)utarray_front(cfg->listen); assert(fd);
   do {
-    rc = read(*fd, buf, sizeof(buf));   /* fd is non-blocking, thus */
+    rc = read(*fd, buf, BUF_SZ);        /* fd is non-blocking, thus */
     if (rc > 0) decode_msg(cfg,buf,rc); /* we get rc==-1 after last */
   } while (rc >= 0);
 }
