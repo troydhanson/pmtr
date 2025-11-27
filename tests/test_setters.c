@@ -1082,6 +1082,115 @@ TEST_CASE(set_cpu_trailing_comma) {
     free_test_cfg(&cfg);
 }
 
+TEST_CASE(set_cpu_equal_range) {
+    /* Range where start == end is treated as invalid by pmtr
+     * (use single number like "5" instead of "5-5") */
+    pmtr_t cfg;
+    job_t job;
+    UT_string *em;
+    parse_t ps;
+
+    init_test_cfg(&cfg);
+    job_ini(&job);
+    utstring_new(em);
+    init_test_parse(&ps, &cfg, &job, em);
+
+    set_cpu(&ps, "5-5");
+
+    /* pmtr rejects equal range as invalid */
+    TEST_ASSERT_EQ(-1, ps.rc);
+
+    job_fin(&job);
+    utstring_free(em);
+    free_test_cfg(&cfg);
+}
+
+TEST_CASE(set_cpu_high_number) {
+    /* Test with higher CPU number */
+    pmtr_t cfg;
+    job_t job;
+    UT_string *em;
+    parse_t ps;
+
+    init_test_cfg(&cfg);
+    job_ini(&job);
+    utstring_new(em);
+    init_test_parse(&ps, &cfg, &job, em);
+
+    set_cpu(&ps, "63");
+
+    TEST_ASSERT_EQ(0, ps.rc);
+    TEST_ASSERT(CPU_ISSET(63, &job.cpuset));
+
+    job_fin(&job);
+    utstring_free(em);
+    free_test_cfg(&cfg);
+}
+
+TEST_CASE(set_cpu_leading_comma) {
+    pmtr_t cfg;
+    job_t job;
+    UT_string *em;
+    parse_t ps;
+
+    init_test_cfg(&cfg);
+    job_ini(&job);
+    utstring_new(em);
+    init_test_parse(&ps, &cfg, &job, em);
+
+    set_cpu(&ps, ",0");
+
+    TEST_ASSERT_EQ(-1, ps.rc);
+
+    job_fin(&job);
+    utstring_free(em);
+    free_test_cfg(&cfg);
+}
+
+TEST_CASE(set_cpu_double_comma) {
+    pmtr_t cfg;
+    job_t job;
+    UT_string *em;
+    parse_t ps;
+
+    init_test_cfg(&cfg);
+    job_ini(&job);
+    utstring_new(em);
+    init_test_parse(&ps, &cfg, &job, em);
+
+    set_cpu(&ps, "0,,2");
+
+    TEST_ASSERT_EQ(-1, ps.rc);
+
+    job_fin(&job);
+    utstring_free(em);
+    free_test_cfg(&cfg);
+}
+
+TEST_CASE(set_cpu_hex_large) {
+    pmtr_t cfg;
+    job_t job;
+    UT_string *em;
+    parse_t ps;
+
+    init_test_cfg(&cfg);
+    job_ini(&job);
+    utstring_new(em);
+    init_test_parse(&ps, &cfg, &job, em);
+
+    set_cpu(&ps, "0xff");  /* CPUs 0-7 */
+
+    TEST_ASSERT_EQ(0, ps.rc);
+    for (int i = 0; i < 8; i++) {
+        TEST_ASSERT(CPU_ISSET(i, &job.cpuset));
+    }
+    TEST_ASSERT_EQ(8, CPU_COUNT(&job.cpuset));
+
+    job_fin(&job);
+    utstring_free(em);
+    free_test_cfg(&cfg);
+}
+
 /*
  * set_ulimit Tests
  */
@@ -1292,6 +1401,227 @@ TEST_CASE(set_ulimit_multiple) {
     free_test_cfg(&cfg);
 }
 
+/* Test all supported ulimit flags */
+TEST_CASE(set_ulimit_data_segment) {
+    pmtr_t cfg;
+    job_t job;
+    UT_string *em;
+    parse_t ps;
+
+    init_test_cfg(&cfg);
+    job_ini(&job);
+    utstring_new(em);
+    init_test_parse(&ps, &cfg, &job, em);
+
+    set_ulimit(&ps, "-d", "1048576");
+
+    TEST_ASSERT_EQ(0, ps.rc);
+    resource_rlimit_t *rt = (resource_rlimit_t*)utarray_front(&job.rlim);
+    TEST_ASSERT_EQ(RLIMIT_DATA, rt->id);
+
+    job_fin(&job);
+    utstring_free(em);
+    free_test_cfg(&cfg);
+}
+
+TEST_CASE(set_ulimit_file_size) {
+    pmtr_t cfg;
+    job_t job;
+    UT_string *em;
+    parse_t ps;
+
+    init_test_cfg(&cfg);
+    job_ini(&job);
+    utstring_new(em);
+    init_test_parse(&ps, &cfg, &job, em);
+
+    set_ulimit(&ps, "-f", "1000000");
+
+    TEST_ASSERT_EQ(0, ps.rc);
+    resource_rlimit_t *rt = (resource_rlimit_t*)utarray_front(&job.rlim);
+    TEST_ASSERT_EQ(RLIMIT_FSIZE, rt->id);
+
+    job_fin(&job);
+    utstring_free(em);
+    free_test_cfg(&cfg);
+}
+
+TEST_CASE(set_ulimit_locked_memory) {
+    pmtr_t cfg;
+    job_t job;
+    UT_string *em;
+    parse_t ps;
+
+    init_test_cfg(&cfg);
+    job_ini(&job);
+    utstring_new(em);
+    init_test_parse(&ps, &cfg, &job, em);
+
+    set_ulimit(&ps, "-l", "64");
+
+    TEST_ASSERT_EQ(0, ps.rc);
+    resource_rlimit_t *rt = (resource_rlimit_t*)utarray_front(&job.rlim);
+    TEST_ASSERT_EQ(RLIMIT_MEMLOCK, rt->id);
+
+    job_fin(&job);
+    utstring_free(em);
+    free_test_cfg(&cfg);
+}
+
+TEST_CASE(set_ulimit_resident_set) {
+    pmtr_t cfg;
+    job_t job;
+    UT_string *em;
+    parse_t ps;
+
+    init_test_cfg(&cfg);
+    job_ini(&job);
+    utstring_new(em);
+    init_test_parse(&ps, &cfg, &job, em);
+
+    set_ulimit(&ps, "-m", "2097152");
+
+    TEST_ASSERT_EQ(0, ps.rc);
+    resource_rlimit_t *rt = (resource_rlimit_t*)utarray_front(&job.rlim);
+    TEST_ASSERT_EQ(RLIMIT_RSS, rt->id);
+
+    job_fin(&job);
+    utstring_free(em);
+    free_test_cfg(&cfg);
+}
+
+TEST_CASE(set_ulimit_stack_size) {
+    pmtr_t cfg;
+    job_t job;
+    UT_string *em;
+    parse_t ps;
+
+    init_test_cfg(&cfg);
+    job_ini(&job);
+    utstring_new(em);
+    init_test_parse(&ps, &cfg, &job, em);
+
+    set_ulimit(&ps, "-s", "8192");
+
+    TEST_ASSERT_EQ(0, ps.rc);
+    resource_rlimit_t *rt = (resource_rlimit_t*)utarray_front(&job.rlim);
+    TEST_ASSERT_EQ(RLIMIT_STACK, rt->id);
+
+    job_fin(&job);
+    utstring_free(em);
+    free_test_cfg(&cfg);
+}
+
+TEST_CASE(set_ulimit_cpu_time) {
+    pmtr_t cfg;
+    job_t job;
+    UT_string *em;
+    parse_t ps;
+
+    init_test_cfg(&cfg);
+    job_ini(&job);
+    utstring_new(em);
+    init_test_parse(&ps, &cfg, &job, em);
+
+    set_ulimit(&ps, "-t", "3600");
+
+    TEST_ASSERT_EQ(0, ps.rc);
+    resource_rlimit_t *rt = (resource_rlimit_t*)utarray_front(&job.rlim);
+    TEST_ASSERT_EQ(RLIMIT_CPU, rt->id);
+
+    job_fin(&job);
+    utstring_free(em);
+    free_test_cfg(&cfg);
+}
+
+TEST_CASE(set_ulimit_max_processes) {
+    pmtr_t cfg;
+    job_t job;
+    UT_string *em;
+    parse_t ps;
+
+    init_test_cfg(&cfg);
+    job_ini(&job);
+    utstring_new(em);
+    init_test_parse(&ps, &cfg, &job, em);
+
+    set_ulimit(&ps, "-u", "100");
+
+    TEST_ASSERT_EQ(0, ps.rc);
+    resource_rlimit_t *rt = (resource_rlimit_t*)utarray_front(&job.rlim);
+    TEST_ASSERT_EQ(RLIMIT_NPROC, rt->id);
+
+    job_fin(&job);
+    utstring_free(em);
+    free_test_cfg(&cfg);
+}
+
+TEST_CASE(set_ulimit_virtual_memory) {
+    pmtr_t cfg;
+    job_t job;
+    UT_string *em;
+    parse_t ps;
+
+    init_test_cfg(&cfg);
+    job_ini(&job);
+    utstring_new(em);
+    init_test_parse(&ps, &cfg, &job, em);
+
+    set_ulimit(&ps, "-v", "4194304");
+
+    TEST_ASSERT_EQ(0, ps.rc);
+    resource_rlimit_t *rt = (resource_rlimit_t*)utarray_front(&job.rlim);
+    TEST_ASSERT_EQ(RLIMIT_AS, rt->id);
+
+    job_fin(&job);
+    utstring_free(em);
+    free_test_cfg(&cfg);
+}
+
+TEST_CASE(set_ulimit_rlimit_name_format) {
+    pmtr_t cfg;
+    job_t job;
+    UT_string *em;
+    parse_t ps;
+
+    init_test_cfg(&cfg);
+    job_ini(&job);
+    utstring_new(em);
+    init_test_parse(&ps, &cfg, &job, em);
+
+    set_ulimit(&ps, "RLIMIT_CORE", "0");
+
+    TEST_ASSERT_EQ(0, ps.rc);
+    resource_rlimit_t *rt = (resource_rlimit_t*)utarray_front(&job.rlim);
+    TEST_ASSERT_EQ(RLIMIT_CORE, rt->id);
+
+    job_fin(&job);
+    utstring_free(em);
+    free_test_cfg(&cfg);
+}
+
+TEST_CASE(set_ulimit_large_value) {
+    pmtr_t cfg;
+    job_t job;
+    UT_string *em;
+    parse_t ps;
+
+    init_test_cfg(&cfg);
+    job_ini(&job);
+    utstring_new(em);
+    init_test_parse(&ps, &cfg, &job, em);
+
+    set_ulimit(&ps, "-n", "1048576");
+
+    TEST_ASSERT_EQ(0, ps.rc);
+    resource_rlimit_t *rt = (resource_rlimit_t*)utarray_front(&job.rlim);
+    TEST_ASSERT_EQ(1048576, rt->rlim.rlim_cur);
+
+    job_fin(&job);
+    utstring_free(em);
+    free_test_cfg(&cfg);
+}
+
 /*
  * unquote Tests
  */
@@ -1438,6 +1768,11 @@ int main(int argc, char *argv[]) {
     RUN_TEST(set_cpu_invalid_range);
     RUN_TEST(set_cpu_double_dash);
     RUN_TEST(set_cpu_trailing_comma);
+    RUN_TEST(set_cpu_equal_range);
+    RUN_TEST(set_cpu_high_number);
+    RUN_TEST(set_cpu_leading_comma);
+    RUN_TEST(set_cpu_double_comma);
+    RUN_TEST(set_cpu_hex_large);
     TEST_SUITE_END();
 
     TEST_SUITE_BEGIN("set_ulimit");
@@ -1450,6 +1785,16 @@ int main(int argc, char *argv[]) {
     RUN_TEST(set_ulimit_unknown_resource);
     RUN_TEST(set_ulimit_non_numeric_value);
     RUN_TEST(set_ulimit_multiple);
+    RUN_TEST(set_ulimit_data_segment);
+    RUN_TEST(set_ulimit_file_size);
+    RUN_TEST(set_ulimit_locked_memory);
+    RUN_TEST(set_ulimit_resident_set);
+    RUN_TEST(set_ulimit_stack_size);
+    RUN_TEST(set_ulimit_cpu_time);
+    RUN_TEST(set_ulimit_max_processes);
+    RUN_TEST(set_ulimit_virtual_memory);
+    RUN_TEST(set_ulimit_rlimit_name_format);
+    RUN_TEST(set_ulimit_large_value);
     TEST_SUITE_END();
 
     TEST_SUITE_BEGIN("unquote");

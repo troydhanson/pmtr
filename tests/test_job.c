@@ -794,6 +794,311 @@ TEST_CASE(push_job_adds_null_terminator) {
 }
 
 /*
+ * term_jobs Tests
+ */
+extern void term_jobs(UT_array *jobs);
+
+TEST_CASE(term_jobs_sets_terminate_flag) {
+    pmtr_t cfg;
+    init_test_cfg(&cfg);
+
+    /* Create a job with a PID (simulating a running job) */
+    job_t job;
+    job_ini(&job);
+    job.name = strdup("running_job");
+    job.pid = 12345;  /* Simulate running process */
+    job.terminate = 0;
+    utarray_push_back(cfg.jobs, &job);
+    job_fin(&job);
+
+    term_jobs(cfg.jobs);
+
+    job_t *j = get_job_at(&cfg, 0);
+    TEST_ASSERT_EQ(1, j->terminate);
+
+    free_test_cfg(&cfg);
+}
+
+TEST_CASE(term_jobs_skips_non_running) {
+    pmtr_t cfg;
+    init_test_cfg(&cfg);
+
+    /* Create a job without PID (not running) */
+    job_t job;
+    job_ini(&job);
+    job.name = strdup("stopped_job");
+    job.pid = 0;  /* Not running */
+    job.terminate = 0;
+    utarray_push_back(cfg.jobs, &job);
+    job_fin(&job);
+
+    term_jobs(cfg.jobs);
+
+    job_t *j = get_job_at(&cfg, 0);
+    /* terminate should remain 0 since pid is 0 */
+    TEST_ASSERT_EQ(0, j->terminate);
+
+    free_test_cfg(&cfg);
+}
+
+TEST_CASE(term_jobs_multiple_jobs) {
+    pmtr_t cfg;
+    init_test_cfg(&cfg);
+
+    /* Create multiple jobs with different states */
+    job_t job1, job2, job3;
+
+    job_ini(&job1);
+    job1.name = strdup("job1");
+    job1.pid = 100;
+    job1.terminate = 0;
+    utarray_push_back(cfg.jobs, &job1);
+    job_fin(&job1);
+
+    job_ini(&job2);
+    job2.name = strdup("job2");
+    job2.pid = 0;  /* Not running */
+    job2.terminate = 0;
+    utarray_push_back(cfg.jobs, &job2);
+    job_fin(&job2);
+
+    job_ini(&job3);
+    job3.name = strdup("job3");
+    job3.pid = 300;
+    job3.terminate = 0;
+    utarray_push_back(cfg.jobs, &job3);
+    job_fin(&job3);
+
+    term_jobs(cfg.jobs);
+
+    TEST_ASSERT_EQ(1, get_job_at(&cfg, 0)->terminate);
+    TEST_ASSERT_EQ(0, get_job_at(&cfg, 1)->terminate);  /* Was not running */
+    TEST_ASSERT_EQ(1, get_job_at(&cfg, 2)->terminate);
+
+    free_test_cfg(&cfg);
+}
+
+TEST_CASE(term_jobs_already_terminating) {
+    pmtr_t cfg;
+    init_test_cfg(&cfg);
+
+    /* Job already has terminate set */
+    job_t job;
+    job_ini(&job);
+    job.name = strdup("terminating_job");
+    job.pid = 12345;
+    job.terminate = 99;  /* Already set to some value */
+    utarray_push_back(cfg.jobs, &job);
+    job_fin(&job);
+
+    term_jobs(cfg.jobs);
+
+    job_t *j = get_job_at(&cfg, 0);
+    /* Should not overwrite existing terminate value */
+    TEST_ASSERT_EQ(99, j->terminate);
+
+    free_test_cfg(&cfg);
+}
+
+/*
+ * alarm_within Tests
+ */
+extern void alarm_within(pmtr_t *cfg, int sec);
+
+TEST_CASE(alarm_within_first_call) {
+    pmtr_t cfg;
+    init_test_cfg(&cfg);
+    cfg.next_alarm = 0;  /* No alarm set */
+
+    alarm_within(&cfg, 5);
+
+    /* next_alarm should be set */
+    TEST_ASSERT(cfg.next_alarm > 0);
+
+    free_test_cfg(&cfg);
+}
+
+TEST_CASE(alarm_within_earlier_alarm) {
+    pmtr_t cfg;
+    init_test_cfg(&cfg);
+
+    time_t now = time(NULL);
+    cfg.next_alarm = now + 100;  /* Alarm far in future */
+
+    alarm_within(&cfg, 5);  /* Request earlier alarm */
+
+    /* next_alarm should be updated to earlier time */
+    TEST_ASSERT(cfg.next_alarm <= now + 5);
+
+    free_test_cfg(&cfg);
+}
+
+TEST_CASE(alarm_within_zero_becomes_one) {
+    pmtr_t cfg;
+    init_test_cfg(&cfg);
+    cfg.next_alarm = 0;
+
+    alarm_within(&cfg, 0);
+
+    /* 0 second timer should become 1 second */
+    time_t now = time(NULL);
+    TEST_ASSERT(cfg.next_alarm >= now);
+    TEST_ASSERT(cfg.next_alarm <= now + 2);
+
+    free_test_cfg(&cfg);
+}
+
+/*
+ * job_cmp rlimit Tests
+ */
+TEST_CASE(job_cmp_different_rlim_count) {
+    job_t a, b;
+    job_ini(&a);
+    job_ini(&b);
+
+    a.name = strdup("test");
+    b.name = strdup("test");
+
+    /* Add rlimit to only one job */
+    resource_rlimit_t rt;
+    rt.id = RLIMIT_NOFILE;
+    rt.rlim.rlim_cur = 1024;
+    rt.rlim.rlim_max = 1024;
+    utarray_push_back(&a.rlim, &rt);
+
+    int result = job_cmp(&a, &b);
+    TEST_ASSERT(result != 0);
+
+    job_fin(&a);
+    job_fin(&b);
+}
+
+TEST_CASE(job_cmp_different_rlim_values) {
+    job_t a, b;
+    job_ini(&a);
+    job_ini(&b);
+
+    a.name = strdup("test");
+    b.name = strdup("test");
+
+    resource_rlimit_t rt_a, rt_b;
+    rt_a.id = RLIMIT_NOFILE;
+    rt_a.rlim.rlim_cur = 1024;
+    rt_a.rlim.rlim_max = 1024;
+
+    rt_b.id = RLIMIT_NOFILE;
+    rt_b.rlim.rlim_cur = 2048;  /* Different value */
+    rt_b.rlim.rlim_max = 2048;
+
+    utarray_push_back(&a.rlim, &rt_a);
+    utarray_push_back(&b.rlim, &rt_b);
+
+    int result = job_cmp(&a, &b);
+    TEST_ASSERT(result != 0);
+
+    job_fin(&a);
+    job_fin(&b);
+}
+
+TEST_CASE(job_cmp_same_rlim) {
+    job_t a, b;
+    job_ini(&a);
+    job_ini(&b);
+
+    a.name = strdup("test");
+    b.name = strdup("test");
+
+    resource_rlimit_t rt;
+    rt.id = RLIMIT_NOFILE;
+    rt.rlim.rlim_cur = 1024;
+    rt.rlim.rlim_max = 1024;
+
+    utarray_push_back(&a.rlim, &rt);
+    utarray_push_back(&b.rlim, &rt);
+
+    int result = job_cmp(&a, &b);
+    TEST_ASSERT_EQ(0, result);
+
+    job_fin(&a);
+    job_fin(&b);
+}
+
+/*
+ * job_cmp out/err/in Tests
+ */
+TEST_CASE(job_cmp_different_out) {
+    job_t a, b;
+    job_ini(&a);
+    job_ini(&b);
+
+    a.name = strdup("test");
+    b.name = strdup("test");
+
+    a.out = strdup("/var/log/a.log");
+    b.out = strdup("/var/log/b.log");
+
+    int result = job_cmp(&a, &b);
+    TEST_ASSERT(result != 0);
+
+    job_fin(&a);
+    job_fin(&b);
+}
+
+TEST_CASE(job_cmp_one_out_null) {
+    job_t a, b;
+    job_ini(&a);
+    job_ini(&b);
+
+    a.name = strdup("test");
+    b.name = strdup("test");
+
+    a.out = strdup("/var/log/a.log");
+    /* b.out is NULL */
+
+    int result = job_cmp(&a, &b);
+    TEST_ASSERT(result != 0);
+
+    job_fin(&a);
+    job_fin(&b);
+}
+
+TEST_CASE(job_cmp_different_err) {
+    job_t a, b;
+    job_ini(&a);
+    job_ini(&b);
+
+    a.name = strdup("test");
+    b.name = strdup("test");
+
+    a.err = strdup("/var/log/a.err");
+    b.err = strdup("/var/log/b.err");
+
+    int result = job_cmp(&a, &b);
+    TEST_ASSERT(result != 0);
+
+    job_fin(&a);
+    job_fin(&b);
+}
+
+TEST_CASE(job_cmp_different_in) {
+    job_t a, b;
+    job_ini(&a);
+    job_ini(&b);
+
+    a.name = strdup("test");
+    b.name = strdup("test");
+
+    a.in = strdup("/dev/null");
+    b.in = strdup("/tmp/input");
+
+    int result = job_cmp(&a, &b);
+    TEST_ASSERT(result != 0);
+
+    job_fin(&a);
+    job_fin(&b);
+}
+
+/*
  * Test Runner
  */
 int main(int argc, char *argv[]) {
@@ -838,6 +1143,13 @@ int main(int argc, char *argv[]) {
     RUN_TEST(job_cmp_different_bounce);
     RUN_TEST(job_cmp_different_cpuset);
     RUN_TEST(job_cmp_different_deps_hash);
+    RUN_TEST(job_cmp_different_rlim_count);
+    RUN_TEST(job_cmp_different_rlim_values);
+    RUN_TEST(job_cmp_same_rlim);
+    RUN_TEST(job_cmp_different_out);
+    RUN_TEST(job_cmp_one_out_null);
+    RUN_TEST(job_cmp_different_err);
+    RUN_TEST(job_cmp_different_in);
     TEST_SUITE_END();
 
     TEST_SUITE_BEGIN("get_job_by_pid");
@@ -858,6 +1170,19 @@ int main(int argc, char *argv[]) {
     RUN_TEST(push_job_basic);
     RUN_TEST(push_job_no_name);
     RUN_TEST(push_job_adds_null_terminator);
+    TEST_SUITE_END();
+
+    TEST_SUITE_BEGIN("term_jobs");
+    RUN_TEST(term_jobs_sets_terminate_flag);
+    RUN_TEST(term_jobs_skips_non_running);
+    RUN_TEST(term_jobs_multiple_jobs);
+    RUN_TEST(term_jobs_already_terminating);
+    TEST_SUITE_END();
+
+    TEST_SUITE_BEGIN("alarm_within");
+    RUN_TEST(alarm_within_first_call);
+    RUN_TEST(alarm_within_earlier_alarm);
+    RUN_TEST(alarm_within_zero_becomes_one);
     TEST_SUITE_END();
 
     print_test_results();
