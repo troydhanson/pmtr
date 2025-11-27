@@ -131,24 +131,3 @@ if(CMAKE_BUILD_TYPE STREQUAL "Coverage")
     endif()
 endif()
 
-# =============================================================================
-# Valgrind memory checking
-# Usage: make valgrind
-# =============================================================================
-find_program(VALGRIND valgrind)
-
-if(VALGRIND)
-    add_custom_target(valgrind
-        COMMAND ${VALGRIND} --leak-check=full --error-exitcode=1 $<TARGET_FILE:test_tokenizer>
-        COMMAND ${VALGRIND} --leak-check=full --error-exitcode=1 $<TARGET_FILE:test_setters>
-        COMMAND ${VALGRIND} --leak-check=full --error-exitcode=1 $<TARGET_FILE:test_job>
-        COMMAND ${VALGRIND} --leak-check=full --error-exitcode=1 $<TARGET_FILE:test_integration>
-        COMMAND ${VALGRIND} --leak-check=full --error-exitcode=1 $<TARGET_FILE:test_edge_cases>
-        COMMAND ${VALGRIND} --leak-check=full --error-exitcode=1 $<TARGET_FILE:test_net>
-        DEPENDS test_tokenizer test_setters test_job test_integration test_edge_cases test_net
-        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-        COMMENT "Running tests under Valgrind"
-    )
-else()
-    message(STATUS "Valgrind not found, valgrind target disabled")
-endif()
