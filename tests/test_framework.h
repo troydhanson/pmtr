@@ -69,6 +69,24 @@ static jmp_buf g_test_jmp;
     } \
 } while(0)
 
+#define TEST_ASSERT_EQ_SIZE(expected, actual) do { \
+    if ((expected) != (actual)) { \
+        printf("  " COLOR_RED "FAIL" COLOR_RESET ": %s:%d: expected %zu, got %zu\n", \
+               __FILE__, __LINE__, (size_t)(expected), (size_t)(actual)); \
+        g_test_failed = 1; \
+        longjmp(g_test_jmp, 1); \
+    } \
+} while(0)
+
+#define TEST_ASSERT_EQ_SSIZE(expected, actual) do { \
+    if ((expected) != (actual)) { \
+        printf("  " COLOR_RED "FAIL" COLOR_RESET ": %s:%d: expected %zd, got %zd\n", \
+               __FILE__, __LINE__, (ssize_t)(expected), (ssize_t)(actual)); \
+        g_test_failed = 1; \
+        longjmp(g_test_jmp, 1); \
+    } \
+} while(0)
+
 #define TEST_ASSERT_STR_EQ(expected, actual) do { \
     if (strcmp((expected), (actual)) != 0) { \
         printf("  " COLOR_RED "FAIL" COLOR_RESET ": %s:%d: expected \"%s\", got \"%s\"\n", \

@@ -18,6 +18,8 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <sched.h>
+#include <dirent.h>
+#include <ftw.h>
 
 /* Include pmtr headers */
 #include "../src/pmtr.h"
@@ -31,23 +33,29 @@ void job_ini(job_t *job);
 /* Temporary directory for test files */
 static char g_test_tmpdir[256] = "";
 
-/* Initialize test environment */
+/* Callback for nftw to remove files and directories */
+static int remove_callback(const char *path, const struct stat *sb,
+                           int typeflag, struct FTW *ftwbuf) {
+    (void)sb; (void)typeflag; (void)ftwbuf;
+    return remove(path);
+}
+
+/* Initialize test environment using mkdtemp for safety */
 static inline int test_init(void) {
-    /* Create temp directory for test files */
-    snprintf(g_test_tmpdir, sizeof(g_test_tmpdir), "/tmp/pmtr_test_%d", getpid());
-    if (mkdir(g_test_tmpdir, 0755) != 0 && errno != EEXIST) {
+    /* Create temp directory using mkdtemp for unique, safe naming */
+    snprintf(g_test_tmpdir, sizeof(g_test_tmpdir), "/tmp/pmtr_test_XXXXXX");
+    if (mkdtemp(g_test_tmpdir) == NULL) {
         perror("Failed to create test directory");
         return -1;
     }
     return 0;
 }
 
-/* Cleanup test environment */
+/* Cleanup test environment using nftw (no shell injection risk) */
 static inline void test_cleanup(void) {
-    char cmd[512];
     if (g_test_tmpdir[0]) {
-        snprintf(cmd, sizeof(cmd), "rm -rf %s", g_test_tmpdir);
-        (void)system(cmd);
+        nftw(g_test_tmpdir, remove_callback, 64, FTW_DEPTH | FTW_PHYS);
+        g_test_tmpdir[0] = '\0';
     }
 }
 
