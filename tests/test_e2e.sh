@@ -6,6 +6,8 @@
 set -e
 
 PMTR="${1:-./src/pmtr}"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+CONFIG_DIR="$SCRIPT_DIR/e2e_configs"
 TMPDIR="${TMPDIR:-/tmp}"
 TEST_DIR="$TMPDIR/pmtr-e2e-$$"
 PASSED=0
@@ -34,27 +36,14 @@ fail() {
 test_config_validation() {
     echo "Test: config validation (-t flag)"
 
-    cat > "$TEST_DIR/valid.conf" << 'EOF'
-job {
-    name test_job
-    cmd /bin/sleep 100
-}
-EOF
-
-    if "$PMTR" -t -c "$TEST_DIR/valid.conf" 2>/dev/null; then
+    if "$PMTR" -t -c "$CONFIG_DIR/valid.conf" 2>/dev/null; then
         pass "valid config accepted"
     else
         fail "valid config rejected"
     fi
 
-    cat > "$TEST_DIR/invalid.conf" << 'EOF'
-job {
-    name test_job
-    cmd /bin/true
-EOF
-
     # pmtr -t always exits 0, so check stderr for parse error
-    if "$PMTR" -t -c "$TEST_DIR/invalid.conf" 2>&1 | grep -q "parse failed"; then
+    if "$PMTR" -t -c "$CONFIG_DIR/invalid.conf" 2>&1 | grep -q "parse failed"; then
         pass "invalid config rejected"
     else
         fail "invalid config accepted"
@@ -65,15 +54,7 @@ EOF
 test_job_execution() {
     echo "Test: basic job execution"
 
-    cat > "$TEST_DIR/job.conf" << EOF
-job {
-    name sleeper
-    cmd /bin/sleep 60
-}
-EOF
-
-    # Start pmtr in foreground, backgrounded
-    "$PMTR" -F -c "$TEST_DIR/job.conf" &
+    "$PMTR" -F -c "$CONFIG_DIR/single_job.conf" &
     PMTR_PID=$!
 
     # Wait for job to start
@@ -113,18 +94,7 @@ EOF
 test_multiple_jobs() {
     echo "Test: multiple jobs"
 
-    cat > "$TEST_DIR/multi.conf" << EOF
-job {
-    name job1
-    cmd /bin/sleep 61
-}
-job {
-    name job2
-    cmd /bin/sleep 62
-}
-EOF
-
-    "$PMTR" -F -c "$TEST_DIR/multi.conf" &
+    "$PMTR" -F -c "$CONFIG_DIR/multi_job.conf" &
     PMTR_PID=$!
 
     sleep 1
@@ -148,19 +118,7 @@ EOF
 test_disabled_job() {
     echo "Test: disabled job"
 
-    cat > "$TEST_DIR/disabled.conf" << EOF
-job {
-    name enabled_job
-    cmd /bin/sleep 63
-}
-job {
-    name disabled_job
-    cmd /bin/sleep 64
-    disable
-}
-EOF
-
-    "$PMTR" -F -c "$TEST_DIR/disabled.conf" &
+    "$PMTR" -F -c "$CONFIG_DIR/disabled.conf" &
     PMTR_PID=$!
 
     sleep 1
@@ -190,7 +148,7 @@ EOF
 test_job_respawn() {
     echo "Test: job respawn"
 
-    # Use a marker file to track respawns instead of pgrep
+    # This test needs a dynamic config to track PIDs via file
     cat > "$TEST_DIR/respawn.conf" << EOF
 job {
     name respawner
@@ -244,15 +202,7 @@ EOF
 test_once_flag() {
     echo "Test: once flag (no respawn)"
 
-    cat > "$TEST_DIR/once.conf" << EOF
-job {
-    name run_once
-    cmd /bin/true
-    once
-}
-EOF
-
-    "$PMTR" -F -c "$TEST_DIR/once.conf" &
+    "$PMTR" -F -c "$CONFIG_DIR/once.conf" &
     PMTR_PID=$!
 
     sleep 2
@@ -274,12 +224,8 @@ EOF
 test_config_reload() {
     echo "Test: config reload (SIGHUP)"
 
-    cat > "$TEST_DIR/reload.conf" << EOF
-job {
-    name original_job
-    cmd /bin/sleep 66
-}
-EOF
+    # Copy initial config to temp location (will be modified)
+    cp "$CONFIG_DIR/reload_before.conf" "$TEST_DIR/reload.conf"
 
     "$PMTR" -F -c "$TEST_DIR/reload.conf" &
     PMTR_PID=$!
@@ -293,12 +239,7 @@ EOF
     fi
 
     # Update config
-    cat > "$TEST_DIR/reload.conf" << EOF
-job {
-    name new_job
-    cmd /bin/sleep 67
-}
-EOF
+    cp "$CONFIG_DIR/reload_after.conf" "$TEST_DIR/reload.conf"
 
     # Send SIGHUP to reload
     kill -HUP $PMTR_PID
@@ -331,14 +272,7 @@ EOF
 test_pidfile() {
     echo "Test: pidfile creation"
 
-    cat > "$TEST_DIR/pid.conf" << EOF
-job {
-    name pidtest
-    cmd /bin/sleep 68
-}
-EOF
-
-    "$PMTR" -F -p "$TEST_DIR/pmtr.pid" -c "$TEST_DIR/pid.conf" &
+    "$PMTR" -F -p "$TEST_DIR/pmtr.pid" -c "$CONFIG_DIR/pidfile.conf" &
     PMTR_PID=$!
 
     sleep 1
