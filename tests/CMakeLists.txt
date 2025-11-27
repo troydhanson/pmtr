@@ -121,7 +121,11 @@ if(CMAKE_BUILD_TYPE STREQUAL "Coverage")
             COMMAND ${LCOV} --capture --directory . --output-file coverage.info
             COMMAND ${LCOV} --remove coverage.info '/usr/*' --output-file coverage.info
             COMMAND ${GENHTML} coverage.info --output-directory coverage_report
-            COMMAND ${CMAKE_COMMAND} -E echo "Coverage report: ${CMAKE_BINARY_DIR}/coverage_report/index.html"
+            COMMAND ${CMAKE_COMMAND} -E echo ""
+            COMMAND ${CMAKE_COMMAND} -E echo "=== Coverage Summary ==="
+            COMMAND ${LCOV} --summary coverage.info
+            COMMAND ${CMAKE_COMMAND} -E echo ""
+            COMMAND ${CMAKE_COMMAND} -E echo "Full report: ${CMAKE_BINARY_DIR}/coverage_report/index.html"
             WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
             DEPENDS run_tests
             COMMENT "Generating code coverage report"

@@ -21,3 +21,22 @@ jobs:
         cmake -B build -DCMAKE_BUILD_TYPE=Sanitize
         cmake --build build --parallel
         ctest --test-dir build --output-on-failure
+
+  coverage:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v5
+
+    - name: Install dependencies
+      run: sudo apt-get update && sudo apt-get install -y cmake lcov
+
+    - name: Build with coverage
+      run: |
+        cmake -B build -DCMAKE_BUILD_TYPE=Coverage
+        cmake --build build --parallel
+
+    - name: Run tests and generate coverage
+      run: |
+        ctest --test-dir build --output-on-failure
+        make -C build coverage
