@@ -95,7 +95,50 @@ To build pmtr from source follow these steps.
     make
     sudo cmake --install . --prefix=/usr
 
-This will install the executable into /usr/bin/pmtr. 
+This will install the executable into /usr/bin/pmtr.
+
+Testing
+-------
+
+Pmtr includes a comprehensive test suite with unit tests and integration tests.
+To build and run the tests:
+
+.Build with tests enabled (default)
+
+    cd pmtr
+    mkdir build && cd build
+    cmake ..
+    make
+
+.Run all tests
+
+    ctest --output-on-failure
+
+Or use the convenience target:
+
+    make run_tests
+
+.Run tests with verbose output
+
+    make run_tests_verbose
+
+.Build without tests
+
+To build pmtr without the test suite, disable the BUILD_TESTS option:
+
+    cmake -DBUILD_TESTS=OFF ..
+
+.Test Suites
+
+The test suite includes:
+
+* *test_tokenizer*: Tests for the configuration file tokenizer
+* *test_setters*: Tests for configuration option parsing functions
+* *test_job*: Tests for job management functions
+* *test_integration*: Integration tests for full configuration file parsing
+* *test_edge_cases*: Edge case tests for unusual but valid configurations
+
+Each test suite runs independently and reports pass/fail status for each test.
 
 .Usage as a container entrypoint
 
