@@ -765,6 +765,311 @@ TEST_CASE(parse_duplicate_name_option) {
     test_cleanup();
 }
 
+TEST_CASE(parse_duplicate_job_names) {
+    pmtr_t cfg;
+    UT_string *em;
+
+    if (test_init() != 0) {
+        TEST_ASSERT_MSG(0, "Failed to init test environment");
+    }
+
+    init_test_cfg(&cfg);
+    utstring_new(em);
+
+    /* Two jobs with the same name */
+    cfg.file = strdup(create_temp_config(
+        "job {\n"
+        "  name duplicate\n"
+        "  cmd /bin/true\n"
+        "}\n"
+        "job {\n"
+        "  name duplicate\n"
+        "  cmd /bin/false\n"
+        "}\n"
+    ));
+
+    int rc = parse_jobs(&cfg, em);
+    /* pmtr currently allows duplicate job names - both jobs are added */
+    TEST_ASSERT_EQ(0, rc);
+    TEST_ASSERT_EQ(2, (int)utarray_len(cfg.jobs));
+
+    utstring_free(em);
+    free_test_cfg(&cfg);
+    test_cleanup();
+}
+
+TEST_CASE(parse_missing_cmd) {
+    pmtr_t cfg;
+    UT_string *em;
+
+    if (test_init() != 0) {
+        TEST_ASSERT_MSG(0, "Failed to init test environment");
+    }
+
+    init_test_cfg(&cfg);
+    utstring_new(em);
+
+    cfg.file = strdup(create_temp_config(
+        "job {\n"
+        "  name nocmd\n"
+        "  /* no cmd specified */\n"
+        "}\n"
+    ));
+
+    int rc = parse_jobs(&cfg, em);
+    TEST_ASSERT_EQ(-1, rc);
+
+    utstring_free(em);
+    free_test_cfg(&cfg);
+    test_cleanup();
+}
+
+TEST_CASE(parse_depends_relative_path) {
+    pmtr_t cfg;
+    UT_string *em;
+
+    if (test_init() != 0) {
+        TEST_ASSERT_MSG(0, "Failed to init test environment");
+    }
+
+    init_test_cfg(&cfg);
+    utstring_new(em);
+
+    /* Create a dependency file */
+    create_temp_file("config.json", "{\"key\": \"value\"}");
+
+    char config[1024];
+    snprintf(config, sizeof(config),
+        "job {\n"
+        "  name watcher\n"
+        "  cmd /bin/true\n"
+        "  dir %s\n"
+        "  depends {\n"
+        "    config.json\n"  /* Relative path - resolved with dir */
+        "  }\n"
+        "}\n", g_test_tmpdir);
+
+    cfg.file = strdup(create_temp_config(config));
+
+    int rc = parse_jobs(&cfg, em);
+    TEST_ASSERT_EQ(0, rc);
+
+    job_t *job = get_job_at(&cfg, 0);
+    TEST_ASSERT_EQ(1, get_dep_count(job));
+    TEST_ASSERT_STR_EQ("config.json", get_dep_at(job, 0));
+
+    utstring_free(em);
+    free_test_cfg(&cfg);
+    test_cleanup();
+}
+
+TEST_CASE(parse_depends_multiple_files) {
+    pmtr_t cfg;
+    UT_string *em;
+
+    if (test_init() != 0) {
+        TEST_ASSERT_MSG(0, "Failed to init test environment");
+    }
+
+    init_test_cfg(&cfg);
+    utstring_new(em);
+
+    /* Create multiple dependency files */
+    create_temp_file("file1.conf", "config1");
+    create_temp_file("file2.conf", "config2");
+    create_temp_file("file3.conf", "config3");
+
+    char config[2048];
+    snprintf(config, sizeof(config),
+        "job {\n"
+        "  name multideps\n"
+        "  cmd /bin/true\n"
+        "  depends {\n"
+        "    %s/file1.conf\n"
+        "    %s/file2.conf\n"
+        "    %s/file3.conf\n"
+        "  }\n"
+        "}\n", g_test_tmpdir, g_test_tmpdir, g_test_tmpdir);
+
+    cfg.file = strdup(create_temp_config(config));
+
+    int rc = parse_jobs(&cfg, em);
+    TEST_ASSERT_EQ(0, rc);
+
+    job_t *job = get_job_at(&cfg, 0);
+    TEST_ASSERT_EQ(3, get_dep_count(job));
+
+    utstring_free(em);
+    free_test_cfg(&cfg);
+    test_cleanup();
+}
+
+TEST_CASE(parse_cmd_quoted_with_special_chars) {
+    pmtr_t cfg;
+    UT_string *em;
+
+    if (test_init() != 0) {
+        TEST_ASSERT_MSG(0, "Failed to init test environment");
+    }
+
+    init_test_cfg(&cfg);
+    utstring_new(em);
+
+    cfg.file = strdup(create_temp_config(
+        "job {\n"
+        "  name special\n"
+        "  cmd /bin/sh -c \"echo hello; echo world\"\n"
+        "}\n"
+    ));
+
+    int rc = parse_jobs(&cfg, em);
+    TEST_ASSERT_EQ(0, rc);
+
+    job_t *job = get_job_at(&cfg, 0);
+    TEST_ASSERT_STR_EQ("/bin/sh", get_cmd_arg_at(job, 0));
+    TEST_ASSERT_STR_EQ("-c", get_cmd_arg_at(job, 1));
+    TEST_ASSERT_STR_EQ("echo hello; echo world", get_cmd_arg_at(job, 2));
+
+    utstring_free(em);
+    free_test_cfg(&cfg);
+    test_cleanup();
+}
+
+TEST_CASE(parse_env_special_values) {
+    pmtr_t cfg;
+    UT_string *em;
+
+    if (test_init() != 0) {
+        TEST_ASSERT_MSG(0, "Failed to init test environment");
+    }
+
+    init_test_cfg(&cfg);
+    utstring_new(em);
+
+    cfg.file = strdup(create_temp_config(
+        "job {\n"
+        "  name envtest\n"
+        "  cmd /bin/true\n"
+        "  env PATH=/usr/bin:/bin\n"
+        "  env URL=http://example.com?foo=bar&baz=1\n"
+        "  env EMPTY=\n"
+        "}\n"
+    ));
+
+    int rc = parse_jobs(&cfg, em);
+    TEST_ASSERT_EQ(0, rc);
+
+    job_t *job = get_job_at(&cfg, 0);
+    TEST_ASSERT_EQ(3, get_env_count(job));
+    TEST_ASSERT_STR_EQ("PATH=/usr/bin:/bin", get_env_at(job, 0));
+    TEST_ASSERT_STR_EQ("URL=http://example.com?foo=bar&baz=1", get_env_at(job, 1));
+    TEST_ASSERT_STR_EQ("EMPTY=", get_env_at(job, 2));
+
+    utstring_free(em);
+    free_test_cfg(&cfg);
+    test_cleanup();
+}
+
+TEST_CASE(parse_ulimit_inline_vs_block) {
+    pmtr_t cfg;
+    UT_string *em;
+
+    if (test_init() != 0) {
+        TEST_ASSERT_MSG(0, "Failed to init test environment");
+    }
+
+    init_test_cfg(&cfg);
+    utstring_new(em);
+
+    /* Test that both inline and block ulimit syntax work */
+    cfg.file = strdup(create_temp_config(
+        "job {\n"
+        "  name ulimittest\n"
+        "  cmd /bin/true\n"
+        "  ulimit -n 1024\n"  /* Inline syntax */
+        "  ulimit {\n"        /* Block syntax */
+        "    -c 0\n"
+        "    -m 1000000\n"
+        "  }\n"
+        "}\n"
+    ));
+
+    int rc = parse_jobs(&cfg, em);
+    TEST_ASSERT_EQ(0, rc);
+
+    job_t *job = get_job_at(&cfg, 0);
+    TEST_ASSERT_EQ(3, utarray_len(&job->rlim));
+
+    utstring_free(em);
+    free_test_cfg(&cfg);
+    test_cleanup();
+}
+
+TEST_CASE(parse_cpu_various_formats) {
+    pmtr_t cfg;
+    UT_string *em;
+
+    if (test_init() != 0) {
+        TEST_ASSERT_MSG(0, "Failed to init test environment");
+    }
+
+    init_test_cfg(&cfg);
+    utstring_new(em);
+
+    /* Test hex format */
+    cfg.file = strdup(create_temp_config(
+        "job {\n"
+        "  name hexcpu\n"
+        "  cmd /bin/true\n"
+        "  cpu 0xF\n"
+        "}\n"
+    ));
+
+    int rc = parse_jobs(&cfg, em);
+    TEST_ASSERT_EQ(0, rc);
+
+    job_t *job = get_job_at(&cfg, 0);
+    TEST_ASSERT(CPU_ISSET(0, &job->cpuset));
+    TEST_ASSERT(CPU_ISSET(1, &job->cpuset));
+    TEST_ASSERT(CPU_ISSET(2, &job->cpuset));
+    TEST_ASSERT(CPU_ISSET(3, &job->cpuset));
+
+    utstring_free(em);
+    free_test_cfg(&cfg);
+    test_cleanup();
+}
+
+TEST_CASE(parse_bounce_units) {
+    pmtr_t cfg;
+    UT_string *em;
+
+    if (test_init() != 0) {
+        TEST_ASSERT_MSG(0, "Failed to init test environment");
+    }
+
+    init_test_cfg(&cfg);
+    utstring_new(em);
+
+    /* Test different time units */
+    cfg.file = strdup(create_temp_config(
+        "job {\n"
+        "  name bounce_m\n"
+        "  cmd /bin/true\n"
+        "  bounce every 5m\n"
+        "}\n"
+    ));
+
+    int rc = parse_jobs(&cfg, em);
+    TEST_ASSERT_EQ(0, rc);
+
+    job_t *job = get_job_at(&cfg, 0);
+    TEST_ASSERT_EQ(300, job->bounce_interval);  /* 5 minutes = 300 seconds */
+
+    utstring_free(em);
+    free_test_cfg(&cfg);
+    test_cleanup();
+}
+
 /*
  * Test Runner
  */
@@ -810,6 +1115,27 @@ int main(int argc, char *argv[]) {
     RUN_TEST(parse_invalid_bounce);
     RUN_TEST(parse_invalid_cpu);
     RUN_TEST(parse_duplicate_name_option);
+    RUN_TEST(parse_duplicate_job_names);
+    RUN_TEST(parse_missing_cmd);
+    TEST_SUITE_END();
+
+    TEST_SUITE_BEGIN("Depends Block");
+    RUN_TEST(parse_depends_relative_path);
+    RUN_TEST(parse_depends_multiple_files);
+    TEST_SUITE_END();
+
+    TEST_SUITE_BEGIN("Command and Environment");
+    RUN_TEST(parse_cmd_quoted_with_special_chars);
+    RUN_TEST(parse_env_special_values);
+    TEST_SUITE_END();
+
+    TEST_SUITE_BEGIN("Ulimit and CPU");
+    RUN_TEST(parse_ulimit_inline_vs_block);
+    RUN_TEST(parse_cpu_various_formats);
+    TEST_SUITE_END();
+
+    TEST_SUITE_BEGIN("Bounce");
+    RUN_TEST(parse_bounce_units);
     TEST_SUITE_END();
 
     print_test_results();

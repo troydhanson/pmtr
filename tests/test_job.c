@@ -1099,6 +1099,236 @@ TEST_CASE(job_cmp_different_in) {
 }
 
 /*
+ * slurp Tests
+ */
+extern int slurp(char *file, char **text, size_t *len);
+
+TEST_CASE(slurp_existing_file) {
+    char *text = NULL;
+    size_t len = 0;
+
+    if (test_init() != 0) {
+        TEST_ASSERT_MSG(0, "Failed to init test environment");
+    }
+
+    /* Create a temp file with known content */
+    create_temp_file("testfile.txt", "Hello, World!");
+
+    char path[512];
+    snprintf(path, sizeof(path), "%s/testfile.txt", g_test_tmpdir);
+
+    int rc = slurp(path, &text, &len);
+    TEST_ASSERT_EQ(0, rc);
+    TEST_ASSERT_NOT_NULL(text);
+    TEST_ASSERT_EQ(13, len);  /* "Hello, World!" is 13 bytes */
+    TEST_ASSERT(memcmp(text, "Hello, World!", 13) == 0);
+
+    free(text);
+    test_cleanup();
+}
+
+TEST_CASE(slurp_empty_file) {
+    char *text = NULL;
+    size_t len = 0;
+
+    if (test_init() != 0) {
+        TEST_ASSERT_MSG(0, "Failed to init test environment");
+    }
+
+    /* Create an empty file */
+    create_temp_file("empty.txt", "");
+
+    char path[512];
+    snprintf(path, sizeof(path), "%s/empty.txt", g_test_tmpdir);
+
+    int rc = slurp(path, &text, &len);
+    TEST_ASSERT_EQ(0, rc);
+    TEST_ASSERT_EQ(0, len);
+    TEST_ASSERT_NULL(text);  /* Empty file returns NULL text */
+
+    test_cleanup();
+}
+
+TEST_CASE(slurp_nonexistent_file) {
+    char *text = NULL;
+    size_t len = 0;
+
+    int rc = slurp("/nonexistent/path/to/file.txt", &text, &len);
+    TEST_ASSERT_EQ(-1, rc);
+    TEST_ASSERT_NULL(text);
+}
+
+TEST_CASE(slurp_binary_content) {
+    char *text = NULL;
+    size_t len = 0;
+
+    if (test_init() != 0) {
+        TEST_ASSERT_MSG(0, "Failed to init test environment");
+    }
+
+    /* Create a file with binary content */
+    char path[512];
+    snprintf(path, sizeof(path), "%s/binary.dat", g_test_tmpdir);
+
+    FILE *f = fopen(path, "wb");
+    if (f) {
+        unsigned char data[] = {0x00, 0x01, 0x02, 0xFF, 0xFE};
+        fwrite(data, 1, sizeof(data), f);
+        fclose(f);
+    }
+
+    int rc = slurp(path, &text, &len);
+    TEST_ASSERT_EQ(0, rc);
+    TEST_ASSERT_NOT_NULL(text);
+    TEST_ASSERT_EQ(5, len);
+
+    free(text);
+    test_cleanup();
+}
+
+/*
+ * hash_deps Tests
+ */
+extern int hash_deps(UT_array *jobs);
+
+TEST_CASE(hash_deps_no_dependencies) {
+    pmtr_t cfg;
+    init_test_cfg(&cfg);
+
+    /* Create job with no dependencies */
+    job_t job;
+    job_ini(&job);
+    job.name = strdup("nodeps");
+    utarray_push_back(cfg.jobs, &job);
+    job_fin(&job);
+
+    int rc = hash_deps(cfg.jobs);
+    TEST_ASSERT_EQ(0, rc);
+
+    job_t *j = get_job_at(&cfg, 0);
+    TEST_ASSERT_EQ(0, j->deps_hash);
+
+    free_test_cfg(&cfg);
+}
+
+TEST_CASE(hash_deps_with_dependency) {
+    pmtr_t cfg;
+
+    if (test_init() != 0) {
+        TEST_ASSERT_MSG(0, "Failed to init test environment");
+    }
+
+    init_test_cfg(&cfg);
+
+    /* Create a dependency file */
+    char *dep_path = create_temp_file("config.json", "{\"key\": \"value\"}");
+
+    /* Create job with dependency */
+    job_t job;
+    job_ini(&job);
+    job.name = strdup("withdeps");
+    char *dep = strdup(dep_path);
+    utarray_push_back(&job.depv, &dep);
+    free(dep);
+    utarray_push_back(cfg.jobs, &job);
+    job_fin(&job);
+
+    int rc = hash_deps(cfg.jobs);
+    TEST_ASSERT_EQ(0, rc);
+
+    job_t *j = get_job_at(&cfg, 0);
+    /* Hash should be non-zero for non-empty file */
+    TEST_ASSERT(j->deps_hash != 0);
+
+    free_test_cfg(&cfg);
+    test_cleanup();
+}
+
+TEST_CASE(hash_deps_missing_dependency) {
+    pmtr_t cfg;
+    init_test_cfg(&cfg);
+
+    /* Create job with non-existent dependency */
+    job_t job;
+    job_ini(&job);
+    job.name = strdup("missingdeps");
+    job.disabled = 0;
+    char *dep = strdup("/nonexistent/file.txt");
+    utarray_push_back(&job.depv, &dep);
+    free(dep);
+    utarray_push_back(cfg.jobs, &job);
+    job_fin(&job);
+
+    int rc = hash_deps(cfg.jobs);
+    /* hash_deps returns 0 but disables the job */
+    TEST_ASSERT_EQ(0, rc);
+
+    job_t *j = get_job_at(&cfg, 0);
+    /* Job should be disabled due to missing dependency */
+    TEST_ASSERT_EQ(1, j->disabled);
+
+    free_test_cfg(&cfg);
+}
+
+TEST_CASE(hash_deps_detects_change) {
+    pmtr_t cfg;
+
+    if (test_init() != 0) {
+        TEST_ASSERT_MSG(0, "Failed to init test environment");
+    }
+
+    init_test_cfg(&cfg);
+
+    /* Create initial dependency file */
+    char *dep_path = create_temp_file("changing.conf", "version=1");
+
+    /* Create job with dependency */
+    job_t job;
+    job_ini(&job);
+    job.name = strdup("changing");
+    char *dep = strdup(dep_path);
+    utarray_push_back(&job.depv, &dep);
+    free(dep);
+    utarray_push_back(cfg.jobs, &job);
+    job_fin(&job);
+
+    /* First hash */
+    hash_deps(cfg.jobs);
+    int first_hash = get_job_at(&cfg, 0)->deps_hash;
+
+    /* Modify the file */
+    FILE *f = fopen(dep_path, "w");
+    fprintf(f, "version=2");
+    fclose(f);
+
+    /* Re-hash */
+    hash_deps(cfg.jobs);
+    int second_hash = get_job_at(&cfg, 0)->deps_hash;
+
+    /* Hashes should be different */
+    TEST_ASSERT(first_hash != second_hash);
+
+    free_test_cfg(&cfg);
+    test_cleanup();
+}
+
+/*
+ * fpath Tests (already in test_setters.c, but adding more here)
+ */
+TEST_CASE(fpath_relative_with_trailing_slash) {
+    job_t job;
+    job_ini(&job);
+    job.dir = strdup("/home/user/");  /* Trailing slash */
+
+    char *result = fpath(&job, "config.json");
+    /* Should handle trailing slash correctly */
+    TEST_ASSERT_NOT_NULL(result);
+    TEST_ASSERT(strstr(result, "config.json") != NULL);
+
+    job_fin(&job);
+}
+
+/*
  * Test Runner
  */
 int main(int argc, char *argv[]) {
@@ -1183,6 +1413,24 @@ int main(int argc, char *argv[]) {
     RUN_TEST(alarm_within_first_call);
     RUN_TEST(alarm_within_earlier_alarm);
     RUN_TEST(alarm_within_zero_becomes_one);
+    TEST_SUITE_END();
+
+    TEST_SUITE_BEGIN("slurp");
+    RUN_TEST(slurp_existing_file);
+    RUN_TEST(slurp_empty_file);
+    RUN_TEST(slurp_nonexistent_file);
+    RUN_TEST(slurp_binary_content);
+    TEST_SUITE_END();
+
+    TEST_SUITE_BEGIN("hash_deps");
+    RUN_TEST(hash_deps_no_dependencies);
+    RUN_TEST(hash_deps_with_dependency);
+    RUN_TEST(hash_deps_missing_dependency);
+    RUN_TEST(hash_deps_detects_change);
+    TEST_SUITE_END();
+
+    TEST_SUITE_BEGIN("fpath extended");
+    RUN_TEST(fpath_relative_with_trailing_slash);
     TEST_SUITE_END();
 
     print_test_results();
