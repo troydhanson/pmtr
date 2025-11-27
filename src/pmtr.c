@@ -193,6 +193,16 @@ pid_t id_peer(int fd, char **name) {
   return ucred.pid;
 }
 
+/* sanitize a buffer by replacing control characters with '?' */
+static void sanitize_log(char *buf, size_t len) {
+  size_t i;
+  for (i = 0; i < len; i++) {
+    unsigned char c = buf[i];
+    if (c < 0x20 && c != '\n' && c != '\t') buf[i] = '?';
+    if (c == 0x7f) buf[i] = '?';
+  }
+}
+
 pid_t start_logger(void) {
   int epoll_fd, fd, rc = -1, sc;
   struct epoll_event ev;
@@ -276,6 +286,9 @@ pid_t start_logger(void) {
 
         char *exe;
         pid_t pid = id_peer(ev.data.fd, &exe); /* peer identity */
+
+        /* sanitize control characters before logging */
+        sanitize_log(buf, nr);
 
         char *l, *eol;
         l = buf;
