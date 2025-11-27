@@ -76,6 +76,12 @@ add_test(NAME integration_tests COMMAND test_integration)
 add_test(NAME edge_case_tests COMMAND test_edge_cases)
 add_test(NAME net_tests COMMAND test_net)
 
+# End-to-end test (runs actual pmtr binary)
+add_test(NAME e2e_tests
+    COMMAND ${CMAKE_SOURCE_DIR}/tests/test_e2e.sh ${CMAKE_BINARY_DIR}/src/pmtr
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+)
+
 # Custom target to run all tests
 add_custom_target(run_tests
     COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
