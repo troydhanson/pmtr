@@ -1186,6 +1186,101 @@ TEST_CASE(slurp_binary_content) {
     test_cleanup();
 }
 
+TEST_CASE(slurp_with_nul_bytes) {
+    char *text = NULL;
+    size_t len = 0;
+
+    if (test_init() != 0) {
+        TEST_ASSERT_MSG(0, "Failed to init test environment");
+    }
+
+    /* Create a file with embedded NUL bytes */
+    char path[512];
+    snprintf(path, sizeof(path), "%s/nulbytes.dat", g_test_tmpdir);
+
+    FILE *f = fopen(path, "wb");
+    if (f) {
+        /* "hello\0world\0" - 12 bytes with NULs */
+        fwrite("hello\0world\0", 1, 12, f);
+        fclose(f);
+    }
+
+    int rc = slurp(path, &text, &len);
+    TEST_ASSERT_EQ(0, rc);
+    TEST_ASSERT_NOT_NULL(text);
+    TEST_ASSERT_EQ(12, len);
+    /* Verify NUL bytes are preserved */
+    TEST_ASSERT(memcmp(text, "hello\0world\0", 12) == 0);
+
+    free(text);
+    test_cleanup();
+}
+
+TEST_CASE(slurp_larger_file) {
+    char *text = NULL;
+    size_t len = 0;
+
+    if (test_init() != 0) {
+        TEST_ASSERT_MSG(0, "Failed to init test environment");
+    }
+
+    /* Create a larger file (100KB) */
+    char path[512];
+    snprintf(path, sizeof(path), "%s/largefile.dat", g_test_tmpdir);
+
+    FILE *f = fopen(path, "wb");
+    if (f) {
+        for (int i = 0; i < 100; i++) {
+            char buf[1024];
+            memset(buf, 'A' + (i % 26), sizeof(buf));
+            fwrite(buf, 1, sizeof(buf), f);
+        }
+        fclose(f);
+    }
+
+    int rc = slurp(path, &text, &len);
+    TEST_ASSERT_EQ(0, rc);
+    TEST_ASSERT_NOT_NULL(text);
+    TEST_ASSERT_EQ(102400, len);
+
+    free(text);
+    test_cleanup();
+}
+
+TEST_CASE(slurp_permission_denied) {
+    char *text = NULL;
+    size_t len = 0;
+
+    if (test_init() != 0) {
+        TEST_ASSERT_MSG(0, "Failed to init test environment");
+    }
+
+    /* Skip if running as root (root can read anything) */
+    if (getuid() == 0) {
+        test_cleanup();
+        return;  /* Skip test */
+    }
+
+    /* Create a file and remove read permission */
+    char path[512];
+    snprintf(path, sizeof(path), "%s/noperm.txt", g_test_tmpdir);
+
+    FILE *f = fopen(path, "w");
+    if (f) {
+        fprintf(f, "secret content");
+        fclose(f);
+    }
+    chmod(path, 0000);  /* No permissions */
+
+    int rc = slurp(path, &text, &len);
+    TEST_ASSERT_EQ(-1, rc);
+    TEST_ASSERT_NULL(text);
+
+    /* Restore permissions for cleanup */
+    chmod(path, 0644);
+    test_cleanup();
+}
+
 /*
  * hash_deps Tests
  */
@@ -1312,6 +1407,173 @@ TEST_CASE(hash_deps_detects_change) {
     test_cleanup();
 }
 
+TEST_CASE(hash_deps_multiple_dependencies) {
+    pmtr_t cfg;
+
+    if (test_init() != 0) {
+        TEST_ASSERT_MSG(0, "Failed to init test environment");
+    }
+
+    init_test_cfg(&cfg);
+
+    /* Create multiple dependency files */
+    char *dep_path1 = create_temp_file("config1.conf", "setting1=a");
+    char *dep_path2 = create_temp_file("config2.conf", "setting2=b");
+    char *dep_path3 = create_temp_file("config3.conf", "setting3=c");
+
+    /* Create job with multiple dependencies */
+    job_t job;
+    job_ini(&job);
+    job.name = strdup("multideps");
+
+    char *dep1 = strdup(dep_path1);
+    char *dep2 = strdup(dep_path2);
+    char *dep3 = strdup(dep_path3);
+    utarray_push_back(&job.depv, &dep1);
+    utarray_push_back(&job.depv, &dep2);
+    utarray_push_back(&job.depv, &dep3);
+    free(dep1);
+    free(dep2);
+    free(dep3);
+    utarray_push_back(cfg.jobs, &job);
+    job_fin(&job);
+
+    int rc = hash_deps(cfg.jobs);
+    TEST_ASSERT_EQ(0, rc);
+
+    job_t *j = get_job_at(&cfg, 0);
+    /* Hash should be non-zero when all deps exist */
+    TEST_ASSERT(j->deps_hash != 0);
+    TEST_ASSERT_EQ(0, j->disabled);
+
+    free_test_cfg(&cfg);
+    test_cleanup();
+}
+
+TEST_CASE(hash_deps_binary_dependency) {
+    pmtr_t cfg;
+
+    if (test_init() != 0) {
+        TEST_ASSERT_MSG(0, "Failed to init test environment");
+    }
+
+    init_test_cfg(&cfg);
+
+    /* Create a binary dependency file */
+    char path[512];
+    snprintf(path, sizeof(path), "%s/binary_config.dat", g_test_tmpdir);
+
+    FILE *f = fopen(path, "wb");
+    if (f) {
+        unsigned char data[] = {0x00, 0x01, 0xFF, 0xFE, 0x00, 0x00};
+        fwrite(data, 1, sizeof(data), f);
+        fclose(f);
+    }
+
+    /* Create job with binary dependency */
+    job_t job;
+    job_ini(&job);
+    job.name = strdup("bindep");
+    char *dep = strdup(path);
+    utarray_push_back(&job.depv, &dep);
+    free(dep);
+    utarray_push_back(cfg.jobs, &job);
+    job_fin(&job);
+
+    int rc = hash_deps(cfg.jobs);
+    TEST_ASSERT_EQ(0, rc);
+
+    job_t *j = get_job_at(&cfg, 0);
+    /* Hash should be non-zero for binary content */
+    TEST_ASSERT(j->deps_hash != 0);
+
+    free_test_cfg(&cfg);
+    test_cleanup();
+}
+
+TEST_CASE(hash_deps_permission_denied) {
+    pmtr_t cfg;
+
+    if (test_init() != 0) {
+        TEST_ASSERT_MSG(0, "Failed to init test environment");
+    }
+
+    /* Skip if running as root */
+    if (getuid() == 0) {
+        test_cleanup();
+        return;
+    }
+
+    init_test_cfg(&cfg);
+
+    /* Create a file and remove read permission */
+    char path[512];
+    snprintf(path, sizeof(path), "%s/noperm_dep.conf", g_test_tmpdir);
+
+    FILE *f = fopen(path, "w");
+    if (f) {
+        fprintf(f, "secret=value");
+        fclose(f);
+    }
+    chmod(path, 0000);
+
+    /* Create job with unreadable dependency */
+    job_t job;
+    job_ini(&job);
+    job.name = strdup("permdep");
+    job.disabled = 0;
+    char *dep = strdup(path);
+    utarray_push_back(&job.depv, &dep);
+    free(dep);
+    utarray_push_back(cfg.jobs, &job);
+    job_fin(&job);
+
+    int rc = hash_deps(cfg.jobs);
+    TEST_ASSERT_EQ(0, rc);
+
+    job_t *j = get_job_at(&cfg, 0);
+    /* Job should be disabled due to unreadable dependency */
+    TEST_ASSERT_EQ(1, j->disabled);
+
+    /* Restore permissions for cleanup */
+    chmod(path, 0644);
+    free_test_cfg(&cfg);
+    test_cleanup();
+}
+
+TEST_CASE(hash_deps_empty_dependency_file) {
+    pmtr_t cfg;
+
+    if (test_init() != 0) {
+        TEST_ASSERT_MSG(0, "Failed to init test environment");
+    }
+
+    init_test_cfg(&cfg);
+
+    /* Create an empty dependency file */
+    char *dep_path = create_temp_file("empty_dep.conf", "");
+
+    /* Create job with empty dependency */
+    job_t job;
+    job_ini(&job);
+    job.name = strdup("emptydep");
+    char *dep = strdup(dep_path);
+    utarray_push_back(&job.depv, &dep);
+    free(dep);
+    utarray_push_back(cfg.jobs, &job);
+    job_fin(&job);
+
+    int rc = hash_deps(cfg.jobs);
+    TEST_ASSERT_EQ(0, rc);
+
+    job_t *j = get_job_at(&cfg, 0);
+    /* Empty file should produce hash of 0 */
+    TEST_ASSERT_EQ(0, j->deps_hash);
+
+    free_test_cfg(&cfg);
+    test_cleanup();
+}
+
 /*
  * fpath Tests (already in test_setters.c, but adding more here)
  */
@@ -1420,6 +1682,9 @@ int main(int argc, char *argv[]) {
     RUN_TEST(slurp_empty_file);
     RUN_TEST(slurp_nonexistent_file);
     RUN_TEST(slurp_binary_content);
+    RUN_TEST(slurp_with_nul_bytes);
+    RUN_TEST(slurp_larger_file);
+    RUN_TEST(slurp_permission_denied);
     TEST_SUITE_END();
 
     TEST_SUITE_BEGIN("hash_deps");
@@ -1427,6 +1692,10 @@ int main(int argc, char *argv[]) {
     RUN_TEST(hash_deps_with_dependency);
     RUN_TEST(hash_deps_missing_dependency);
     RUN_TEST(hash_deps_detects_change);
+    RUN_TEST(hash_deps_multiple_dependencies);
+    RUN_TEST(hash_deps_binary_dependency);
+    RUN_TEST(hash_deps_permission_denied);
+    RUN_TEST(hash_deps_empty_dependency_file);
     TEST_SUITE_END();
 
     TEST_SUITE_BEGIN("fpath extended");
