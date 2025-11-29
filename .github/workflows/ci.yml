@@ -5,6 +5,9 @@ on:
     branches: [ master, main ]
   pull_request:
     branches: [ master, main ]
+  schedule:
+    # Run weekly on Sundays at 00:00 UTC
+    - cron: '0 0 * * 0'
 
 jobs:
   test:
@@ -140,6 +143,25 @@ jobs:
         cmake --build build --parallel
         ctest --test-dir build --output-on-failure
 
+    - name: Create issue on scheduled failure
+      if: failure() && github.event_name == 'schedule'
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        LABEL="ci:${{ matrix.distro }}-${{ matrix.compiler }}"
+        EXISTING=$(gh issue list --label "$LABEL" --state open --json number --jq '.[0].number')
+        if [ -z "$EXISTING" ]; then
+          gh label create "$LABEL" --color D93F0B --description "CI failure for ${{ matrix.distro }}/${{ matrix.compiler }}" 2>/dev/null || true
+          gh issue create \
+            --title "CI: ${{ matrix.distro }}/${{ matrix.compiler }} scheduled build failure" \
+            --label "$LABEL" \
+            --body "The scheduled CI run failed for **${{ matrix.distro }}** with **${{ matrix.compiler }}**.
+
+        **Workflow run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+        This may be due to upstream distro/package changes. Close this issue once fixed."
+        fi
+
   test-arm64:
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -177,6 +199,25 @@ jobs:
             ctest --output-on-failure
           "
 
+    - name: Create issue on scheduled failure
+      if: failure() && github.event_name == 'schedule'
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        LABEL="ci:arm64-${{ matrix.compiler }}"
+        EXISTING=$(gh issue list --label "$LABEL" --state open --json number --jq '.[0].number')
+        if [ -z "$EXISTING" ]; then
+          gh label create "$LABEL" --color D93F0B --description "CI failure for arm64/${{ matrix.compiler }}" 2>/dev/null || true
+          gh issue create \
+            --title "CI: arm64/${{ matrix.compiler }} scheduled build failure" \
+            --label "$LABEL" \
+            --body "The scheduled CI run failed for **arm64** with **${{ matrix.compiler }}**.
+
+        **Workflow run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+        This may be due to upstream distro/package changes. Close this issue once fixed."
+        fi
+
   coverage:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -196,3 +237,4 @@ jobs:
       run: |
         ctest --test-dir build --output-on-failure
         make -C build coverage
+
