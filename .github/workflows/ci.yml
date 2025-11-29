@@ -9,12 +9,81 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Alpine - musl libc
+          - distro: alpine
+            image: alpine:3.22
+            compiler: gcc
+            pkg_install: apk add --no-cache build-base cmake bash
+
+          - distro: alpine
+            image: alpine:3.22
+            compiler: clang
+            pkg_install: apk add --no-cache build-base cmake bash clang compiler-rt
+
+          # Debian - glibc
+          - distro: debian
+            image: debian:bookworm
+            compiler: gcc
+            pkg_install: apt-get update && apt-get install -y --no-install-recommends build-essential cmake
+
+          - distro: debian
+            image: debian:bookworm
+            compiler: clang
+            pkg_install: apt-get update && apt-get install -y --no-install-recommends build-essential cmake clang
+
+          # Ubuntu - glibc
+          - distro: ubuntu
+            image: ubuntu:24.04
+            compiler: gcc
+            pkg_install: apt-get update && apt-get install -y --no-install-recommends build-essential cmake
+
+          - distro: ubuntu
+            image: ubuntu:24.04
+            compiler: clang
+            pkg_install: apt-get update && apt-get install -y --no-install-recommends build-essential cmake clang
+
+          # Fedora - glibc (latest compiler versions)
+          - distro: fedora
+            image: fedora:41
+            compiler: gcc
+            pkg_install: dnf install -y gcc gcc-c++ cmake make
+
+          - distro: fedora
+            image: fedora:41
+            compiler: clang
+            pkg_install: dnf install -y gcc gcc-c++ cmake make clang
+
+          # Rocky Linux - RHEL compatible
+          - distro: rocky
+            image: rockylinux:9
+            compiler: gcc
+            pkg_install: dnf install -y gcc gcc-c++ cmake make
+
+          - distro: rocky
+            image: rockylinux:9
+            compiler: clang
+            pkg_install: dnf install -y gcc gcc-c++ cmake make clang
+
+    container:
+      image: ${{ matrix.image }}
+
+    name: ${{ matrix.distro }} / ${{ matrix.compiler }}
+
+    env:
+      CC: ${{ matrix.compiler == 'clang' && 'clang' || 'gcc' }}
+      CXX: ${{ matrix.compiler == 'clang' && 'clang++' || 'g++' }}
 
     steps:
     - uses: actions/checkout@v5
 
     - name: Install dependencies
-      run: sudo apt-get update && sudo apt-get install -y cmake
+      run: ${{ matrix.pkg_install }}
 
     - name: Build and test (with sanitizers)
       run: |
@@ -22,8 +91,34 @@ jobs:
         cmake --build build --parallel
         ctest --test-dir build --output-on-failure
 
+  test-arm64:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    name: arm64 / gcc (QEMU)
+
+    steps:
+    - uses: actions/checkout@v5
+
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v3
+      with:
+        platforms: arm64
+
+    - name: Build and test on ARM64
+      run: |
+        docker run --rm --platform linux/arm64 \
+          -v ${{ github.workspace }}:/src:ro \
+          -w /build \
+          arm64v8/alpine:3.22 sh -c "
+            apk add --no-cache build-base cmake bash &&
+            cmake /src -DCMAKE_BUILD_TYPE=Debug &&
+            cmake --build . --parallel &&
+            ctest --output-on-failure
+          "
+
   coverage:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
     - uses: actions/checkout@v5
