@@ -466,21 +466,23 @@ test_job_order() {
     test_cleanup
 
     # Jobs with explicit order - lower order starts first
+    # Each job sleeps proportionally to its order before writing timestamp
+    # This ensures timestamps reflect start order despite OS scheduling
     cat > "$TEST_DIR/order.conf" << EOF
 job {
     name third
     order 3
-    cmd /bin/sh -c "date +%s%N >> $TEST_DIR/order.txt; sleep 74"
+    cmd /bin/sh -c "sleep 0.3; date +%s%N >> $TEST_DIR/order.txt; sleep 74"
 }
 job {
     name first
     order 1
-    cmd /bin/sh -c "date +%s%N >> $TEST_DIR/order.txt; sleep 75"
+    cmd /bin/sh -c "sleep 0.1; date +%s%N >> $TEST_DIR/order.txt; sleep 75"
 }
 job {
     name second
     order 2
-    cmd /bin/sh -c "date +%s%N >> $TEST_DIR/order.txt; sleep 76"
+    cmd /bin/sh -c "sleep 0.2; date +%s%N >> $TEST_DIR/order.txt; sleep 76"
 }
 EOF
 
