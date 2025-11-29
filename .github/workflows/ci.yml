@@ -100,12 +100,12 @@ jobs:
             build_type: Sanitize
             pkg_install: pacman -Syu --noconfirm base-devel cmake clang procps-ng
 
-          # Gentoo - uses binary packages for faster CI
+          # Gentoo - source-based (binary packages need GPG setup)
           - distro: gentoo
             image: gentoo/stage3
             compiler: gcc
             build_type: Debug
-            pkg_install: emerge-webrsync && emerge --getbinpkg -q dev-build/cmake sys-process/procps
+            pkg_install: emerge-webrsync && emerge -q dev-build/cmake sys-process/procps
 
     container:
       image: ${{ matrix.image }}
