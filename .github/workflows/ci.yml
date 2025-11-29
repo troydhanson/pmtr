@@ -85,7 +85,7 @@ jobs:
             image: amazonlinux:2023
             compiler: gcc
             build_type: Sanitize
-            pkg_install: dnf install -y gcc gcc-c++ cmake make libasan libubsan procps-ng tar gzip
+            pkg_install: dnf install -y gcc gcc-c++ cmake make libasan libubsan procps-ng
 
           # Arch Linux - rolling release, latest compilers
           - distro: arch
@@ -117,6 +117,10 @@ jobs:
       CXX: ${{ matrix.compiler == 'clang' && 'clang++' || 'g++' }}
 
     steps:
+    - name: Install tar (Amazon Linux)
+      if: matrix.distro == 'amazonlinux'
+      run: dnf install -y tar gzip
+
     - uses: actions/checkout@v5
 
     - name: Install dependencies
