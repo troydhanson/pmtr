@@ -77,7 +77,12 @@ pid_t dep_monitor(char *file) {
     if (job->disabled) continue;
     char **dep=NULL;
     while ( (dep=(char**)utarray_next(&job->depv,dep))) {
-      sc = inotify_add_watch(fd, fpath(job,*dep), IN_CLOSE_WRITE);
+      char *path = fpath(job,*dep);
+      if (path == NULL) {
+        syslog(LOG_ERR,"can't watch %s: path too long", *dep);
+        continue;
+      }
+      sc = inotify_add_watch(fd, path, IN_CLOSE_WRITE);
       if (sc == -1) syslog(LOG_ERR,"can't watch %s: %s", *dep, strerror(errno));
     }
   }

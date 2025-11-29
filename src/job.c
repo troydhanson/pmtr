@@ -390,7 +390,14 @@ int hash_deps(UT_array *jobs) {
     job->deps_hash=0;
     char **dep=NULL;
     while( (dep=(char**)utarray_next(&job->depv,dep))) {
-      if (slurp(fpath(job,*dep), &text, &len) < 0) {
+      char *path = fpath(job,*dep);
+      if (path == NULL) {
+        syslog(LOG_ERR,"job %s: dependency path too long: %s", job->name, *dep);
+        job->disabled = 1;
+        if (job->pid) job->terminate=1;
+        continue;
+      }
+      if (slurp(path, &text, &len) < 0) {
         syslog(LOG_ERR,"job %s: can't open dependency %s", job->name, *dep);
         job->disabled = 1; /* they need to fix pmtr.conf to trigger rescan */
         if (job->pid) job->terminate=1;
