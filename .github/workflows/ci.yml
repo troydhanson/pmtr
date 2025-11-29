@@ -107,12 +107,12 @@ jobs:
             build_type: Sanitize
             pkg_install: pacman -Syu --noconfirm base-devel cmake clang procps-ng
 
-          # Gentoo - source-based (binary packages need GPG setup)
+          # Gentoo - binary packages (getuto sets up GPG keys)
           - distro: gentoo
             image: gentoo/stage3
             compiler: gcc
             build_type: Debug
-            pkg_install: emerge-webrsync && emerge -q dev-build/cmake sys-process/procps
+            pkg_install: export MAKEOPTS="-j$(nproc)" && getuto && emerge-webrsync && emerge --getbinpkg -q dev-build/cmake sys-process/procps
 
     container:
       image: ${{ matrix.image }}

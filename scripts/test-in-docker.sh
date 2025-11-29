@@ -247,8 +247,10 @@ EOF
         gentoo)
             cat << EOF
 FROM gentoo/stage3
-RUN emerge-webrsync && \\
-    emerge -q dev-build/cmake sys-process/procps
+ENV MAKEOPTS="-j\$(nproc)"
+RUN getuto && \\
+    emerge-webrsync && \\
+    emerge --getbinpkg -q dev-build/cmake sys-process/procps
 EOF
             ;;
     esac
