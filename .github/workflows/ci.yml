@@ -135,7 +135,19 @@ jobs:
   test-arm64:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    name: arm64 / gcc (QEMU)
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - compiler: gcc
+            pkg_extra: ""
+            cc: gcc
+          - compiler: clang
+            pkg_extra: "clang compiler-rt"
+            cc: clang
+
+    name: arm64 / ${{ matrix.compiler }} (QEMU)
 
     steps:
     - uses: actions/checkout@v5
@@ -151,8 +163,8 @@ jobs:
           -v ${{ github.workspace }}:/src:ro \
           -w /build \
           arm64v8/alpine:3.22 sh -c "
-            apk add --no-cache build-base cmake bash &&
-            cmake /src -DCMAKE_BUILD_TYPE=Debug &&
+            apk add --no-cache build-base cmake bash ${{ matrix.pkg_extra }} &&
+            CC=${{ matrix.cc }} cmake /src -DCMAKE_BUILD_TYPE=Debug &&
             cmake --build . --parallel &&
             ctest --output-on-failure
           "
