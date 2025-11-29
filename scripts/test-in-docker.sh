@@ -55,8 +55,8 @@ Supported platform/compiler combinations:
   rocky           glibc   gcc, clang      rockylinux:9
 
 Notes:
+  - Alpine + gcc: Sanitize build not supported (musl), auto-switches to Debug
   - Coverage build uses lcov/gcov (GCC-based, may not work with clang)
-  - Sanitize build works best with recent GCC or clang
 EOF
 }
 
@@ -116,6 +116,13 @@ if [ "$BUILD_TYPE" = "Coverage" ] && [ "$COMPILER" = "clang" ]; then
     echo "         Results may be incomplete with clang"
 fi
 
+# Alpine gcc doesn't support sanitizers (musl libc limitation)
+if [ "$DISTRO" = "alpine" ] && [ "$COMPILER" = "gcc" ] && [ "$BUILD_TYPE" = "Sanitize" ]; then
+    echo "Warning: Alpine + gcc does not support sanitizers (musl libc limitation)"
+    echo "         Switching to Debug build"
+    BUILD_TYPE="Debug"
+fi
+
 IMAGE_NAME="pmtr-test-${DISTRO}-${COMPILER}"
 
 # Generate Dockerfile based on distro
@@ -140,7 +147,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \\
     build-essential \\
     cmake \\
     lcov \\
-    $( [ "$COMPILER" = "clang" ] && echo "clang" ) \\
+    procps \\
+    $( [ "$COMPILER" = "clang" ] && echo "clang libclang-rt-dev" ) \\
     && rm -rf /var/lib/apt/lists/*
 EOF
             ;;
@@ -151,7 +159,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \\
     build-essential \\
     cmake \\
     lcov \\
-    $( [ "$COMPILER" = "clang" ] && echo "clang" ) \\
+    procps \\
+    $( [ "$COMPILER" = "clang" ] && echo "clang libclang-rt-dev" ) \\
     && rm -rf /var/lib/apt/lists/*
 EOF
             ;;
@@ -160,11 +169,12 @@ EOF
 FROM fedora:41
 RUN dnf install -y \\
     gcc \\
-    g++ \\
+    gcc-c++ \\
     cmake \\
     make \\
     lcov \\
-    $( [ "$COMPILER" = "clang" ] && echo "clang" ) \\
+    procps-ng \\
+    $( [ "$COMPILER" = "clang" ] && echo "clang compiler-rt" || echo "libasan libubsan" ) \\
     && dnf clean all
 EOF
             ;;
@@ -176,7 +186,8 @@ RUN dnf install -y \\
     gcc-c++ \\
     cmake \\
     make \\
-    $( [ "$COMPILER" = "clang" ] && echo "clang" ) \\
+    procps-ng \\
+    $( [ "$COMPILER" = "clang" ] && echo "clang" || echo "libasan libubsan" ) \\
     && dnf install -y epel-release \\
     && dnf install -y lcov \\
     && dnf clean all
