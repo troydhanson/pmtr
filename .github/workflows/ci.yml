@@ -5,25 +5,222 @@ on:
     branches: [ master, main ]
   pull_request:
     branches: [ master, main ]
+  schedule:
+    # Run weekly on Sundays at 00:00 UTC
+    - cron: '0 0 * * 0'
 
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Alpine - musl libc (no sanitizer support for gcc on musl)
+          - distro: alpine
+            image: alpine:3.22
+            compiler: gcc
+            build_type: Debug
+            pkg_install: apk add --no-cache build-base cmake bash
+
+          - distro: alpine
+            image: alpine:3.22
+            compiler: clang
+            build_type: Sanitize
+            pkg_install: apk add --no-cache build-base cmake bash clang compiler-rt
+
+          # Debian - glibc
+          - distro: debian
+            image: debian:bookworm
+            compiler: gcc
+            build_type: Sanitize
+            pkg_install: apt-get update && apt-get install -y --no-install-recommends build-essential cmake procps
+
+          - distro: debian
+            image: debian:bookworm
+            compiler: clang
+            build_type: Sanitize
+            pkg_install: apt-get update && apt-get install -y --no-install-recommends build-essential cmake clang libclang-rt-dev procps
+
+          # Ubuntu - glibc
+          - distro: ubuntu
+            image: ubuntu:24.04
+            compiler: gcc
+            build_type: Sanitize
+            pkg_install: apt-get update && apt-get install -y --no-install-recommends build-essential cmake procps
+
+          - distro: ubuntu
+            image: ubuntu:24.04
+            compiler: clang
+            build_type: Sanitize
+            pkg_install: apt-get update && apt-get install -y --no-install-recommends build-essential cmake clang libclang-rt-dev procps
+
+          # Fedora - glibc (latest compiler versions)
+          - distro: fedora
+            image: fedora:41
+            compiler: gcc
+            build_type: Sanitize
+            pkg_install: dnf install -y gcc gcc-c++ cmake make libasan libubsan procps-ng
+
+          - distro: fedora
+            image: fedora:41
+            compiler: clang
+            build_type: Sanitize
+            pkg_install: dnf install -y gcc gcc-c++ cmake make clang compiler-rt procps-ng
+
+          # Rocky Linux - RHEL compatible
+          - distro: rocky
+            image: rockylinux:9
+            compiler: gcc
+            build_type: Sanitize
+            pkg_install: dnf install -y gcc gcc-c++ cmake make libasan libubsan procps-ng
+
+          - distro: rocky
+            image: rockylinux:9
+            compiler: clang
+            build_type: Sanitize
+            pkg_install: dnf install -y gcc gcc-c++ cmake make clang procps-ng
+
+          # Oracle Linux 10 - Oracle Cloud
+          - distro: oraclelinux
+            image: oraclelinux:10
+            compiler: gcc
+            build_type: Sanitize
+            pkg_install: dnf install -y gcc gcc-c++ cmake make libasan libubsan procps-ng
+
+          # Amazon Linux 2023 - AWS (needs tar for checkout)
+          - distro: amazonlinux
+            image: amazonlinux:2023
+            compiler: gcc
+            build_type: Sanitize
+            prereqs: dnf install -y tar gzip
+            pkg_install: dnf install -y gcc gcc-c++ cmake make libasan libubsan procps-ng
+
+          # Arch Linux - rolling release, latest compilers
+          - distro: arch
+            image: archlinux:base
+            compiler: gcc
+            build_type: Sanitize
+            pkg_install: pacman -Syu --noconfirm base-devel cmake procps-ng
+
+          - distro: arch
+            image: archlinux:base
+            compiler: clang
+            build_type: Sanitize
+            pkg_install: pacman -Syu --noconfirm base-devel cmake clang procps-ng
+
+          # Gentoo - binary packages (getuto sets up GPG keys)
+          - distro: gentoo
+            image: gentoo/stage3
+            compiler: gcc
+            build_type: Debug
+            pkg_install: export MAKEOPTS="-j$(nproc)" && getuto && emerge-webrsync && emerge --getbinpkg -q dev-build/cmake sys-process/procps
+
+    container:
+      image: ${{ matrix.image }}
+
+    name: ${{ matrix.distro }} / ${{ matrix.compiler }}
+
+    env:
+      CC: ${{ matrix.compiler == 'clang' && 'clang' || 'gcc' }}
+      CXX: ${{ matrix.compiler == 'clang' && 'clang++' || 'g++' }}
+
+    steps:
+    - name: Install checkout prerequisites
+      if: matrix.prereqs
+      run: ${{ matrix.prereqs }}
+
+    - uses: actions/checkout@v5
+
+    - name: Install dependencies
+      run: ${{ matrix.pkg_install }}
+
+    - name: Build and test
+      run: |
+        cmake -B build -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+        cmake --build build --parallel
+        ctest --test-dir build --output-on-failure
+
+    - name: Create issue on scheduled failure
+      if: failure() && github.event_name == 'schedule'
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        LABEL="ci:${{ matrix.distro }}-${{ matrix.compiler }}"
+        EXISTING=$(gh issue list --label "$LABEL" --state open --json number --jq '.[0].number')
+        if [ -z "$EXISTING" ]; then
+          gh label create "$LABEL" --color D93F0B --description "CI failure for ${{ matrix.distro }}/${{ matrix.compiler }}" 2>/dev/null || true
+          gh issue create \
+            --title "CI: ${{ matrix.distro }}/${{ matrix.compiler }} scheduled build failure" \
+            --label "$LABEL" \
+            --body "The scheduled CI run failed for **${{ matrix.distro }}** with **${{ matrix.compiler }}**.
+
+        **Workflow run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+        This may be due to upstream distro/package changes. Close this issue once fixed."
+        fi
+
+  test-arm64:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - compiler: gcc
+            pkg_extra: ""
+            cc: gcc
+          - compiler: clang
+            pkg_extra: "clang compiler-rt"
+            cc: clang
+
+    name: arm64 / ${{ matrix.compiler }} (QEMU)
 
     steps:
     - uses: actions/checkout@v5
 
-    - name: Install dependencies
-      run: sudo apt-get update && sudo apt-get install -y cmake
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v3
+      with:
+        platforms: arm64
 
-    - name: Build and test (with sanitizers)
+    - name: Build and test on ARM64
       run: |
-        cmake -B build -DCMAKE_BUILD_TYPE=Sanitize
-        cmake --build build --parallel
-        ctest --test-dir build --output-on-failure
+        docker run --rm --platform linux/arm64 \
+          -v ${{ github.workspace }}:/src:ro \
+          -w /build \
+          arm64v8/alpine:3.22 sh -c "
+            apk add --no-cache build-base cmake bash ${{ matrix.pkg_extra }} &&
+            CC=${{ matrix.cc }} cmake /src -DCMAKE_BUILD_TYPE=Debug &&
+            cmake --build . --parallel &&
+            ctest --output-on-failure
+          "
+
+    - name: Create issue on scheduled failure
+      if: failure() && github.event_name == 'schedule'
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        LABEL="ci:arm64-${{ matrix.compiler }}"
+        EXISTING=$(gh issue list --label "$LABEL" --state open --json number --jq '.[0].number')
+        if [ -z "$EXISTING" ]; then
+          gh label create "$LABEL" --color D93F0B --description "CI failure for arm64/${{ matrix.compiler }}" 2>/dev/null || true
+          gh issue create \
+            --title "CI: arm64/${{ matrix.compiler }} scheduled build failure" \
+            --label "$LABEL" \
+            --body "The scheduled CI run failed for **arm64** with **${{ matrix.compiler }}**.
+
+        **Workflow run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+        This may be due to upstream distro/package changes. Close this issue once fixed."
+        fi
 
   coverage:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
     - uses: actions/checkout@v5
@@ -40,3 +237,4 @@ jobs:
       run: |
         ctest --test-dir build --output-on-failure
         make -C build coverage
+
