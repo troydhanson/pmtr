@@ -15,60 +15,70 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Alpine - musl libc
+          # Alpine - musl libc (no sanitizer support for gcc on musl)
           - distro: alpine
             image: alpine:3.22
             compiler: gcc
-            pkg_install: apk add --no-cache build-base cmake bash gcc-sanitizer
+            build_type: Debug
+            pkg_install: apk add --no-cache build-base cmake bash
 
           - distro: alpine
             image: alpine:3.22
             compiler: clang
+            build_type: Sanitize
             pkg_install: apk add --no-cache build-base cmake bash clang compiler-rt
 
           # Debian - glibc
           - distro: debian
             image: debian:bookworm
             compiler: gcc
-            pkg_install: apt-get update && apt-get install -y --no-install-recommends build-essential cmake
+            build_type: Sanitize
+            pkg_install: apt-get update && apt-get install -y --no-install-recommends build-essential cmake procps
 
           - distro: debian
             image: debian:bookworm
             compiler: clang
-            pkg_install: apt-get update && apt-get install -y --no-install-recommends build-essential cmake clang libclang-rt-dev
+            build_type: Sanitize
+            pkg_install: apt-get update && apt-get install -y --no-install-recommends build-essential cmake clang libclang-rt-dev procps
 
           # Ubuntu - glibc
           - distro: ubuntu
             image: ubuntu:24.04
             compiler: gcc
-            pkg_install: apt-get update && apt-get install -y --no-install-recommends build-essential cmake
+            build_type: Sanitize
+            pkg_install: apt-get update && apt-get install -y --no-install-recommends build-essential cmake procps
 
           - distro: ubuntu
             image: ubuntu:24.04
             compiler: clang
-            pkg_install: apt-get update && apt-get install -y --no-install-recommends build-essential cmake clang libclang-rt-dev
+            build_type: Sanitize
+            pkg_install: apt-get update && apt-get install -y --no-install-recommends build-essential cmake clang libclang-rt-dev procps
 
           # Fedora - glibc (latest compiler versions)
           - distro: fedora
             image: fedora:41
             compiler: gcc
-            pkg_install: dnf install -y gcc gcc-c++ cmake make libasan libubsan
+            build_type: Sanitize
+            pkg_install: dnf install -y gcc gcc-c++ cmake make libasan libubsan procps-ng
 
           - distro: fedora
             image: fedora:41
             compiler: clang
-            pkg_install: dnf install -y gcc gcc-c++ cmake make clang compiler-rt
+            build_type: Sanitize
+            pkg_install: dnf install -y gcc gcc-c++ cmake make clang compiler-rt procps-ng
 
           # Rocky Linux - RHEL compatible
           - distro: rocky
             image: rockylinux:9
             compiler: gcc
-            pkg_install: dnf install -y gcc gcc-c++ cmake make libasan libubsan
+            build_type: Sanitize
+            pkg_install: dnf install -y gcc gcc-c++ cmake make libasan libubsan procps-ng
 
           - distro: rocky
             image: rockylinux:9
             compiler: clang
-            pkg_install: dnf install -y gcc gcc-c++ cmake make clang
+            build_type: Sanitize
+            pkg_install: dnf install -y gcc gcc-c++ cmake make clang procps-ng
 
     container:
       image: ${{ matrix.image }}
@@ -85,9 +95,9 @@ jobs:
     - name: Install dependencies
       run: ${{ matrix.pkg_install }}
 
-    - name: Build and test (with sanitizers)
+    - name: Build and test
       run: |
-        cmake -B build -DCMAKE_BUILD_TYPE=Sanitize
+        cmake -B build -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
         cmake --build build --parallel
         ctest --test-dir build --output-on-failure
 
