@@ -80,6 +80,13 @@ jobs:
             build_type: Sanitize
             pkg_install: dnf install -y gcc gcc-c++ cmake make clang procps-ng
 
+          # Oracle Linux 10 - Oracle Cloud
+          - distro: oraclelinux
+            image: oraclelinux:10
+            compiler: gcc
+            build_type: Sanitize
+            pkg_install: dnf install -y gcc gcc-c++ cmake make libasan libubsan procps-ng
+
           # Amazon Linux 2023 - AWS
           - distro: amazonlinux
             image: amazonlinux:2023

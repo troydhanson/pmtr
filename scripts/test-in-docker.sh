@@ -4,7 +4,7 @@
 #
 # Usage: ./scripts/test-in-docker.sh [options] [distro] [compiler] [build_type]
 #
-#   distro:     alpine (default), debian, ubuntu, fedora, rocky, amazonlinux, arch, gentoo
+#   distro:     alpine (default), debian, ubuntu, fedora, rocky, oraclelinux, amazonlinux, arch, gentoo
 #   compiler:   gcc (default), clang
 #   build_type: Coverage (default), Debug, Release, Sanitize
 #
@@ -26,7 +26,7 @@ Options:
 
 Arguments:
   distro        Linux distribution (default: alpine)
-                Supported: alpine, debian, ubuntu, fedora, rocky, amazonlinux, arch, gentoo
+                Supported: alpine, debian, ubuntu, fedora, rocky, oraclelinux, amazonlinux, arch, gentoo
 
   compiler      Compiler to use (default: gcc)
                 Supported: gcc, clang
@@ -53,6 +53,7 @@ Supported platform/compiler combinations:
   ubuntu          glibc   gcc, clang      ubuntu:24.04
   fedora          glibc   gcc, clang      fedora:41
   rocky           glibc   gcc, clang      rockylinux:9
+  oraclelinux     glibc   gcc, clang      oraclelinux:10
   amazonlinux     glibc   gcc, clang      amazonlinux:2023
   arch            glibc   gcc, clang      archlinux:base
   gentoo          glibc   gcc             gentoo/stage3
@@ -85,10 +86,10 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
 # Validate distro
 case "$DISTRO" in
-    alpine|debian|ubuntu|fedora|rocky|amazonlinux|arch|gentoo) ;;
+    alpine|debian|ubuntu|fedora|rocky|oraclelinux|amazonlinux|arch|gentoo) ;;
     *)
         echo "Error: Unknown distro '$DISTRO'"
-        echo "Supported: alpine, debian, ubuntu, fedora, rocky, amazonlinux, arch, gentoo"
+        echo "Supported: alpine, debian, ubuntu, fedora, rocky, oraclelinux, amazonlinux, arch, gentoo"
         exit 1
         ;;
 esac
@@ -199,6 +200,21 @@ RUN dnf install -y \\
     procps-ng \\
     $( [ "$COMPILER" = "clang" ] && echo "clang" || echo "libasan libubsan" ) \\
     && dnf install -y epel-release \\
+    && dnf install -y lcov \\
+    && dnf clean all
+EOF
+            ;;
+        oraclelinux)
+            cat << EOF
+FROM oraclelinux:10
+RUN dnf install -y \\
+    gcc \\
+    gcc-c++ \\
+    cmake \\
+    make \\
+    procps-ng \\
+    $( [ "$COMPILER" = "clang" ] && echo "clang" || echo "libasan libubsan" ) \\
+    && dnf install -y oracle-epel-release-el10 \\
     && dnf install -y lcov \\
     && dnf clean all
 EOF
