@@ -345,10 +345,13 @@ char *fpath(job_t *job, char *file) {
 }
 
 /* this function reads a whole file into a malloc'd buffer */
+#define SLURP_MAX_SIZE (10 * 1024 * 1024)  /* 10 MB limit */
 int slurp(char *file, char **text, size_t *len) {
   struct stat s;
   char *buf;
-  int fd = -1, rc=-1, nr;
+  int fd = -1, rc=-1;
+  ssize_t nr;
+  size_t total = 0;
   *text=NULL; *len = 0;
 
   if ( (fd = open(file, O_RDONLY)) == -1) {
@@ -361,15 +364,27 @@ int slurp(char *file, char **text, size_t *len) {
   }
   *len = s.st_size;
   if (*len == 0) {rc=0; goto done;} // special case, empty file
-  if ( (*text = malloc(*len)) == NULL) goto done;
-  if ( (nr=read(fd, *text, *len)) != *len) {
-   if (nr == -1) {
-     syslog(LOG_CRIT,"read %s failed: %s", file, strerror(errno));
-   } else {
-     syslog(LOG_CRIT,"read %s failed: incomplete (%u/%u)", file, 
-        nr, (unsigned)*len);
-   }
-   goto done;
+  if (*len > SLURP_MAX_SIZE) {
+    syslog(LOG_ERR,"%s: file too large (%zu bytes)", file, *len);
+    goto done;
+  }
+  if ( (*text = malloc(*len)) == NULL) {
+    syslog(LOG_ERR,"malloc failed for %s", file);
+    goto done;
+  }
+  while (total < *len) {
+    nr = read(fd, *text + total, *len - total);
+    if (nr == -1) {
+      if (errno == EINTR) continue;
+      syslog(LOG_CRIT,"read %s failed: %s", file, strerror(errno));
+      goto done;
+    }
+    if (nr == 0) {
+      syslog(LOG_CRIT,"read %s failed: unexpected EOF (%zu/%zu)", file,
+         total, *len);
+      goto done;
+    }
+    total += nr;
   }
   rc = 0;
 
