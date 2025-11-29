@@ -9,7 +9,7 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
 
     strategy:
       fail-fast: false
@@ -79,6 +79,33 @@ jobs:
             compiler: clang
             build_type: Sanitize
             pkg_install: dnf install -y gcc gcc-c++ cmake make clang procps-ng
+
+          # Amazon Linux 2023 - AWS
+          - distro: amazonlinux
+            image: amazonlinux:2023
+            compiler: gcc
+            build_type: Sanitize
+            pkg_install: dnf install -y gcc gcc-c++ cmake make libasan libubsan procps-ng
+
+          # Arch Linux - rolling release, latest compilers
+          - distro: arch
+            image: archlinux:base
+            compiler: gcc
+            build_type: Sanitize
+            pkg_install: pacman -Syu --noconfirm base-devel cmake procps-ng
+
+          - distro: arch
+            image: archlinux:base
+            compiler: clang
+            build_type: Sanitize
+            pkg_install: pacman -Syu --noconfirm base-devel cmake clang procps-ng
+
+          # Gentoo - source-based, uses stage3 with prebuilt gcc
+          - distro: gentoo
+            image: gentoo/stage3
+            compiler: gcc
+            build_type: Debug
+            pkg_install: emerge --sync --quiet && emerge -q dev-build/cmake sys-process/procps
 
     container:
       image: ${{ matrix.image }}

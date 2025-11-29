@@ -4,7 +4,7 @@
 #
 # Usage: ./scripts/test-in-docker.sh [options] [distro] [compiler] [build_type]
 #
-#   distro:     alpine (default), debian, ubuntu, fedora, rocky
+#   distro:     alpine (default), debian, ubuntu, fedora, rocky, amazonlinux, arch, gentoo
 #   compiler:   gcc (default), clang
 #   build_type: Coverage (default), Debug, Release, Sanitize
 #
@@ -26,7 +26,7 @@ Options:
 
 Arguments:
   distro        Linux distribution (default: alpine)
-                Supported: alpine, debian, ubuntu, fedora, rocky
+                Supported: alpine, debian, ubuntu, fedora, rocky, amazonlinux, arch, gentoo
 
   compiler      Compiler to use (default: gcc)
                 Supported: gcc, clang
@@ -53,9 +53,13 @@ Supported platform/compiler combinations:
   ubuntu          glibc   gcc, clang      ubuntu:24.04
   fedora          glibc   gcc, clang      fedora:41
   rocky           glibc   gcc, clang      rockylinux:9
+  amazonlinux     glibc   gcc, clang      amazonlinux:2023
+  arch            glibc   gcc, clang      archlinux:base
+  gentoo          glibc   gcc             gentoo/stage3
 
 Notes:
   - Alpine + gcc: Sanitize build not supported (musl), auto-switches to Debug
+  - Gentoo: Only gcc tested (clang requires manual setup)
   - Coverage build uses lcov/gcov (GCC-based, may not work with clang)
 EOF
 }
@@ -81,10 +85,10 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
 # Validate distro
 case "$DISTRO" in
-    alpine|debian|ubuntu|fedora|rocky) ;;
+    alpine|debian|ubuntu|fedora|rocky|amazonlinux|arch|gentoo) ;;
     *)
         echo "Error: Unknown distro '$DISTRO'"
-        echo "Supported: alpine, debian, ubuntu, fedora, rocky"
+        echo "Supported: alpine, debian, ubuntu, fedora, rocky, amazonlinux, arch, gentoo"
         exit 1
         ;;
 esac
@@ -114,6 +118,12 @@ esac
 if [ "$BUILD_TYPE" = "Coverage" ] && [ "$COMPILER" = "clang" ]; then
     echo "Warning: Coverage build uses gcov/lcov which is GCC-based"
     echo "         Results may be incomplete with clang"
+fi
+
+# Gentoo with clang requires manual setup
+if [ "$DISTRO" = "gentoo" ] && [ "$COMPILER" = "clang" ]; then
+    echo "Warning: Gentoo + clang requires manual clang installation"
+    echo "         This combination is not tested in CI"
 fi
 
 # Alpine gcc doesn't support sanitizers (musl libc limitation)
@@ -191,6 +201,38 @@ RUN dnf install -y \\
     && dnf install -y epel-release \\
     && dnf install -y lcov \\
     && dnf clean all
+EOF
+            ;;
+        amazonlinux)
+            cat << EOF
+FROM amazonlinux:2023
+RUN dnf install -y \\
+    gcc \\
+    gcc-c++ \\
+    cmake \\
+    make \\
+    procps-ng \\
+    tar gzip \\
+    $( [ "$COMPILER" = "clang" ] && echo "clang" || echo "libasan libubsan" ) \\
+    && dnf clean all
+EOF
+            ;;
+        arch)
+            cat << EOF
+FROM archlinux:base
+RUN pacman -Syu --noconfirm \\
+    base-devel \\
+    cmake \\
+    lcov \\
+    procps-ng \\
+    $( [ "$COMPILER" = "clang" ] && echo "clang" )
+EOF
+            ;;
+        gentoo)
+            cat << EOF
+FROM gentoo/stage3
+RUN emerge --sync --quiet && \\
+    emerge -q dev-build/cmake sys-process/procps
 EOF
             ;;
     esac
