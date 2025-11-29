@@ -609,7 +609,14 @@ void do_jobs(pmtr_t *cfg) {
 
     /* set environment variables */
     env=NULL;
-    while ( (env=(char**)utarray_next(&job->envv,env))) putenv(*env);
+    while ( (env=(char**)utarray_next(&job->envv,env))) {
+      char *eq = strchr(*env, '=');
+      if (eq) {
+        *eq = '\0';
+        setenv(*env, eq+1, 1);
+        *eq = '=';  /* restore in case env is reused */
+      }
+    }
 
     /* set process priority / nice */
     if (setpriority(PRIO_PROCESS, 0, job->nice) < 0)         {rc=-5; goto fail;}
