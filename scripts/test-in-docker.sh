@@ -231,8 +231,8 @@ EOF
         gentoo)
             cat << EOF
 FROM gentoo/stage3
-RUN emerge --sync --quiet && \\
-    emerge -q dev-build/cmake sys-process/procps
+RUN emerge-webrsync && \\
+    emerge --getbinpkg -q dev-build/cmake sys-process/procps
 EOF
             ;;
     esac
