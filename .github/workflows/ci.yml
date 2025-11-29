@@ -19,7 +19,7 @@ jobs:
           - distro: alpine
             image: alpine:3.22
             compiler: gcc
-            pkg_install: apk add --no-cache build-base cmake bash
+            pkg_install: apk add --no-cache build-base cmake bash gcc-sanitizer
 
           - distro: alpine
             image: alpine:3.22
@@ -35,7 +35,7 @@ jobs:
           - distro: debian
             image: debian:bookworm
             compiler: clang
-            pkg_install: apt-get update && apt-get install -y --no-install-recommends build-essential cmake clang
+            pkg_install: apt-get update && apt-get install -y --no-install-recommends build-essential cmake clang libclang-rt-dev
 
           # Ubuntu - glibc
           - distro: ubuntu
@@ -46,24 +46,24 @@ jobs:
           - distro: ubuntu
             image: ubuntu:24.04
             compiler: clang
-            pkg_install: apt-get update && apt-get install -y --no-install-recommends build-essential cmake clang
+            pkg_install: apt-get update && apt-get install -y --no-install-recommends build-essential cmake clang libclang-rt-dev
 
           # Fedora - glibc (latest compiler versions)
           - distro: fedora
             image: fedora:41
             compiler: gcc
-            pkg_install: dnf install -y gcc gcc-c++ cmake make
+            pkg_install: dnf install -y gcc gcc-c++ cmake make libasan libubsan
 
           - distro: fedora
             image: fedora:41
             compiler: clang
-            pkg_install: dnf install -y gcc gcc-c++ cmake make clang
+            pkg_install: dnf install -y gcc gcc-c++ cmake make clang compiler-rt
 
           # Rocky Linux - RHEL compatible
           - distro: rocky
             image: rockylinux:9
             compiler: gcc
-            pkg_install: dnf install -y gcc gcc-c++ cmake make
+            pkg_install: dnf install -y gcc gcc-c++ cmake make libasan libubsan
 
           - distro: rocky
             image: rockylinux:9
